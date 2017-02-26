@@ -102,9 +102,12 @@ native=0
 forcesse2=0
 avx2flag="-mavx2"
 sse2flag="-msse2"
+sse3flag="-msse3"
+ssse3flag="-mssse3"
 sse4flag="-msse4"
 sse42flag="-msse4.2"
 pclmulflag="-mpclmul"
+xopflag="-mxop"
 without_optimizations=0
 without_new_strategies=0
 gcc=0
@@ -890,6 +893,70 @@ EOF
         ;;
 esac
 
+# Check for SSE3 intrinsics
+cat > $test.c << EOF
+#include <x86intrin.h>
+int main(void)
+{
+    __m128d u, v, w;
+    double a[2] = { 0.1, 0.2 };
+    double b[2] = { 0.001, 0.002 };
+
+    u = _mm_load_pd(a);
+    v = _mm_load_pd(b);
+    w = _mm_hadd_pd(u, v);
+    (void)w;
+    return 0;
+}
+EOF
+if try ${CC} ${CFLAGS} ${sse3flag} $test.c; then
+    echo "Checking for SSE3 intrinsics ... Yes." | tee -a configure.log
+    HAVE_SSE3_INTRIN=1
+else
+    echo "Checking for SSE3 intrinsics ... No." | tee -a configure.log
+    HAVE_SSE3_INTRIN=0
+fi
+
+# Check for SSSE3 intrinsics
+
+cat > $test.c << EOF
+#include <x86intrin.h>
+int main(void)
+{
+    __m128i u, v, w;
+    u = _mm_set1_epi32(1);
+    v = _mm_set1_epi32(2);
+    w = _mm_hadd_epi32(u, v);
+    (void)w;
+    return 0;
+}
+EOF
+if try ${CC} ${CFLAGS} ${ssse3flag} $test.c; then
+    echo "Checking for SSSE3 intrinsics ... Yes." | tee -a configure.log
+    HAVE_SSSE3_INTRIN=1
+else
+    echo "Checking for SSSE3 intrinsics ... No." | tee -a configure.log
+    HAVE_SSSE3_INTRIN=0
+fi
+
+# Check for _mm_insert_epi32()
+cat > $test.c << EOF
+#include <x86intrin.h>
+int main(void)
+{
+    __m128i a = _mm_setzero_si128();
+    a = _mm_insert_epi32(a, 1, 0);
+    (void)a;
+}
+EOF
+if try ${CC} ${CFLAGS} ${sse4flag} $test.c; then
+    echo "Checking for _mm_insert_epi32 ... Yes." | tee -a configure.log
+    HAVE_SSE4_1_INTRIN=1
+else
+    echo "Checking for _mm_insert_epi32 ... No." | tee -a configure.log
+    HAVE_SSE4_1_INTRIN=0
+fi
+
 # Check for SSE4.2 CRC intrinsics
 case "${ARCH}" in
     i386 | i486 | i586 | i686 | x86_64)
@@ -941,6 +1008,25 @@ EOF
         fi
         ;;
 esac
+
+# Check for XOP intrinsics
+cat > $test.c << EOF
+#include <x86intrin.h>
+int main(void)
+{
+    __m128i a = _mm_set1_epi8(1);
+    __m128i b = _mm_haddw_epi8(a);
+    (void)b;
+    return 0;
+}
+EOF
+if try ${CC} ${CFLAGS} ${xopflag} $test.c; then
+    echo "Checking for XOP intrinsics ... Yes." | tee -a configure.log
+    HAVE_XOP_INTRIN=1
+else
+    echo "Checking for XOP intrinsics ... No." | tee -a configure.log
+    HAVE_XOP_INTRIN=0
+fi
 
 # Check for AVX2 intrinsics
 case "${ARCH}" in
@@ -1013,8 +1099,8 @@ case "${ARCH}" in
             CFLAGS="${CFLAGS} -DX86_CPUID"
             SFLAGS="${SFLAGS} -DX86_CPUID"
 
-            ARCH_STATIC_OBJS="${ARCH_STATIC_OBJS} x86.o"
-            ARCH_SHARED_OBJS="${ARCH_SHARED_OBJS} x86.lo"
+            ARCH_STATIC_OBJS="${ARCH_STATIC_OBJS} adler32_x86.o x86.o"
+            ARCH_SHARED_OBJS="${ARCH_SHARED_OBJS} adler32_x86.lo x86.lo"
 
             if test ${HAVE_SSE2_INTRIN} -eq 1; then
                 CFLAGS="${CFLAGS} -DX86_SSE2"
@@ -1035,6 +1121,34 @@ case "${ARCH}" in
                     ARCH_STATIC_OBJS="${ARCH_STATIC_OBJS} deflate_quick.o"
                     ARCH_SHARED_OBJS="${ARCH_SHARED_OBJS} deflate_quick.lo"
                 fi
+            fi
+
+            if test ${HAVE_SSE3_INTRIN} -eq 1; then
+                CFLAGS="${CFLAGS} -DX86_SSE3_ADLER32"
+                SFLAGS="${SFLAGS} -DX86_SSE3_ADLER32"
+                ARCH_STATIC_OBJS="${ARCH_STATIC_OBJS} adler32_sse3.o"
+                ARCH_SHARED_OBJS="${ARCH_SHARED_OBJS} adler32_sse3.lo"
+            fi
+
+            if test ${HAVE_SSSE3_INTRIN} -eq 1; then
+                CFLAGS="${CFLAGS} -DX86_SSSE3_ADLER32"
+                SFLAGS="${SFLAGS} -DX86_SSSE3_ADLER32"
+                ARCH_STATIC_OBJS="${ARCH_STATIC_OBJS} adler32_ssse3.o"
+                ARCH_SHARED_OBJS="${ARCH_SHARED_OBJS} adler32_ssse3.lo"
+            fi
+
+            if test ${HAVE_SSE4_1_INTRIN} -eq 1; then
+                CFLAGS="${CFLAGS} -DX86_SSE4_ADLER32"
+                SFLAGS="${SFLAGS} -DX86_SSE4_ADLER32"
+                ARCH_STATIC_OBJS="${ARCH_STATIC_OBJS} adler32_sse4.o"
+                ARCH_SHARED_OBJS="${ARCH_SHARED_OBJS} adler32_sse4.lo"
+            fi
+
+            if test ${HAVE_XOP_INTRIN} -eq 1; then
+                CFLAGS="${CFLAGS} -DX86_XOP_ADLER32"
+                SFLAGS="${SFLAGS} -DX86_XOP_ADLER32"
+                ARCH_STATIC_OBJS="${ARCH_STATIC_OBJS} adler32_xop.o"
+                ARCH_SHARED_OBJS="${ARCH_SHARED_OBJS} adler32_xop.lo"
             fi
 
             if test ${HAVE_SSE42CRC_INTRIN} -eq 1; then
@@ -1351,8 +1465,11 @@ echo prefix = $prefix >> configure.log
 echo sharedlibdir = $sharedlibdir >> configure.log
 echo uname = $uname >> configure.log
 echo sse2flag = $sse2flag >> configure.log
+echo sse3flag = $sse3flag >> configure.log
+echo ssse3flag = $ssse3flag >> configure.log
 echo sse4flag = $sse4flag >> configure.log
 echo pclmulflag = $pclmulflag >> configure.log
+echo xopflag = $xopflag >> configure.log
 echo ARCHDIR = ${ARCHDIR} >> configure.log
 echo ARCH_STATIC_OBJS = ${ARCH_STATIC_OBJS} >> configure.log
 echo ARCH_SHARED_OBJS = ${ARCH_SHARED_OBJS} >> configure.log
@@ -1490,8 +1607,11 @@ sed < $SRCDIR/$ARCHDIR/Makefile.in "
 /^TOPDIR *=/s#=.*#=$BUILDDIR#
 /^AVX2FLAG *=/s#=.*#=$avx2flag#
 /^SSE2FLAG *=/s#=.*#=$sse2flag#
+/^SSE3FLAG *=/s#=.*#=$sse3flag#
+/^SSSE3FLAG *=/s#=.*#=$ssse3flag#
 /^SSE4FLAG *=/s#=.*#=$sse4flag#
 /^PCLMULFLAG *=/s#=.*#=$pclmulflag#
+/^XOPFLAG *=/s#=.*#=$xopflag#
 " > $ARCHDIR/Makefile
 
 # Append header files dependences.

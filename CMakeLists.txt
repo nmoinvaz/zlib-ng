@@ -147,7 +147,10 @@ if(${CMAKE_C_COMPILER} MATCHES "icc" OR ${CMAKE_C_COMPILER} MATCHES "icpc" OR ${
         if(BASEARCH_X86_FOUND)
             set(AVX2FLAG "-mavx2")
             set(SSE2FLAG "-msse2")
+            set(SSE3FLAG "-msse3")
+            set(SSSE3FLAG "-mssse3")
             set(SSE4FLAG "-msse4.2")
+            set(XOPFLAG "-mxop")
         endif()
     else()
         set(WARNFLAGS "/W3")
@@ -156,6 +159,8 @@ if(${CMAKE_C_COMPILER} MATCHES "icc" OR ${CMAKE_C_COMPILER} MATCHES "icpc" OR ${
         if(BASEARCH_X86_FOUND)
             set(AVX2FLAG "/arch:AVX2")
             set(SSE2FLAG "/arch:SSE2")
+            set(SSE3FLAG "/arch:SSE3")
+            set(SSSE3FLAG "/arch:SSSE3")
             set(SSE4FLAG "/arch:SSE4.2")
         endif()
     endif()
@@ -228,8 +233,11 @@ else()
             elseif(BASEARCH_X86_FOUND)
                 set(AVX2FLAG "-mavx2")
                 set(SSE2FLAG "-msse2")
+                set(SSE3FLAG "-msse3")
+                set(SSSE3FLAG "-mssse3")
                 set(SSE4FLAG "-msse4")
                 set(PCLMULFLAG "-mpclmul")
+                set(XOPFLAG "-mxop")
             endif()
         endif()
     else()
@@ -241,8 +249,11 @@ else()
         elseif(BASEARCH_X86_FOUND)
             set(AVX2FLAG ${NATIVEFLAG})
             set(SSE2FLAG ${NATIVEFLAG})
+            set(SSE3FLAG ${NATIVEFLAG})
+            set(SSSE3FLAG ${NATIVEFLAG})
             set(SSE4FLAG ${NATIVEFLAG})
             set(PCLMULFLAG ${NATIVEFLAG})
+            set(XOPFLAG ${NATIVEFLAG})
         endif()
     endif()
 endif()
@@ -493,7 +504,63 @@ if(BASEARCH_X86_FOUND)
         }"
         HAVE_SSE2_INTRIN
     )
-    set(CMAKE_REQUIRED_FLAGS)
+    if(WITH_NATIVE_INSTRUCTIONS)
+        set(CMAKE_REQUIRED_FLAGS "${NATIVEFLAG}")
+    else()
+        set(CMAKE_REQUIRED_FLAGS "${SSE3FLAG}")
+    endif()
+    check_c_source_compile_or_run(
+        "#include <x86intrin.h>
+         
+        int main(void)
+        {
+            __m128d u, v, w;
+            double a[2] = { 0.1, 0.2 };
+            double b[2] = { 0.001, 0.002 };
+
+            u = _mm_load_pd(a);
+            v = _mm_load_pd(b);
+            w = _mm_hadd_pd(u, v);
+            (void)w;
+            return 0;
+        }"
+        HAVE_SSE3_INTRIN
+    )
+    if(WITH_NATIVE_INSTRUCTIONS)
+        set(CMAKE_REQUIRED_FLAGS "${NATIVEFLAG}")
+    else()
+        set(CMAKE_REQUIRED_FLAGS "${SSSE3FLAG}")
+    endif()
+    check_c_source_compile_or_run(
+        "#include <x86intrin.h>
+
+        int main(void)
+        {
+            __m128i u, v, w;
+            u = _mm_set1_epi32(1);
+            v = _mm_set1_epi32(2);
+            w = _mm_hadd_epi32(u, v);
+            (void)w;
+            return 0;
+        }"
+        HAVE_SSSE3_INTRIN
+    )
+    if(WITH_NATIVE_INSTRUCTIONS)
+        set(CMAKE_REQUIRED_FLAGS "${NATIVEFLAG}")
+    else()
+        set(CMAKE_REQUIRED_FLAGS "${SSE4FLAG}")
+    endif()
+    check_c_source_compile_or_run(
+        "#include <x86intrin.h>
+
+        int main(void)
+        {
+            __m128i a = _mm_setzero_si128();
+            a = _mm_insert_epi32(a, 1, 0);
+            (void)a;
+        }"
+        HAVE_SSE41_INTRIN
+    )
 
     # Check whether compiler supports SSE4 CRC inline asm
     if(WITH_NATIVE_INSTRUCTIONS)
@@ -531,8 +598,6 @@ if(BASEARCH_X86_FOUND)
         }"
         HAVE_SSE42CRC_INTRIN
     )
-    set(CMAKE_REQUIRED_FLAGS)
-
     # Check whether compiler supports PCLMULQDQ intrinics
     if(WITH_NATIVE_INSTRUCTIONS)
         set(CMAKE_REQUIRED_FLAGS "${NATIVEFLAG}")
@@ -556,6 +621,22 @@ if(BASEARCH_X86_FOUND)
     else()
         set(HAVE_PCLMULQDQ_INTRIN NO)
     endif()
+   if(WITH_NATIVE_INSTRUCTIONS)
+        set(CMAKE_REQUIRED_FLAGS "${NATIVEFLAG}")
+    else()
+        set(CMAKE_REQUIRED_FLAGS "${XOPFLAG}")
+    endif()
+    check_c_source_compile_or_run(
+        "#include <x86intrin.h>
+        int main(void)
+        {
+            __m128i a = _mm_set1_epi8(1);
+            __m128i b = _mm_haddw_epi8(a);
+            (void)b;
+            return 0;
+        }"
+        HAVE_XOP_INTRIN
+    )
     set(CMAKE_REQUIRED_FLAGS)
 
     # Check whether compiler supports AVX2 intrinics
@@ -687,6 +768,27 @@ if(WITH_OPTIM)
             add_feature_info(AVX2_SLIDEHASH 1 "Support AVX2-optimized slide_hash, using \"${AVX2FLAG}\"")
             add_intrinsics_option("${AVX2FLAG}")
         endif()
+        if(HAVE_SSE3_INTRIN)
+            add_definitions(-DX86_SSE3_ADLER32)
+            list(APPEND ZLIB_ARCH_HDRS ${ARCHDIR}/adler32_sse3.h)
+            list(APPEND ZLIB_ARCH_SRCS ${ARCHDIR}/adler32_sse3.c)
+            add_feature_info(SSE3_ADLER32 1 "Support SSE3-accelerated adler32, using \"${SSE3FLAG}\"")
+            add_intrinsics_option("${SSE3FLAG}")
+        endif()
+        if(HAVE_SSSE3_INTRIN)
+            add_definitions(-DX86_SSSE3_ADLER32)
+            list(APPEND ZLIB_ARCH_HDRS ${ARCHDIR}/adler32_ssse3.h)
+            list(APPEND ZLIB_ARCH_SRCS ${ARCHDIR}/adler32_ssse3.c)
+            add_feature_info(SSSE3_ADLER32 1 "Support SSSE3-accelerated adler32, using \"${SSSE3FLAG}\"")
+            add_intrinsics_option("${SSSE3FLAG}")
+        endif()
+        if(HAVE_SSE41_INTRIN)
+            add_definitions(-DX86_SSE4_ADLER32)
+            list(APPEND ZLIB_ARCH_HDRS ${ARCHDIR}/adler32_sse4.h)
+            list(APPEND ZLIB_ARCH_SRCS ${ARCHDIR}/adler32_sse4.c)
+            add_feature_info(SSE4_ADLER32 1 "Support SSE4-accelerated adler32, using \"${SSE4FLAG}\"")
+            add_intrinsics_option("${SSE4FLAG}")
+        endif()
         if(WITH_SSE4 AND (HAVE_SSE42CRC_INLINE_ASM OR HAVE_SSE42CRC_INTRIN))
             add_definitions(-DX86_SSE42_CRC_HASH)
             list(APPEND ZLIB_ARCH_SRCS ${ARCHDIR}/insert_string_sse.c)
@@ -721,6 +823,13 @@ if(WITH_OPTIM)
             else()
                 add_feature_info(PCLMUL_CRC 1 "Support CRC hash generation using PCLMULQDQ, using \"${PCLMULFLAG} ${SSE4FLAG}\"")
             endif()
+        endif()
+        if(HAVE_XOP_INTRIN)
+            add_definitions(-DX86_XOP_ADLER32)
+            list(APPEND ZLIB_ARCH_HDRS ${ARCHDIR}/adler32_xop.h)
+            list(APPEND ZLIB_ARCH_SRCS ${ARCHDIR}/adler32_xop.c)
+            add_feature_info(XOP_ADLER32 1 "Support XOP-accelerated adler32 using \"${XOPFLAG}\".")
+            add_intrinsic_option("${XOPFLAG}")
         endif()
     endif()
 endif()

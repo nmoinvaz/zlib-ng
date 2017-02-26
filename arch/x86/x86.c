@@ -19,9 +19,15 @@
 
 ZLIB_INTERNAL int x86_cpu_has_avx2;
 ZLIB_INTERNAL int x86_cpu_has_sse2;
+ZLIB_INTERNAL int x86_cpu_has_sse3;
+ZLIB_INTERNAL int x86_cpu_has_ssse3;
+ZLIB_INTERNAL int x86_cpu_has_sse41;
 ZLIB_INTERNAL int x86_cpu_has_sse42;
 ZLIB_INTERNAL int x86_cpu_has_pclmulqdq;
 ZLIB_INTERNAL int x86_cpu_has_tzcnt;
+ZLIB_INTERNAL int x86_cpu_has_xop;
+ZLIB_INTERNAL int x86_cpu_has_avx;
+ZLIB_INTERNAL int x86_cpu_has_avx2;
 
 static void cpuid(int info, unsigned* eax, unsigned* ebx, unsigned* ecx, unsigned* edx) {
 #ifdef _MSC_VER
@@ -56,13 +62,17 @@ void ZLIB_INTERNAL x86_check_features(void) {
     unsigned maxbasic;
 
     cpuid(0, &maxbasic, &ebx, &ecx, &edx);
+    if (maxbasic >= 1) {
+        cpuid(1 /*CPU_PROCINFO_AND_FEATUREBITS*/, &eax, &ebx, &ecx, &edx);
 
-    cpuid(1 /*CPU_PROCINFO_AND_FEATUREBITS*/, &eax, &ebx, &ecx, &edx);
-
-    x86_cpu_has_sse2 = edx & 0x4000000;
-    x86_cpu_has_sse42 = ecx & 0x100000;
-    x86_cpu_has_pclmulqdq = ecx & 0x2;
-
+        x86_cpu_has_sse2 = edx & 0x4000000;
+        x86_cpu_has_sse3 = ecx & 0x1;
+        x86_cpu_has_ssse3 = ecx & 0x200;
+        x86_cpu_has_sse41 = ecx & 0x80000;
+        x86_cpu_has_sse42 = ecx & 0x100000;
+        x86_cpu_has_pclmulqdq = ecx & 0x2;
+        x86_cpu_has_avx = (ecx & 0x18000000) && avx_enabled();
+    }
     if (maxbasic >= 7) {
         cpuidex(7, 0, &eax, &ebx, &ecx, &edx);
 
@@ -74,5 +84,9 @@ void ZLIB_INTERNAL x86_check_features(void) {
     } else {
         x86_cpu_has_tzcnt = 0;
         x86_cpu_has_avx2 = 0;
+    }
+    if (maxbasic >= 0x80000001) {
+        cpuidex(0x80000001, 0, &eax, &ebx, &ecx, &edx);
+        x86_cpu_has_xop = ecx & 0x4000;
     }
 }
