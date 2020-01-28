@@ -49,6 +49,13 @@ static inline Pos insert_string(deflate_state *const s, const Pos str, unsigned 
         memcpy(&val, &s->window[str_idx], sizeof(val));
 #endif
 
+        if (s->level >= TRIGGER_LEVEL)
+#if BYTE_ORDER == BIG_ENDIAN
+            val &= 0x00FFFFFF;
+#else
+            val &= 0xFFFFFF00;
+#endif
+
         s->ins_h = update_hash(s, s->ins_h, val);
         hm = s->ins_h & s->hash_mask;
 
