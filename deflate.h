@@ -409,6 +409,9 @@ static inline uint32_t update_hash_c(deflate_state *s, uint32_t hash, uint32_t v
 }
 #else
 static inline uint32_t update_hash_c(deflate_state *s, uint32_t hash, uint32_t val) {
+#if BYTE_ORDER == BIG_ENDIAN
+    val >>= 8;
+#endif
     hash = ((hash << s->hash_shift) ^ ((val >> 8) & 0xff));
     return hash;
 }
