@@ -29,7 +29,6 @@
 #  include <ctype.h>
 #endif
 
-extern void fill_window_sse(deflate_state *s);
 extern Pos  quick_insert_string_sse(deflate_state *const s, const Pos str);
 extern void flush_pending(PREFIX3(stream) *strm);
 
@@ -205,7 +204,7 @@ ZLIB_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
         }
 
         if (s->lookahead < MIN_LOOKAHEAD) {
-            fill_window_sse(s);
+            fill_window(s);
             if (s->lookahead < MIN_LOOKAHEAD && flush == Z_NO_FLUSH) {
                 static_emit_end_block(s, 0);
                 return need_more;
