@@ -52,16 +52,18 @@ static inline Pos insert_string_c(deflate_state *const s, const Pos str, unsigne
  * the current block must be flushed.
  */
 
-extern const unsigned char ZLIB_INTERNAL zng_length_code[];
-extern const unsigned char ZLIB_INTERNAL zng_dist_code[];
+extern const unsigned char zng_length_code[];
+extern const unsigned char zng_dist_code[];
 
-static inline int zng_tr_tally_lit(deflate_state *s, unsigned c) {
+extern const ct_data static_ltree[L_CODES+2];
+extern const ct_data static_dtree[D_CODES];
+
+static inline int zng_tr_tally_lit(deflate_state *s, unsigned char c) {
     /* c is the unmatched char */
-    unsigned char cc = (c);
     s->sym_buf[s->sym_next++] = 0;
     s->sym_buf[s->sym_next++] = 0;
-    s->sym_buf[s->sym_next++] = cc;
-    s->dyn_ltree[cc].Freq++;
+    s->sym_buf[s->sym_next++] = c;
+    s->dyn_ltree[c].Freq++;
     Assert(c <= (MAX_MATCH-MIN_MATCH), "zng_tr_tally: bad literal");
     return (s->sym_next == s->sym_end);
 }
