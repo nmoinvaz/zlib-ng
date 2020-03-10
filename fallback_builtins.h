@@ -14,6 +14,7 @@
  */
 static __forceinline unsigned long __builtin_ctz(uint32_t value) {
 #ifdef X86_CPUID
+    x86_check_features();
     if (x86_cpu_has_tzcnt)
         return _tzcnt_u32(value);
 #endif
