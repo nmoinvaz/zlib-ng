@@ -40,7 +40,7 @@ ZLIB_INTERNAL block_state deflate_fast(deflate_state *s, int flush) {
          */
         hash_head = NIL;
         if (s->lookahead >= MIN_MATCH) {
-            hash_head = functable.insert_string(s, s->strstart, 1);
+            hash_head = functable.quick_insert_string(s, s->strstart);
         }
 
         /* Find the longest match, discarding those <= prev_length.
@@ -69,8 +69,8 @@ ZLIB_INTERNAL block_state deflate_fast(deflate_state *s, int flush) {
                 s->strstart++;
 #ifdef NOT_TWEAK_COMPILER
                 do {
-                    functable.insert_string(s, s->strstart, 1);
-                    s->strstart++;
+                     functable.quick_insert_string(s, s->strstart);
+                     s->strstart++;
                     /* strstart never exceeds WSIZE-MAX_MATCH, so there are
                      * always MIN_MATCH bytes ahead.
                      */
@@ -87,7 +87,7 @@ ZLIB_INTERNAL block_state deflate_fast(deflate_state *s, int flush) {
                 s->match_length = 0;
                 s->ins_h = s->window[s->strstart];
 #ifndef NOT_TWEAK_COMPILER
-                functable.insert_string(s, s->strstart + 2 - MIN_MATCH, MIN_MATCH - 2);
+                functable.quick_insert_string(s, s->strstart + 2 - MIN_MATCH);
 #else
                 functable.insert_string(s, s->strstart + 2 - MIN_MATCH, 1);
 #if MIN_MATCH != 3

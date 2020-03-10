@@ -16,7 +16,7 @@
 #endif
 
 // UNALIGNED_OK, AVX2 instrinic comparison
-static inline int32_t compare258_unaligned_avx_static(const unsigned char *src0, const unsigned char *src1) {
+static inline int32_t compare258_unaligned_avx2_static(const unsigned char *src0, const unsigned char *src1) {
     register const unsigned char *src0start = src0;
     register const unsigned char *src0end = src0 + 258;
     __m256i ymm_zero = _mm256_set1_epi8(0);
@@ -48,12 +48,12 @@ static inline int32_t compare258_unaligned_avx_static(const unsigned char *src0,
     return (int32_t)(src0 - src0start);
 }
 
-int32_t compare258_unaligned_avx(const unsigned char *src0, const unsigned char *src1) {
-    return compare258_unaligned_avx_static(src0, src1);
+int32_t compare258_unaligned_avx2(const unsigned char *src0, const unsigned char *src1) {
+    return compare258_unaligned_avx2_static(src0, src1);
 }
 
-#define LONGEST_MATCH   longest_match_unaligned_avx
-#define COMPARE258      compare258_unaligned_avx_static
+#define LONGEST_MATCH   longest_match_unaligned_avx2
+#define COMPARE258      compare258_unaligned_avx2_static
 
 #include "match_p.h"
 

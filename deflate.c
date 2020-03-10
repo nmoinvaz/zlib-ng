@@ -303,11 +303,11 @@ int ZEXPORT PREFIX(deflateInit2_)(PREFIX3(stream) *strm, int level, int method, 
     }
     if (windowBits == 8)
         windowBits = 9;  /* until 256-byte window bug fixed */
-
+/*
 #ifdef X86_QUICK_STRATEGY
     if (level == 1)
         windowBits = 13;
-#endif
+#endif*/
 
     s = (deflate_state *) ZALLOC_STATE(strm, 1, sizeof(deflate_state));
     if (s == NULL)
@@ -405,6 +405,11 @@ int ZEXPORT PREFIX(deflateInit2_)(PREFIX3(stream) *strm, int level, int method, 
      */
 
     s->level = level;
+    if (s->level >= TRIGGER_LEVEL)
+        s->level_mask = ~0xFF;
+    else
+        s->level_mask = 0xFFFFFFFF;
+
     s->strategy = strategy;
     s->method = (unsigned char)method;
     s->block_open = 0;
@@ -643,6 +648,10 @@ int ZEXPORT PREFIX(deflateParams)(PREFIX3(stream) *strm, int level, int strategy
             s->matches = 0;
         }
         s->level = level;
+        if (s->level >= TRIGGER_LEVEL)
+            s->level_mask = ~0xFF;
+        else
+            s->level_mask = 0xFFFFFFFF;
         s->max_lazy_match   = configuration_table[level].max_lazy;
         s->good_match       = configuration_table[level].good_length;
         s->nice_match       = configuration_table[level].nice_length;
@@ -1294,11 +1303,11 @@ void ZLIB_INTERNAL fill_window(deflate_state *s) {
             unsigned int str = s->strstart - s->insert;
             s->ins_h = s->window[str];
             if (str >= 1)
-                functable.insert_string(s, str + 2 - MIN_MATCH, 1);
+                functable.quick_insert_string(s, str + 2 - MIN_MATCH);
 #if MIN_MATCH != 3
 #error Call insert_string() MIN_MATCH-3 more times
             while (s->insert) {
-                functable.insert_string(s, str, 1);
+                functable.quick_insert_string(s, str);
                 str++;
                 s->insert--;
                 if (s->lookahead + s->insert < MIN_MATCH)

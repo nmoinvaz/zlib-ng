@@ -40,8 +40,8 @@
 #  endif
 #endif
 
-#define INSERT_STRING       insert_string_sse
-#define QUICK_INSERT_STRING quick_insert_string_sse
+#define INSERT_STRING       insert_string_sse4
+#define QUICK_INSERT_STRING quick_insert_string_sse4
 
 #ifdef X86_SSE42_CRC_HASH
 #  include "../../insert_string.h"

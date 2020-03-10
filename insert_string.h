@@ -11,8 +11,7 @@
 
 ZLIB_INTERNAL Pos QUICK_INSERT_STRING(deflate_state *const s, const Pos str) {
     Pos ret;
-    unsigned int h = 0;
-    uint32_t val;
+    uint32_t val, hm;
 
 #ifdef UNALIGNED_OK
     val = *(uint32_t *)(s->window + str);
@@ -22,9 +21,11 @@ ZLIB_INTERNAL Pos QUICK_INSERT_STRING(deflate_state *const s, const Pos str) {
     val |= ((uint32_t)s->window[str+2] << 16);
     val |= ((uint32_t)s->window[str+3] << 24);
 #endif
-    UPDATE_HASH(s, h, val);
-    ret = s->head[h & s->hash_mask];
-    s->head[h & s->hash_mask] = str;
+
+    UPDATE_HASH(s, s->ins_h, val);
+    hm = s->ins_h & s->hash_mask;
+    s->prev[str & s->w_mask] = ret = s->head[hm];
+    s->head[hm] = str;
     return ret;
 }
 
@@ -38,41 +39,40 @@ ZLIB_INTERNAL Pos QUICK_INSERT_STRING(deflate_state *const s, const Pos str) {
  */
 
 ZLIB_INTERNAL Pos INSERT_STRING(deflate_state *const s, const Pos str, unsigned int count) {
-    Pos str_idx, str_end, ret;
+    Pos idx, ret;
+    uint8_t *strstart, *strend;
 
     if (UNLIKELY(count == 0)) {
         return s->prev[str & s->w_mask];
     }
 
-    ret = 0;
-    str_end = str + count - 1; /* last position */
+    strstart = s->window + str;
+    strend = strstart + count - 1; /* last position */
 
-    for (str_idx = str; str_idx <= str_end; str_idx++) {
+    for (ret = 0, idx = str; strstart <= strend; idx++, strstart++) {
         uint32_t val, hm;
 
 #ifdef UNALIGNED_OK
-        val = *(uint32_t *)(&s->window[str_idx]);
+        val = *(uint32_t *)(strstart);
 #else
-        val  = ((uint32_t)s->window[str_idx]);
-        val |= ((uint32_t)s->window[str_idx+1] << 8);
-        val |= ((uint32_t)s->window[str_idx+2] << 16);
-        val |= ((uint32_t)s->window[str_idx+3] << 24);
+        val  = ((uint32_t)(strstart));
+        val |= ((uint32_t)(strstart+1) << 8);
+        val |= ((uint32_t)(strstart+2) << 16);
+        val |= ((uint32_t)(strstart+3) << 24);
 #endif
 
-        if (s->level >= TRIGGER_LEVEL)
-            val &= ~0xFF;
-
+        val &= s->level_mask;
         UPDATE_HASH(s, s->ins_h, val);
         hm = s->ins_h & s->hash_mask;
 
         Pos head = s->head[hm];
-        if (head != str_idx) {
-            s->prev[str_idx & s->w_mask] = head;
-            s->head[hm] = str_idx;
-            if (str_idx == str_end)
+        if (head != idx) {
+            s->prev[idx & s->w_mask] = head;
+            s->head[hm] = idx;
+            if (strstart == strend)
                 ret = head;
-        } else if (str_idx == str_end) {
-            ret = str_idx;
+        } else if (strstart == strend) {
+            ret = idx;
         }
     }
     return ret;

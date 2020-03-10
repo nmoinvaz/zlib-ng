@@ -25,8 +25,8 @@
 #  include <nmmintrin.h>
 #endif
 
-// UNALIGNED_OK, SSE4.2 instrinic comparison
-static inline int32_t compare258_unaligned_sse_static(const unsigned char *src0, const unsigned char *src1) {
+/* UNALIGNED_OK, SSE4.2 instrinic comparison */
+static inline int32_t compare258_unaligned_sse4_static(const unsigned char *src0, const unsigned char *src1) {
 #ifdef _MSC_VER
     register const unsigned char *src0start = src0;
     register const unsigned char *src0end = src0 + 258; // (258 - 2) % 16 = 0
@@ -117,12 +117,12 @@ static inline int32_t compare258_unaligned_sse_static(const unsigned char *src0,
 #endif
 }
 
-int32_t compare258_unaligned_sse(const unsigned char *src0, const unsigned char *src1) {
-    return compare258_unaligned_sse_static(src0, src1);
+int32_t compare258_unaligned_sse4(const unsigned char *src0, const unsigned char *src1) {
+    return compare258_unaligned_sse4_static(src0, src1);
 }
 
-#define LONGEST_MATCH   longest_match_unaligned_sse
-#define COMPARE258      compare258_unaligned_sse_static
+#define LONGEST_MATCH   longest_match_unaligned_sse4
+#define COMPARE258      compare258_unaligned_sse4_static
 
 #include "match_p.h"
 

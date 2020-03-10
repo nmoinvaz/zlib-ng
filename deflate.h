@@ -198,6 +198,7 @@ typedef struct internal_state {
      */
 
     int level;    /* compression level (1..9) */
+    int level_mask; 
     int strategy; /* favor or force Huffman coding*/
 
     unsigned int good_match;

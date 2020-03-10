@@ -206,7 +206,7 @@ void file_compress(char *file, char *mode) {
     }
     gz_compress(in, out);
 
-    unlink(file);
+    //unlink(file);
 }
 
 
@@ -249,7 +249,7 @@ void file_uncompress(char *file) {
 
     gz_uncompress(in, out);
 
-    unlink(infile);
+    //unlink(infile);
 }
 
 

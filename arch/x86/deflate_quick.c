@@ -27,7 +27,7 @@
 #include "../../functable.h"
 #include "../../memcopy.h"
 
-extern Pos quick_insert_string_sse(deflate_state *const s, const Pos str);
+extern Pos quick_insert_string_sse4(deflate_state *const s, const Pos str);
 extern void fill_window_sse(deflate_state *s);
 
 extern void flush_pending(PREFIX3(stream) *strm);
@@ -68,7 +68,7 @@ ZLIB_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
         }
 
         if (s->lookahead >= MIN_MATCH) {
-            hash_head = quick_insert_string_sse(s, s->strstart);
+            hash_head = functable.quick_insert_string(s, s->strstart);
             dist = s->strstart - hash_head;
 
             if (dist > 0 && (dist-1) < s->w_size) {
