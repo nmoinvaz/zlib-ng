@@ -379,12 +379,10 @@ void ZLIB_INTERNAL slide_hash_c(deflate_state *s);
 
         /* in trees.c */
 void ZLIB_INTERNAL zng_tr_init(deflate_state *s);
-int ZLIB_INTERNAL zng_tr_tally(deflate_state *s, unsigned dist, unsigned lc);
 void ZLIB_INTERNAL zng_tr_flush_block(deflate_state *s, char *buf, unsigned long stored_len, int last);
 void ZLIB_INTERNAL zng_tr_flush_bits(deflate_state *s);
 void ZLIB_INTERNAL zng_tr_align(deflate_state *s);
 void ZLIB_INTERNAL zng_tr_stored_block(deflate_state *s, char *buf, unsigned long stored_len, int last);
-void ZLIB_INTERNAL bi_windup(deflate_state *s);
 unsigned ZLIB_INTERNAL bi_reverse(unsigned code, int len);
 void ZLIB_INTERNAL flush_pending(PREFIX3(streamp) strm);
 
@@ -394,65 +392,38 @@ void ZLIB_INTERNAL flush_pending(PREFIX3(streamp) strm);
  * used.
  */
 
-#ifndef ZLIB_DEBUG
-/* Inline versions of _tr_tally for speed: */
-
-extern const unsigned char ZLIB_INTERNAL zng_length_code[];
-extern const unsigned char ZLIB_INTERNAL zng_dist_code[];
-
-#  define zng_tr_tally_lit(s, c, flush) \
-  { unsigned char cc = (c); \
-    s->sym_buf[s->sym_next++] = 0; \
-    s->sym_buf[s->sym_next++] = 0; \
-    s->sym_buf[s->sym_next++] = cc; \
-    s->dyn_ltree[cc].Freq++; \
-    flush = (s->sym_next == s->sym_end); \
-  }
-#  define zng_tr_tally_dist(s, distance, length, flush) \
-  { unsigned char len = (unsigned char)(length); \
-    unsigned dist = (unsigned)(distance); \
-    s->sym_buf[s->sym_next++] = dist; \
-    s->sym_buf[s->sym_next++] = dist >> 8; \
-    s->sym_buf[s->sym_next++] = len; \
-    dist--; \
-    s->dyn_ltree[zng_length_code[len]+LITERALS+1].Freq++; \
-    s->dyn_dtree[d_code(dist)].Freq++; \
-    flush = (s->sym_next == s->sym_end); \
-  }
-#else
-#  define zng_tr_tally_lit(s, c, flush) flush = zng_tr_tally(s, 0, c)
-#  define zng_tr_tally_dist(s, distance, length, flush) \
-              flush = zng_tr_tally(s, (unsigned)(distance), (unsigned)(length))
-#endif
-
 #ifdef NOT_TWEAK_COMPILER
 #  define TRIGGER_LEVEL 6
 #else
 #  define TRIGGER_LEVEL 5
 #endif
 
+/* Bit buffer and compress bits calculation debugging */
 #ifdef ZLIB_DEBUG
-#  define send_code(s, c, tree, bit_buf, bits_valid) { \
-        if (z_verbose > 2) { \
-           fprintf(stderr, "\ncd %3d ", (c)); \
-        } \
-        send_bits(s, tree[c].Code, tree[c].Len, bit_buf, bits_valid); \
-    }
-#else /* ZLIB_DEBUG */
-/* Send a code of the given tree. c and tree must not have side effects */
-#  define send_code(s, c, tree, bit_buf, bits_valid) \
-        send_bits(s, tree[c].Code, tree[c].Len, bit_buf, bits_valid)
+#  define cmpr_bits_add(s, len)     s->compressed_len += (len)
+#  define cmpr_bits_align(s)        s->compressed_len = (s->compressed_len + 7) & ~7L
+#  define sent_bits_add(s, bits)    s->bits_sent += (bits)
+#  define sent_bits_align(s)        s->bits_sent = (s->bits_sent + 7) & ~7L
+#else
+#  define cmpr_bits_add(s, len)     (len)
+#  define cmpr_bits_align(s)
+#  define sent_bits_add(s, bits)    (bits)
+#  define sent_bits_align(s)
 #endif
 
-
+/* Bit buffer and deflate code stderr tracing */
 #ifdef ZLIB_DEBUG
-#  define send_debug_trace(s, value, length) {\
-        Tracevv((stderr, " l %2d v %4x ", length, value));\
-        Assert(length > 0 && length <= BIT_BUF_SIZE, "invalid length");\
-        s->bits_sent += (unsigned long)length;\
+#  define send_bits_trace(s, value, length) { \
+        Tracevv((stderr, " l %2d v %4x ", length, value)); \
+        Assert(length > 0 && length <= BIT_BUF_SIZE, "invalid length"); \
+    }
+#  define send_code_trace(s, c) \
+    if (z_verbose > 2) { \
+        fprintf(stderr, "\ncd %3d ", (c)); \
     }
 #else
-#  define send_debug_trace(s, value, length) {}
+#  define send_bits_trace(s, value, length) 
+#  define send_code_trace(s, c)
 #endif
 
 /* If not enough room in bit_buf, use (valid) bits from bit_buf and
@@ -462,7 +433,8 @@ extern const unsigned char ZLIB_INTERNAL zng_dist_code[];
 #define send_bits(s, t_val, t_len, bit_buf, bits_valid) {\
     uint32_t val = (uint32_t)t_val;\
     uint32_t len = (uint32_t)t_len;\
-    send_debug_trace(s, val, len);\
+    send_bits_trace(s, val, len);\
+    sent_bits_add(s, len);\
     if (bits_valid + len < BIT_BUF_SIZE) {\
         bit_buf |= val << bits_valid;\
         bits_valid += len;\
@@ -477,4 +449,16 @@ extern const unsigned char ZLIB_INTERNAL zng_dist_code[];
         bits_valid += len - BIT_BUF_SIZE;\
     }\
 }
+
+/* Send a code of the given tree. c and tree must not have side effects */
+#ifdef ZLIB_DEBUG
+#  define send_code(s, c, tree, bit_buf, bits_valid) { \
+    send_code_trace(s, c); \
+    send_bits(s, tree[c].Code, tree[c].Len, bit_buf, bits_valid); \
+}
+#else
+#  define send_code(s, c, tree, bit_buf, bits_valid) \
+    send_bits(s, tree[c].Code, tree[c].Len, bit_buf, bits_valid)
+#endif
+
 #endif /* DEFLATE_H_ */

@@ -106,12 +106,12 @@ static void gen_trees_header() {
 
     printf("/* header created automatically with maketrees.c */\n\n");
 
-    printf("ZLIB_INTERNAL const ct_data static_ltree[L_CODES+2] = {\n");
+    printf("const ct_data ZLIB_INTERNAL static_ltree[L_CODES+2] = {\n");
     for (i = 0; i < L_CODES+2; i++) {
         printf("{{%3u},{%u}}%s", static_ltree[i].Code, static_ltree[i].Len, SEPARATOR(i, L_CODES+1, 5));
     }
 
-    printf("static const ct_data static_dtree[D_CODES] = {\n");
+    printf("const ct_data ZLIB_INTERNAL static_dtree[D_CODES] = {\n");
     for (i = 0; i < D_CODES; i++) {
         printf("{{%2u},{%u}}%s", static_dtree[i].Code, static_dtree[i].Len, SEPARATOR(i, D_CODES-1, 5));
     }
@@ -126,12 +126,12 @@ static void gen_trees_header() {
         printf("%2u%s", length_code[i], SEPARATOR(i, MAX_MATCH-MIN_MATCH, 20));
     }
 
-    printf("static const int base_length[LENGTH_CODES] = {\n");
+    printf("const int ZLIB_INTERNAL base_length[LENGTH_CODES] = {\n");
     for (i = 0; i < LENGTH_CODES; i++) {
         printf("%d%s", base_length[i], SEPARATOR(i, LENGTH_CODES-1, 20));
     }
 
-    printf("static const int base_dist[D_CODES] = {\n");
+    printf("const int ZLIB_INTERNAL base_dist[D_CODES] = {\n");
     for (i = 0; i < D_CODES; i++) {
         printf("%5d%s", base_dist[i], SEPARATOR(i, D_CODES-1, 10));
     }

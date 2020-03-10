@@ -1425,11 +1425,9 @@ static block_state deflate_stored(deflate_state *s, int flush) {
         /* Write the stored block header bytes. */
         flush_pending(s->strm);
 
-#ifdef ZLIB_DEBUG
         /* Update debugging counts for the data about to be copied. */
-        s->compressed_len += len << 3;
-        s->bits_sent += len << 3;
-#endif
+        cmpr_bits_add(s, len << 3);
+        sent_bits_add(s, len << 3);
 
         /* Copy uncompressed bytes from the window to next_out. */
         if (left) {
@@ -1595,7 +1593,7 @@ static block_state deflate_rle(deflate_state *s, int flush) {
         if (s->match_length >= MIN_MATCH) {
             check_match(s, s->strstart, s->strstart - 1, s->match_length);
 
-            zng_tr_tally_dist(s, 1, s->match_length - MIN_MATCH, bflush);
+            bflush = zng_tr_tally_dist(s, 1, s->match_length - MIN_MATCH);
 
             s->lookahead -= s->match_length;
             s->strstart += s->match_length;
@@ -1603,7 +1601,7 @@ static block_state deflate_rle(deflate_state *s, int flush) {
         } else {
             /* No match, output a literal byte */
             Tracevv((stderr, "%c", s->window[s->strstart]));
-            zng_tr_tally_lit(s, s->window[s->strstart], bflush);
+            bflush = zng_tr_tally_lit(s, s->window[s->strstart]);
             s->lookahead--;
             s->strstart++;
         }
@@ -1641,7 +1639,7 @@ static block_state deflate_huff(deflate_state *s, int flush) {
         /* Output a literal byte */
         s->match_length = 0;
         Tracevv((stderr, "%c", s->window[s->strstart]));
-        zng_tr_tally_lit(s, s->window[s->strstart], bflush);
+        bflush = zng_tr_tally_lit(s, s->window[s->strstart]);
         s->lookahead--;
         s->strstart++;
         if (bflush)

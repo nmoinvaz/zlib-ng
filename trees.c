@@ -81,6 +81,7 @@ static void send_all_trees   (deflate_state *s, int lcodes, int dcodes, int blco
 static void compress_block   (deflate_state *s, const ct_data *ltree, const ct_data *dtree);
 static int  detect_data_type (deflate_state *s);
 static void bi_flush         (deflate_state *s);
+static void bi_windup        (deflate_state *s);
 
 /* ===========================================================================
  * Initialize the tree data structures for a new zlib stream.
@@ -590,25 +591,152 @@ static void send_all_trees(deflate_state *s, int lcodes, int dcodes, int blcodes
 }
 
 /* ===========================================================================
+ * Emit literal code
+ */
+static inline uint32_t zng_emit_lit(deflate_state *s, const ct_data *ltree, unsigned c) {
+    uint32_t bi_valid = s->bi_valid;
+    uint32_t bi_buf = s->bi_buf;
+
+    send_code(s, c, ltree, bi_buf, bi_valid);
+
+    s->bi_valid = bi_valid;
+    s->bi_buf = bi_buf;
+
+    Tracecv(isgraph(c), (stderr, " '%c' ", c));
+
+    return ltree[c].Len;
+}
+
+/* ===========================================================================
+ * Emit match distance/length code
+ */
+static inline uint32_t zng_emit_dist(deflate_state *s, const ct_data *ltree, const ct_data *dtree, 
+    uint32_t lc, uint32_t dist) {
+    uint32_t c, extra;
+    uint8_t code;
+    uint32_t dist_bits, dist_bits_len;
+    uint32_t lc_bits, lc_bits_len;
+    uint32_t bi_valid = s->bi_valid;
+    uint32_t bi_buf = s->bi_buf;
+
+    /* Send the length code, len is the match length - MIN_MATCH */
+    code = zng_length_code[lc];
+    c = code+LITERALS+1;
+    Assert(c < L_CODES, "bad l_code");
+    send_code_trace(s, c);
+
+    lc_bits = ltree[c].Code;
+    lc_bits_len = ltree[c].Len;
+    extra = extra_lbits[code];
+    if (extra != 0) {
+        lc -= base_length[code];
+        lc_bits |= (lc << lc_bits_len);
+        lc_bits_len += extra;
+    }
+    send_bits(s, lc_bits, lc_bits_len, bi_buf, bi_valid);
+
+    dist--; /* dist is now the match distance - 1 */
+    code = d_code(dist);
+    Assert(code < D_CODES, "bad d_code");
+    send_code_trace(s, code);
+
+    /* Send the distance code */
+    dist_bits = dtree[code].Code;
+    dist_bits_len = dtree[code].Len;
+    extra = extra_dbits[code];
+    if (extra != 0) {
+        dist -= base_dist[code];
+        dist_bits |= (dist << dist_bits_len);
+        dist_bits_len += extra;
+    }
+    send_bits(s, dist_bits, dist_bits_len, bi_buf, bi_valid);
+
+    s->bi_valid = bi_valid;
+    s->bi_buf = bi_buf;
+
+    return lc_bits_len + dist_bits_len;
+}
+
+/* ===========================================================================
+ * Emit end block
+ */
+static inline void zng_emit_end_block(deflate_state *s, const ct_data *ltree, const int last) {
+    uint32_t bi_valid = s->bi_valid;
+    uint32_t bi_buf = s->bi_buf;
+    send_code(s, END_BLOCK, ltree, bi_buf, bi_valid);
+    s->bi_valid = bi_valid;
+    s->bi_buf = bi_buf;
+    s->block_open = 0;
+    Tracev((stderr, "\n+++ Emit End Block: Last: %u Pending: %u Total Out: %zu\n",
+        last, s->pending, s->strm->total_out));
+}
+
+/* ===========================================================================
+ * Emit literal and count bits
+ */
+void ZLIB_INTERNAL zng_tr_emit_lit(deflate_state *s, const ct_data *ltree, unsigned c) {
+    cmpr_bits_add(s, zng_emit_lit(s, ltree, c));
+}
+
+/* ===========================================================================
+ * Emit match and count bits
+ */
+void ZLIB_INTERNAL zng_tr_emit_dist(deflate_state *s, const ct_data *ltree, const ct_data *dtree, 
+    uint32_t lc, uint32_t dist) {
+    cmpr_bits_add(s, zng_emit_dist(s, ltree, dtree, lc, dist));
+}
+
+/* ===========================================================================
+ * Emit start of block
+ */
+void ZLIB_INTERNAL zng_tr_emit_tree(deflate_state *s, int type, const int last) {
+    uint32_t bi_valid = s->bi_valid;
+    uint32_t bi_buf = s->bi_buf;
+    send_bits(s, (type << 1) + last, 3, bi_buf, bi_valid);
+    cmpr_bits_add(s, 3);
+    s->bi_valid = bi_valid;
+    s->bi_buf = bi_buf;
+    s->block_open = 1;
+    Tracev((stderr, "\n--- Emit Tree: Last: %u\n", last));
+} 
+
+/* ===========================================================================
+ * Align bit buffer on a byte boundary and count bits
+ */
+void ZLIB_INTERNAL zng_tr_emit_align(deflate_state *s) {
+    bi_windup(s); /* align on byte boundary */
+    sent_bits_align(s);
+}
+
+/* ===========================================================================
+ * Emit an end block and align bit buffer if last block
+ */
+void ZLIB_INTERNAL zng_tr_emit_end_block(deflate_state *s, const ct_data *ltree, const int last) {
+    zng_emit_end_block(s, ltree, last);
+    cmpr_bits_add(s, 7);
+    if (last)
+        zng_tr_emit_align(s);
+}
+
+/* ===========================================================================
  * Send a stored block
  */
 void ZLIB_INTERNAL zng_tr_stored_block(deflate_state *s, char *buf, unsigned long stored_len, int last) {
     /* buf: input block */
     /* stored_len: length of input block */
     /* last: one if this is the last block for a file */
-    send_bits(s, (STORED_BLOCK << 1)+last, 3, s->bi_buf, s->bi_valid);    /* send block type */
-    bi_windup(s);        /* align on byte boundary */
+    zng_tr_emit_tree(s, STORED_BLOCK, last); /* send block type */
+    zng_tr_emit_align(s);                    /* align on byte boundary */
+    cmpr_bits_align(s);
     put_short(s, (uint16_t)stored_len);
     put_short(s, (uint16_t)~stored_len);
+    cmpr_bits_add(s, 32);
+    sent_bits_add(s, 32);
     if (stored_len)
         memcpy(s->pending_buf + s->pending, (unsigned char *)buf, stored_len);
     s->pending += stored_len;
-#ifdef ZLIB_DEBUG
-    s->compressed_len = (s->compressed_len + 3 + 7) & (unsigned long)~7L;
-    s->compressed_len += (stored_len + 4) << 3;
-    s->bits_sent += 2*16;
-    s->bits_sent += stored_len<<3;
-#endif
+    cmpr_bits_add(s, stored_len << 3);
+    sent_bits_add(s, stored_len << 3);
 }
 
 /* ===========================================================================
@@ -623,11 +751,8 @@ void ZLIB_INTERNAL zng_tr_flush_bits(deflate_state *s) {
  * This takes 10 bits, of which 7 may remain in the bit buffer.
  */
 void ZLIB_INTERNAL zng_tr_align(deflate_state *s) {
-    send_bits(s, STATIC_TREES << 1, 3, s->bi_buf, s->bi_valid);
-    send_code(s, END_BLOCK, static_ltree, s->bi_buf, s->bi_valid);
-#ifdef ZLIB_DEBUG
-    s->compressed_len += 10L; /* 3 for block type, 7 for EOB */
-#endif
+    zng_tr_emit_tree(s, STATIC_TREES, 0);
+    zng_tr_emit_end_block(s, static_ltree, 0);
     bi_flush(s);
 }
 
@@ -698,18 +823,14 @@ void ZLIB_INTERNAL zng_tr_flush_block(deflate_state *s, char *buf, unsigned long
 #else
     } else if (s->strategy == Z_FIXED || static_lenb == opt_lenb) {
 #endif
-        send_bits(s, (STATIC_TREES << 1)+last, 3, s->bi_buf, s->bi_valid);
+        zng_tr_emit_tree(s, STATIC_TREES, last);
         compress_block(s, (const ct_data *)static_ltree, (const ct_data *)static_dtree);
-#ifdef ZLIB_DEBUG
-        s->compressed_len += 3 + s->static_len;
-#endif
+        cmpr_bits_add(s, s->static_len);
     } else {
-        send_bits(s, (DYN_TREES << 1)+last, 3, s->bi_buf, s->bi_valid);
+        zng_tr_emit_tree(s, DYN_TREES, last);
         send_all_trees(s, s->l_desc.max_code+1, s->d_desc.max_code+1, max_blindex+1);
         compress_block(s, (const ct_data *)s->dyn_ltree, (const ct_data *)s->dyn_dtree);
-#ifdef ZLIB_DEBUG
-        s->compressed_len += 3 + s->opt_len;
-#endif
+        cmpr_bits_add(s, s->opt_len);
     }
     Assert(s->compressed_len == s->bits_sent, "bad compressed size");
     /* The above check is made mod 2^32, for files larger than 512 MB
@@ -718,39 +839,9 @@ void ZLIB_INTERNAL zng_tr_flush_block(deflate_state *s, char *buf, unsigned long
     init_block(s);
 
     if (last) {
-        bi_windup(s);
-#ifdef ZLIB_DEBUG
-        s->compressed_len += 7;  /* align on byte boundary */
-#endif
+        zng_tr_emit_align(s);
     }
     Tracev((stderr, "\ncomprlen %lu(%lu) ", s->compressed_len>>3, s->compressed_len-7*last));
-}
-
-/* ===========================================================================
- * Save the match info and tally the frequency counts. Return true if
- * the current block must be flushed.
- */
-int ZLIB_INTERNAL zng_tr_tally(deflate_state *s, unsigned dist, unsigned lc) {
-    /* dist: distance of matched string */
-    /* lc: match length-MIN_MATCH or unmatched char (if dist==0) */
-    s->sym_buf[s->sym_next++] = dist;
-    s->sym_buf[s->sym_next++] = dist >> 8;
-    s->sym_buf[s->sym_next++] = lc;
-    if (dist == 0) {
-        /* lc is the unmatched char */
-        s->dyn_ltree[lc].Freq++;
-    } else {
-        s->matches++;
-        /* Here, lc is the match length - MIN_MATCH */
-        dist--;             /* dist = match distance - 1 */
-        Assert((uint16_t)dist < (uint16_t)MAX_DIST(s) &&
-               (uint16_t)lc <= (uint16_t)(MAX_MATCH-MIN_MATCH) &&
-               (uint16_t)d_code(dist) < (uint16_t)D_CODES,  "zng_tr_tally: bad match");
-
-        s->dyn_ltree[zng_length_code[lc]+LITERALS+1].Freq++;
-        s->dyn_dtree[d_code(dist)].Freq++;
-    }
-    return (s->sym_next == s->sym_end);
 }
 
 /* ===========================================================================
@@ -762,12 +853,6 @@ static void compress_block(deflate_state *s, const ct_data *ltree, const ct_data
     unsigned dist;      /* distance of matched string */
     int lc;             /* match length or unmatched char (if dist == 0) */
     unsigned sx = 0;    /* running index in sym_buf */
-    int code;           /* the code to send */
-    int extra;          /* number of extra bits to send */
-
-    // Temp local variables
-    uint32_t bi_valid = s->bi_valid;
-    uint32_t bi_buf = s->bi_buf;
 
     if (s->sym_next != 0) {
         do {
@@ -775,27 +860,9 @@ static void compress_block(deflate_state *s, const ct_data *ltree, const ct_data
             dist += (unsigned)(s->sym_buf[sx++] & 0xff) << 8;
             lc = s->sym_buf[sx++];
             if (dist == 0) {
-                send_code(s, lc, ltree, bi_buf, bi_valid)                /* send a literal byte */
-                Tracecv(isgraph(lc), (stderr, " '%c' ", lc));
+                zng_emit_lit(s, ltree, lc);
             } else {
-                /* Here, lc is the match length - MIN_MATCH */
-                code = zng_length_code[lc];
-                send_code(s, code+LITERALS+1, ltree, bi_buf, bi_valid);  /* send the length code */
-                extra = extra_lbits[code];
-                if (extra != 0) {
-                    lc -= base_length[code];
-                    send_bits(s, lc, extra, bi_buf, bi_valid);           /* send the extra length bits */
-                }
-                dist--; /* dist is now the match distance - 1 */
-                code = d_code(dist);
-                Assert(code < D_CODES, "bad d_code");
-
-                send_code(s, code, dtree, bi_buf, bi_valid);             /* send the distance code */
-                extra = extra_dbits[code];
-                if (extra != 0) {
-                    dist -= (unsigned int)base_dist[code];
-                    send_bits(s, dist, extra, bi_buf, bi_valid);         /* send the extra distance bits */
-                }
+                zng_emit_dist(s, ltree, dtree, lc, dist);
             } /* literal or match pair ? */
 
             /* Check that the overlay between pending_buf and sym_buf is ok: */
@@ -803,11 +870,7 @@ static void compress_block(deflate_state *s, const ct_data *ltree, const ct_data
         } while (sx < s->sym_next);
     }
 
-    send_code(s, END_BLOCK, ltree, bi_buf, bi_valid);
-
-    // Store back temp variables
-    s->bi_buf = bi_buf;
-    s->bi_valid = bi_valid;
+    zng_emit_end_block(s, ltree, 0);
 }
 
 /* ===========================================================================
@@ -905,7 +968,4 @@ ZLIB_INTERNAL void bi_windup(deflate_state *s) {
     }
     s->bi_buf = 0;
     s->bi_valid = 0;
-#ifdef ZLIB_DEBUG
-    s->bits_sent = (s->bits_sent+7) & ~7;
-#endif
 }
