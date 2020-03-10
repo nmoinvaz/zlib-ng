@@ -788,6 +788,7 @@ set(ZLIB_SRCS
     infback.c
     inftrees.c
     inffast.c
+    insert_string.c
     trees.c
     uncompr.c
     zutil.c

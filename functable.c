@@ -10,6 +10,7 @@
 
 #include "functable.h"
 /* insert_string */
+extern Pos insert_string_c(deflate_state *const s, const Pos str, unsigned int count);
 #ifdef X86_SSE42_CRC_HASH
 extern Pos insert_string_sse(deflate_state *const s, const Pos str, unsigned int count);
 #elif defined(ARM_ACLE_CRC_HASH)
