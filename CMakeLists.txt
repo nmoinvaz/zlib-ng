@@ -404,20 +404,37 @@ if(HAVE_ATTRIBUTE_VISIBILITY_INTERNAL)
 endif()
 
 #
-# check for __builtin_ctzl() support in the compiler
+# check for __builtin_ctz() support in the compiler
 #
 check_c_source_compiles(
     "int main(void)
     {
         unsigned int zero = 0;
-        long test = __builtin_ctzl(zero);
+        long test = __builtin_ctz(zero);
         (void)test;
         return 0;
     }"
-    HAVE_BUILTIN_CTZL
+    HAVE_BUILTIN_CTZ
 )
-if(HAVE_BUILTIN_CTZL)
-    add_definitions(-DHAVE_BUILTIN_CTZL)
+if(HAVE_BUILTIN_CTZ)
+    add_definitions(-DHAVE_BUILTIN_CTZ)
+endif()
+
+#
+# check for __builtin_ctzll() support in the compiler
+#
+check_c_source_compiles(
+    "int main(void)
+    {
+        unsigned int zero = 0;
+        long test = __builtin_ctzll(zero);
+        (void)test;
+        return 0;
+    }"
+    HAVE_BUILTIN_CTZLL
+)
+if(HAVE_BUILTIN_CTZLL)
+    add_definitions(-DHAVE_BUILTIN_CTZLL)
 endif()
 
 #
@@ -515,6 +532,22 @@ if(BASEARCH_X86_FOUND)
             return 0;
         }"
         HAVE_SSE42CRC_INTRIN
+    )
+    set(CMAKE_REQUIRED_FLAGS)
+
+    # Check whether compiler supports SSE4.2 compare string instrinics
+    check_c_source_compile_or_run(
+        "#include <immintrin.h>
+        int main(void)
+        {
+            unsigned char a[64] = { 0 };
+            unsigned char b[64] = { 0 };
+            __m128i xmm_src0, xmm_src1;
+            xmm_src0 = _mm_loadu_si128((__m128i *)(char *)a);
+            xmm_src1 = _mm_loadu_si128((__m128i *)(char *)b);
+            return _mm_cmpestri(xmm_src0, 16, xmm_src1, 16, 0);
+        }"
+        HAVE_SSE42CMPSTR_INTRIN
     )
     set(CMAKE_REQUIRED_FLAGS)
 
@@ -630,7 +663,7 @@ if(WITH_OPTIM)
             if("${ARCH}" MATCHES "arm" OR NOT WITH_NEON)
                 add_intrinsics_option("${ACLEFLAG}")
             endif()
-            add_feature_info(ACLE_CRC 1 "Support CRC hash generation using the ACLE instruction set, using \"${ACLEFLAG}\"")
+            add_feature_info(ACLE_CRC 1 "Support ACLE optimized CRC hash generation, using \"${ACLEFLAG}\"")
         endif()
     elseif(BASEARCH_X86_FOUND)
         add_definitions(-DX86_CPUID)
@@ -641,13 +674,15 @@ if(WITH_OPTIM)
         if(HAVE_AVX2_INTRIN)
             add_definitions(-DX86_AVX2)
             list(APPEND ZLIB_ARCH_SRCS ${ARCHDIR}/slide_avx.c)
-            add_feature_info(AVX2_SLIDEHASH 1 "Support AVX2-optimized slide_hash, using \"${AVX2FLAG}\"")
+            add_feature_info(AVX2_SLIDEHASH 1 "Support AVX2 optimized slide_hash, using \"${AVX2FLAG}\"")
+            list(APPEND ZLIB_ARCH_SRCS ${ARCHDIR}/compare258_avx.c)
+            add_feature_info(AVX2_COMPARE258 1 "Support AVX2 optimized compare258, using \"${AVX2FLAG}\"")
             add_intrinsics_option("${AVX2FLAG}")
         endif()
         if(HAVE_SSE42CRC_INLINE_ASM OR HAVE_SSE42CRC_INTRIN)
             add_definitions(-DX86_SSE42_CRC_HASH)
             list(APPEND ZLIB_ARCH_SRCS ${ARCHDIR}/insert_string_sse.c)
-            add_feature_info(SSE42_CRC 1 "Support CRC hash generation using the SSE4.2 instruction set, using \"${SSE4FLAG}\"")
+            add_feature_info(SSE42_CRC 1 "Support SSE4.2 optimized CRC hash generation, using \"${SSE4FLAG}\"")
             add_intrinsics_option("${SSE4FLAG}")
             if(HAVE_SSE42CRC_INTRIN)
                 add_definitions(-DX86_SSE42_CRC_INTRIN)
@@ -655,8 +690,13 @@ if(WITH_OPTIM)
             if(WITH_NEW_STRATEGIES)
                 add_definitions(-DX86_QUICK_STRATEGY)
                 list(APPEND ZLIB_ARCH_SRCS ${ARCHDIR}/deflate_quick.c)
-                add_feature_info(SSE42_DEFLATE_QUICK 1 "Support SSE4.2-accelerated quick compression")
+                add_feature_info(SSE42_DEFLATE_QUICK 1 "Support SSE4.2 accelerated quick compression")
             endif()
+        endif()
+        if(HAVE_SSE42CMPSTR_INTRIN)
+            add_definitions(-DX86_SSE42_CMP_STR)
+            list(APPEND ZLIB_ARCH_SRCS ${ARCHDIR}/compare258_sse.c)
+            add_feature_info(SSE42_COMPARE258 1 "Support SSE4.2 optimized compare258, using \"${SSE4FLAG}\"")
         endif()
         if(HAVE_SSE2_INTRIN)
             add_definitions(-DX86_SSE2)
@@ -777,6 +817,7 @@ set(ZLIB_PRIVATE_HDRS
 )
 set(ZLIB_SRCS
     adler32.c
+    compare258.c
     compress.c
     crc32.c
     deflate.c
