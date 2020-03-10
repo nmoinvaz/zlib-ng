@@ -27,8 +27,17 @@
 #include "../../functable.h"
 #include "../../memcopy.h"
 
+extern Pos quick_insert_string_sse(deflate_state *const s, const Pos str);
 extern void fill_window_sse(deflate_state *s);
+
 extern void flush_pending(PREFIX3(stream) *strm);
+
+extern void zng_tr_emit_lit(deflate_state *s, const ct_data *ltree, unsigned c);
+extern void zng_tr_emit_tree(deflate_state *s, int type, const int last);
+extern void zng_tr_emit_end_block(deflate_state *s, const ct_data *ltree, const int last);
+extern void zng_tr_emit_dist(deflate_state *s, const ct_data *ltree, const ct_data *dtree, 
+    uint32_t lc, uint32_t dist);
+
 ZLIB_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
     IPos hash_head;
     unsigned dist, match_len, last;
