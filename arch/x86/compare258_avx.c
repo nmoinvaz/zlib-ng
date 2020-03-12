@@ -15,20 +15,11 @@
 #  include <nmmintrin.h>
 #endif
 
-// UNALIGNED_OK, AVX2 instrinic comparison
+/* UNALIGNED_OK, AVX2 instrinic comparison */
 static inline int32_t compare258_unaligned_avx2_static(const unsigned char *src0, const unsigned char *src1) {
     register const unsigned char *src0start = src0;
-    register const unsigned char *src0end = src0 + 258;
+    register const unsigned char *src0end = src0 + 256;
     __m256i ymm_zero = _mm256_set1_epi8(0);
-
-    if (*(uint16_t *)src0 != *(uint16_t *)src1)
-        return (*src0 == *src1);
-
-    src0 += 2, src1 += 2;
-    if (*src0 != *src1)
-        return 2;
-    if (src0[1] != src1[1])
-        return 3;
 
     do {
         __m256i ymm_src0, ymm_src1, ymm_xor;
@@ -44,6 +35,11 @@ static inline int32_t compare258_unaligned_avx2_static(const unsigned char *src0
 
         src0 += 32, src1 += 32;
     } while (src0 < src0end);
+    
+    if (*(uint16_t *)src0 == *(uint16_t *)src1)
+        src0 += 2, src1 += 2;
+    else if (*src0 == *src1)
+        src0 += 1, src1 += 1;
 
     return (int32_t)(src0 - src0start);
 }

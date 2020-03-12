@@ -48,10 +48,10 @@ int32_t compare258(const unsigned char *src0, const unsigned char *src1) {
 #include "match_p.h"
 
 #else
-// UNALIGNED_OK, 16-bit integer comparison
+/* UNALIGNED_OK, 16-bit integer comparison */
 static inline int32_t compare258_unaligned_16_static(const unsigned char *src0, const unsigned char *src1) {
     register const unsigned char *src0start = src0;
-    register const unsigned char *src0end = src0 + 258; // 258 % 6 = 0
+    register const unsigned char *src0end = src0 + 258;
 
     do {
         if (*(uint16_t *)src0 != *(uint16_t *)src1)
@@ -81,19 +81,10 @@ int32_t compare258_unaligned_16(const unsigned char *src0, const unsigned char *
 #include "match_p.h"
 
 #ifdef HAVE_BUILTIN_CTZ
-// UNALIGNED_OK, 32-bit integer comparison
+/* UNALIGNED_OK, 32-bit integer comparison */
 static inline int32_t compare258_unaligned_32_static(const unsigned char *src0, const unsigned char *src1) {
     register const unsigned char *src0start = src0;
-    register const unsigned char *src0end = src0 + 258; // (258 - 2) % 4 = 0
-
-    if (*(uint16_t *)src0 != *(uint16_t *)src1)
-        return (*src0 == *src1);
-
-    src0 += 2, src1 += 2;
-    if (*src0 != *src1)
-        return 2;
-    if (src0[1] != src1[1])
-        return 3;
+    register const unsigned char *src0end = src0 + 256;
 
     do {
         uint32_t *sv = (uint32_t *)src0;
@@ -107,6 +98,11 @@ static inline int32_t compare258_unaligned_32_static(const unsigned char *src0, 
 
         src0 += 4, src1 += 4;
     } while (src0 < src0end);
+    
+    if (*(uint16_t *)src0 == *(uint16_t *)src1)
+        src0 += 2, src1 += 2;
+    else if (*src0 == *src1)
+        src0 += 1, src1 += 1;
 
     return (int32_t)(src0 - src0start);
 }
@@ -125,19 +121,10 @@ int32_t compare258_unaligned_32(const unsigned char *src0, const unsigned char *
 #endif
 
 #ifdef HAVE_BUILTIN_CTZLL
-// UNALIGNED_OK, 64-bit integer comparison
+/* UNALIGNED_OK, 64-bit integer comparison */
 static inline int32_t compare258_unaligned_64_static(const unsigned char *src0, const unsigned char *src1) {
     register const unsigned char *src0start = src0;
-    register const unsigned char *src0end = src0 + 258; // (258 - 2) % 8 = 0
-
-    if (*(uint16_t *)src0 != *(uint16_t *)src1)
-        return (*src0 == *src1);
-
-    src0 += 2, src1 += 2;
-    if (*src0 != *src1)
-        return 2;
-    if (src0[1] != src1[1])
-        return 3;
+    register const unsigned char *src0end = src0 + 256;
 
     do {
         uint64_t *sv = (uint64_t *)src0;
@@ -151,6 +138,12 @@ static inline int32_t compare258_unaligned_64_static(const unsigned char *src0, 
 
         src0 += 8, src1 += 8;
     } while (src0 < src0end);
+
+    
+    if (*(uint16_t *)src0 == *(uint16_t *)src1)
+        src0 += 2, src1 += 2;
+    else if (*src0 == *src1)
+        src0 += 1, src1 += 1;
 
     return (int32_t)(src0 - src0start);
 }

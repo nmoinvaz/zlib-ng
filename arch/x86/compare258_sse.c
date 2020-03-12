@@ -29,17 +29,7 @@
 static inline int32_t compare258_unaligned_sse4_static(const unsigned char *src0, const unsigned char *src1) {
 #ifdef _MSC_VER
     register const unsigned char *src0start = src0;
-    register const unsigned char *src0end = src0 + 258; // (258 - 2) % 16 = 0
-
-    if (*(uint16_t *)src0 != *(uint16_t *)src1)
-        return (*src0 == *src1);
-
-    src0 += 2, src1 += 2;
-
-    if (*src0 != *src1)
-        return 2;
-    if (src0[1] != src1[1])
-        return 3;
+    register const unsigned char *src0end = src0 + 256;
 
     do {
         #define mode _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_EACH | _SIDD_NEGATIVE_POLARITY
@@ -62,6 +52,11 @@ static inline int32_t compare258_unaligned_sse4_static(const unsigned char *src0
         }
         src0 += 16, src1 += 16;
     } while (src0 < src0end);
+
+    if (*(uint16_t *)src0 == *(uint16_t *)src1)
+        src0 += 2, src1 += 2;
+    else if (*src0 == *src1)
+        src0 += 1, src1 += 1;
 
     return (int32_t)(src0 - src0start);
 #else
