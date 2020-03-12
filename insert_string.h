@@ -63,7 +63,7 @@ ZLIB_INTERNAL Pos INSERT_STRING(deflate_state *const s, const Pos str, unsigned 
         val |= ((uint32_t)(strstart+2) << 16);
         val |= ((uint32_t)(strstart+3) << 24);
 #endif
-        h = 0;
+
         val &= s->level_mask;
         UPDATE_HASH(s, h, val);
         hm = h & s->hash_mask;
