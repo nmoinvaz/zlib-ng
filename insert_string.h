@@ -21,10 +21,8 @@ ZLIB_INTERNAL Pos QUICK_INSERT_STRING(deflate_state *const s, const Pos str) {
     val |= ((uint32_t)s->window[str+2] << 16);
     val |= ((uint32_t)s->window[str+3] << 24);
 #endif
-    h = 0;
-    UPDATE_HASH(s, h, val);
+    UPDATE_HASH(s, s->ins_h, val);
     hm = h & s->hash_mask;
-    s->ins_h = h;
     s->prev[str & s->w_mask] = ret = s->head[hm];
     s->head[hm] = str;
     return ret;

@@ -225,7 +225,7 @@ ZLIB_INTERNAL block_state deflate_medium(deflate_state *s, int flush) {
         } else {
             hash_head = 0;
             if (s->lookahead >= MIN_MATCH) {
-                hash_head = functable.insert_string(s, s->strstart, 1);
+                hash_head = functable.quick_insert_string(s, s->strstart);
             }
 
             /* set up the initial match to be a 1 byte literal */
@@ -259,7 +259,7 @@ ZLIB_INTERNAL block_state deflate_medium(deflate_state *s, int flush) {
         /* now, look ahead one */
         if (s->lookahead > MIN_LOOKAHEAD && (current_match.strstart + current_match.match_length) < (s->window_size - MIN_LOOKAHEAD)) {
             s->strstart = current_match.strstart + current_match.match_length;
-            hash_head = functable.insert_string(s, s->strstart, 1);
+            hash_head = functable.quick_insert_string(s, s->strstart);
 
             /* set up the initial match to be a 1 byte literal */
             next_match.match_start = 0;
