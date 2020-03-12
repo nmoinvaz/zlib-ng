@@ -52,7 +52,7 @@
 #define MAX_BITS 15
 /* All codes must not exceed MAX_BITS bits */
 
-#define BIT_BUF_SIZE 32
+#define BIT_BUF_SIZE 64
 /* size of bit buffer in bi_buf */
 
 #define END_BLOCK 256
@@ -265,7 +265,7 @@ typedef struct internal_state {
     unsigned long bits_sent;      /* bit length of compressed data sent mod 2^32 */
 #endif
 
-    uint32_t bi_buf;
+    uint64_t bi_buf;
     /* Output buffer. bits are inserted starting at the bottom (least
      * significant bits).
      */
@@ -360,6 +360,26 @@ static inline void put_uint32_msb(deflate_state *s, uint32_t dw) {
 #endif
 }
 
+/* ===========================================================================
+ * Output a 64-bit unsigned int LSB first on the stream.
+ * IN assertion: there is enough room in pending_buf.
+ */
+static inline void put_uint64(deflate_state *s, uint64_t llw) {
+#if defined(UNALIGNED_OK)
+    *(uint64_t *)(&s->pending_buf[s->pending]) = llw;
+    s->pending += 8;
+#else
+    put_byte(s, (dw & 0xff));
+    put_byte(s, ((dw >> 8) & 0xff));
+    put_byte(s, ((dw >> 16) & 0xff));
+    put_byte(s, ((dw >> 24) & 0xff));
+    put_byte(s, ((dw >> 32) & 0xff));
+    put_byte(s, ((dw >> 40) & 0xff));
+    put_byte(s, ((dw >> 48) & 0xff));
+    put_byte(s, ((dw >> 56) & 0xff));
+#endif
+}
+
 #define MIN_LOOKAHEAD (MAX_MATCH+MIN_MATCH+1)
 /* Minimum amount of lookahead, except at the end of the input file.
  * See deflate.c for comments about the MIN_MATCH+1.
@@ -406,16 +426,16 @@ void ZLIB_INTERNAL flush_pending(PREFIX3(streamp) strm);
 #  define sent_bits_add(s, bits)    s->bits_sent += (bits)
 #  define sent_bits_align(s)        s->bits_sent = (s->bits_sent + 7) & ~7L
 #else
-#  define cmpr_bits_add(s, len)     (len)
+#  define cmpr_bits_add(s, len)     (void *)(len)
 #  define cmpr_bits_align(s)
-#  define sent_bits_add(s, bits)    (bits)
+#  define sent_bits_add(s, bits)    (void *)(bits)
 #  define sent_bits_align(s)
 #endif
 
 /* Bit buffer and deflate code stderr tracing */
 #ifdef ZLIB_DEBUG
 #  define send_bits_trace(s, value, length) { \
-        Tracevv((stderr, " l %2d v %4x ", length, value)); \
+        Tracevv((stderr, " l %2d v %4llx ", length, value)); \
         Assert(length > 0 && length <= BIT_BUF_SIZE, "invalid length"); \
     }
 #  define send_code_trace(s, c) \
@@ -428,11 +448,11 @@ void ZLIB_INTERNAL flush_pending(PREFIX3(streamp) strm);
 #endif
 
 /* If not enough room in bit_buf, use (valid) bits from bit_buf and
- * (32 - bit_valid) bits from value, leaving (width - (32-bit_valid))
+ * (64 - bit_valid) bits from value, leaving (width - (64-bit_valid))
  * unused bits in value.
  */
 #define send_bits(s, t_val, t_len, bit_buf, bits_valid) {\
-    uint32_t val = (uint32_t)t_val;\
+    uint64_t val = (uint64_t)t_val;\
     uint32_t len = (uint32_t)t_len;\
     uint32_t total_bits = bits_valid + len;\
     send_bits_trace(s, val, len);\
@@ -441,12 +461,12 @@ void ZLIB_INTERNAL flush_pending(PREFIX3(streamp) strm);
         bit_buf |= val << bits_valid;\
         bits_valid = total_bits;\
     } else if (bits_valid == BIT_BUF_SIZE) {\
-        put_uint32(s, bit_buf);\
+        put_uint64(s, bit_buf);\
         bit_buf = val;\
         bits_valid = len;\
     } else {\
         bit_buf |= val << bits_valid;\
-        put_uint32(s, bit_buf);\
+        put_uint64(s, bit_buf);\
         bit_buf = val >> (BIT_BUF_SIZE - bits_valid);\
         bits_valid = total_bits - BIT_BUF_SIZE;\
     }\

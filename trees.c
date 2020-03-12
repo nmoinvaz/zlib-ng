@@ -477,7 +477,7 @@ static void send_tree(deflate_state *s, ct_data *tree, int max_code) {
 
     // Temp local variables
     uint32_t bi_valid = s->bi_valid;
-    uint32_t bi_buf = s->bi_buf;
+    uint64_t bi_buf = s->bi_buf;
 
     for (n = 0; n <= max_code; n++) {
         curlen = nextlen;
@@ -567,7 +567,7 @@ static void send_all_trees(deflate_state *s, int lcodes, int dcodes, int blcodes
 
     // Temp local variables
     uint32_t bi_valid = s->bi_valid;
-    uint32_t bi_buf = s->bi_buf;
+    uint64_t bi_buf = s->bi_buf;
 
     Tracev((stderr, "\nbl counts: "));
     send_bits(s, lcodes-257, 5, bi_buf, bi_valid); /* not +255 as stated in appnote.txt */
@@ -595,7 +595,7 @@ static void send_all_trees(deflate_state *s, int lcodes, int dcodes, int blcodes
  */
 static inline uint32_t zng_emit_lit(deflate_state *s, const ct_data *ltree, unsigned c) {
     uint32_t bi_valid = s->bi_valid;
-    uint32_t bi_buf = s->bi_buf;
+    uint64_t bi_buf = s->bi_buf;
 
     send_code(s, c, ltree, bi_buf, bi_valid);
 
@@ -611,13 +611,13 @@ static inline uint32_t zng_emit_lit(deflate_state *s, const ct_data *ltree, unsi
  * Emit match distance/length code
  */
 static inline uint32_t zng_emit_dist(deflate_state *s, const ct_data *ltree, const ct_data *dtree, 
-    uint32_t lc, uint32_t dist) {
+    uint32_t lc, uint64_t dist) {
     uint32_t c, extra;
     uint8_t code;
-    uint32_t dist_bits, dist_bits_len;
-    uint32_t lc_bits, lc_bits_len;
+    uint64_t match_bits;
+    uint32_t match_bits_len;
     uint32_t bi_valid = s->bi_valid;
-    uint32_t bi_buf = s->bi_buf;
+    uint64_t bi_buf = s->bi_buf;
 
     /* Send the length code, len is the match length - MIN_MATCH */
     code = zng_length_code[lc];
@@ -625,15 +625,14 @@ static inline uint32_t zng_emit_dist(deflate_state *s, const ct_data *ltree, con
     Assert(c < L_CODES, "bad l_code");
     send_code_trace(s, c);
 
-    lc_bits = ltree[c].Code;
-    lc_bits_len = ltree[c].Len;
+    match_bits = ltree[c].Code;
+    match_bits_len = ltree[c].Len;
     extra = extra_lbits[code];
     if (extra != 0) {
         lc -= base_length[code];
-        lc_bits |= (lc << lc_bits_len);
-        lc_bits_len += extra;
+        match_bits |= ((uint64_t)lc << match_bits_len);
+        match_bits_len += extra;
     }
-    send_bits(s, lc_bits, lc_bits_len, bi_buf, bi_valid);
 
     dist--; /* dist is now the match distance - 1 */
     code = d_code(dist);
@@ -641,20 +640,21 @@ static inline uint32_t zng_emit_dist(deflate_state *s, const ct_data *ltree, con
     send_code_trace(s, code);
 
     /* Send the distance code */
-    dist_bits = dtree[code].Code;
-    dist_bits_len = dtree[code].Len;
+    match_bits |= (dtree[code].Code << match_bits_len);
+    match_bits_len += dtree[code].Len;
     extra = extra_dbits[code];
     if (extra != 0) {
         dist -= base_dist[code];
-        dist_bits |= (dist << dist_bits_len);
-        dist_bits_len += extra;
+        match_bits |= ((uint64_t)dist << match_bits_len);
+        match_bits_len += extra;
     }
-    send_bits(s, dist_bits, dist_bits_len, bi_buf, bi_valid);
+    
+    send_bits(s, match_bits, match_bits_len, bi_buf, bi_valid);
 
     s->bi_valid = bi_valid;
     s->bi_buf = bi_buf;
 
-    return lc_bits_len + dist_bits_len;
+    return match_bits_len;
 }
 
 /* ===========================================================================
@@ -662,7 +662,7 @@ static inline uint32_t zng_emit_dist(deflate_state *s, const ct_data *ltree, con
  */
 static inline void zng_emit_end_block(deflate_state *s, const ct_data *ltree, const int last) {
     uint32_t bi_valid = s->bi_valid;
-    uint32_t bi_buf = s->bi_buf;
+    uint64_t bi_buf = s->bi_buf;
     send_code(s, END_BLOCK, ltree, bi_buf, bi_valid);
     s->bi_valid = bi_valid;
     s->bi_buf = bi_buf;
@@ -675,7 +675,8 @@ static inline void zng_emit_end_block(deflate_state *s, const ct_data *ltree, co
  * Emit literal and count bits
  */
 void ZLIB_INTERNAL zng_tr_emit_lit(deflate_state *s, const ct_data *ltree, unsigned c) {
-    cmpr_bits_add(s, zng_emit_lit(s, ltree, c));
+    uint32_t bits = zng_emit_lit(s, ltree, c);
+    cmpr_bits_add(s, bits);
 }
 
 /* ===========================================================================
@@ -683,7 +684,8 @@ void ZLIB_INTERNAL zng_tr_emit_lit(deflate_state *s, const ct_data *ltree, unsig
  */
 void ZLIB_INTERNAL zng_tr_emit_dist(deflate_state *s, const ct_data *ltree, const ct_data *dtree, 
     uint32_t lc, uint32_t dist) {
-    cmpr_bits_add(s, zng_emit_dist(s, ltree, dtree, lc, dist));
+    uint32_t bits = zng_emit_dist(s, ltree, dtree, lc, dist);
+    cmpr_bits_add(s, bits);
 }
 
 /* ===========================================================================
@@ -691,7 +693,7 @@ void ZLIB_INTERNAL zng_tr_emit_dist(deflate_state *s, const ct_data *ltree, cons
  */
 void ZLIB_INTERNAL zng_tr_emit_tree(deflate_state *s, int type, const int last) {
     uint32_t bi_valid = s->bi_valid;
-    uint32_t bi_buf = s->bi_buf;
+    uint64_t bi_buf = s->bi_buf;
     send_bits(s, (type << 1) + last, 3, bi_buf, bi_valid);
     cmpr_bits_add(s, 3);
     s->bi_valid = bi_valid;
@@ -932,13 +934,19 @@ ZLIB_INTERNAL unsigned bi_reverse(unsigned code, int len) {
  * Flush the bit buffer, keeping at most 7 bits in it.
  */
 static void bi_flush(deflate_state *s) {
-    if (s->bi_valid == 32) {
-        put_uint32(s, s->bi_buf);
+    if (s->bi_valid == 64) {
+        put_uint64(s, s->bi_buf);
         s->bi_buf = 0;
         s->bi_valid = 0;
-    } else {
+    }
+    else {
+        if (s->bi_valid >= 32) {
+            put_uint32(s, (uint32_t)s->bi_buf);
+            s->bi_buf >>= 32;
+            s->bi_valid -= 32;
+        }
         if (s->bi_valid >= 16) {
-            put_short(s, s->bi_buf);
+            put_short(s, (uint16_t)s->bi_buf);
             s->bi_buf >>= 16;
             s->bi_valid -= 16;
         }
@@ -954,11 +962,16 @@ static void bi_flush(deflate_state *s) {
  * Flush the bit buffer and align the output on a byte boundary
  */
 ZLIB_INTERNAL void bi_windup(deflate_state *s) {
-    if (s->bi_valid > 24) {
-        put_uint32(s, s->bi_buf);
+    if (s->bi_valid > 56) {
+        put_uint64(s, s->bi_buf);
     } else {
+        if (s->bi_valid > 24) {
+            put_uint32(s, (uint32_t)s->bi_buf);
+            s->bi_buf >>= 32;
+            s->bi_valid -= 32;
+        }
         if (s->bi_valid > 8) {
-            put_short(s, s->bi_buf);
+            put_short(s, (uint16_t)s->bi_buf);
             s->bi_buf >>= 16;
             s->bi_valid -= 16;
         }
