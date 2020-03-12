@@ -71,8 +71,8 @@ ZLIB_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
             hash_head = functable.quick_insert_string(s, s->strstart);
             dist = s->strstart - hash_head;
 
-            if (dist > 0 && (dist-1) < s->w_size) {
-                match_len = functable.compare258(s->window + s->strstart, s->window + s->strstart - dist);
+            if (dist > 0 && (dist-1) < (s->w_size - 1)) {
+                match_len = functable.longest_match(s, hash_head);
 
                 if (match_len >= MIN_MATCH) {
                     if (match_len > s->lookahead)
@@ -81,7 +81,7 @@ ZLIB_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
                     if (match_len > MAX_MATCH)
                         match_len = MAX_MATCH;
 
-                    zng_tr_emit_dist(s, static_ltree, static_dtree, match_len - MIN_MATCH, s->strstart - hash_head);
+                    zng_tr_emit_dist(s, static_ltree, static_dtree, match_len - MIN_MATCH, dist);
                     s->lookahead -= match_len;
                     s->strstart += match_len;
                     continue;

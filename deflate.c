@@ -1215,7 +1215,6 @@ static void lm_init(deflate_state *s) {
     s->match_length = s->prev_length = MIN_MATCH-1;
     s->match_available = 0;
     s->match_start = 0;
-    s->ins_h = 0;
 }
 
 #ifdef ZLIB_DEBUG
@@ -1301,7 +1300,6 @@ void ZLIB_INTERNAL fill_window(deflate_state *s) {
         /* Initialize the hash value now that we have some input: */
         if (s->lookahead + s->insert >= MIN_MATCH) {
             unsigned int str = s->strstart - s->insert;
-            s->ins_h = s->window[str];
             if (str >= 1)
                 functable.quick_insert_string(s, str + 2 - MIN_MATCH);
 #if MIN_MATCH != 3
@@ -1324,7 +1322,7 @@ void ZLIB_INTERNAL fill_window(deflate_state *s) {
             s->insert -= count;
 #endif
         }
-        /* If the whole input has less than MIN_MATCH bytes, ins_h is garbage,
+        /* If the whole input has less than MIN_MATCH bytes, insert hash is garbage,
          * but this is not important since only literal bytes will be emitted.
          */
     } while (s->lookahead < MIN_LOOKAHEAD && s->strm->avail_in != 0);
