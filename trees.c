@@ -611,7 +611,7 @@ static inline uint32_t zng_emit_lit(deflate_state *s, const ct_data *ltree, unsi
  * Emit match distance/length code
  */
 static inline uint32_t zng_emit_dist(deflate_state *s, const ct_data *ltree, const ct_data *dtree, 
-    uint32_t lc, uint64_t dist) {
+    uint32_t lc, uint32_t dist) {
     uint32_t c, extra;
     uint8_t code;
     uint64_t match_bits;
