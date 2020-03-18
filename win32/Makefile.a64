@@ -23,7 +23,7 @@ AR = lib
 RC = rc
 CP = copy /y
 CFLAGS  = -nologo -MD -W3 -O2 -Oy- -Zi -Fd"zlib" $(LOC)
-WFLAGS  = -D_CRT_SECURE_NO_DEPRECATE -D_CRT_NONSTDC_NO_DEPRECATE -DUNALIGNED_OK -DUNALIGNED64_OK -D_ARM64_WINAPI_PARTITION_DESKTOP_SDK_AVAILABLE=1
+WFLAGS  = -D_CRT_SECURE_NO_DEPRECATE -D_CRT_NONSTDC_NO_DEPRECATE -DUNALIGNED_OK -DUNALIGNED64_OK -D_ARM64_WINAPI_PARTITION_DESKTOP_SDK_AVAILABLE=1 -DARM_CPUID
 LDFLAGS = -nologo -debug -incremental:no -opt:ref -manifest
 ARFLAGS = -nologo
 RCFLAGS = /dARM64 /r
@@ -49,10 +49,10 @@ OBJS = \
 	inftrees.obj \
 	inffast.obj \
 	insert_string.obj \
+	memchunk.obj \
 	trees.obj \
 	uncompr.obj \
-	zutil.obj \
-	fill_window_arm.obj
+	zutil.obj
 
 !if "$(WITH_GZFILEOP)" != ""
 WFLAGS = $(WFLAGS) -DWITH_GZFILEOP
@@ -67,8 +67,8 @@ RCFILE = zlib-ng1.rc
 RESFILE = zlib-ng1.res
 SUFFIX = -ng
 !endif
-WFLAGS = $(WFLAGS) -DARM_ACLE_CRC_HASH -D__ARM_NEON__=1 -DARM_NEON_ADLER32 -DARM_NEON_SLIDEHASH -DARM_NOCHECK_NEON
-OBJS = $(OBJS) crc32_acle.obj insert_string_acle.obj slide_neon.obj adler32_neon.obj
+WFLAGS = $(WFLAGS) -DARM_ACLE_CRC_HASH -D__ARM_NEON__=1 -DARM_NEON_ADLER32 -DARM_NEON_MEMCHUNK -DARM_NEON_SLIDEHASH -DARM_NOCHECK_NEON
+OBJS = $(OBJS) crc32_acle.obj insert_string_acle.obj slide_neon.obj adler32_neon.obj memchunk_neon.obj
 
 # targets
 all: $(STATICLIB) $(SHAREDLIB) $(IMPLIB) \
@@ -148,9 +148,10 @@ deflate_fast.obj: $(SRCDIR)/deflate_fast.c $(SRCDIR)/zbuild.h $(SRCDIR)/deflate.
 deflate_medium.obj: $(SRCDIR)/deflate_medium.c $(SRCDIR)/zbuild.h $(SRCDIR)/deflate.h $(SRCDIR)/deflate_p.h $(SRCDIR)/functable.h
 deflate_slow.obj: $(SRCDIR)/deflate_slow.c $(SRCDIR)/zbuild.h $(SRCDIR)/deflate.h $(SRCDIR)/deflate_p.h $(SRCDIR)/functable.h
 infback.obj: $(SRCDIR)/infback.c $(SRCDIR)/zbuild.h $(SRCDIR)/zutil.h $(SRCDIR)/inftrees.h $(SRCDIR)/inflate.h $(SRCDIR)/inffast.h
-inffast.obj: $(SRCDIR)/inffast.c $(SRCDIR)/zbuild.h $(SRCDIR)/zutil.h $(SRCDIR)/inftrees.h $(SRCDIR)/inflate.h $(SRCDIR)/inffast.h $(SRCDIR)/memcopy.h
-inflate.obj: $(SRCDIR)/inflate.c $(SRCDIR)/zbuild.h $(SRCDIR)/zutil.h $(SRCDIR)/inftrees.h $(SRCDIR)/inflate.h $(SRCDIR)/inffast.h $(SRCDIR)/memcopy.h $(SRCDIR)/functable.h
+inffast.obj: $(SRCDIR)/inffast.c $(SRCDIR)/zbuild.h $(SRCDIR)/zutil.h $(SRCDIR)/inftrees.h $(SRCDIR)/inflate.h $(SRCDIR)/inffast.h $(SRCDIR)/functable.h
+inflate.obj: $(SRCDIR)/inflate.c $(SRCDIR)/zbuild.h $(SRCDIR)/zutil.h $(SRCDIR)/inftrees.h $(SRCDIR)/inflate.h $(SRCDIR)/inffast.h $(SRCDIR)/functable.h $(SRCDIR)/functable.h
 inftrees.obj: $(SRCDIR)/inftrees.c $(SRCDIR)/zbuild.h $(SRCDIR)/zutil.h $(SRCDIR)/inftrees.h
+memchunk.obj: $(SRCDIR)/zbuild.h $(SRCDIR)/zutil.h
 trees.obj: $(SRCDIR)/zbuild.h $(SRCDIR)/deflate.h $(SRCDIR)/trees.h
 zutil.obj: $(SRCDIR)/zbuild.h $(SRCDIR)/zutil.h $(SRCDIR)/gzguts.h
 

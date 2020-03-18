@@ -52,10 +52,10 @@ OBJS = \
 	inftrees.obj \
 	inffast.obj \
 	insert_string.obj \
+	memchunk.obj \
 	trees.obj \
 	uncompr.obj \
-	zutil.obj \
-	fill_window_arm.obj
+	zutil.obj
 
 !if "$(WITH_GZFILEOP)" != ""
 WFLAGS = $(WFLAGS) -DWITH_GZFILEOP
@@ -79,8 +79,8 @@ NEON_ARCH = /arch:VFPv3
 !endif
 !if "$(WITH_NEON)" != ""
 CFLAGS = $(CFLAGS) $(NEON_ARCH)
-WFLAGS = $(WFLAGS) -D__ARM_NEON__=1 -DARM_NEON_ADLER32 -DARM_NEON_SLIDEHASH -DARM_NOCHECK_NEON
-OBJS = $(OBJS) adler32_neon.obj slide_neon.obj
+WFLAGS = $(WFLAGS) -D__ARM_NEON__=1 -DARM_NEON_ADLER32 -DARM_NEON_MEMCHUNK -DARM_NEON_SLIDEHASH -DARM_NOCHECK_NEON
+OBJS = $(OBJS) adler32_neon.obj slide_neon.obj memchunk_neon.obj
 !endif
 
 # targets
@@ -161,9 +161,10 @@ deflate_medium.obj: $(SRCDIR)/deflate_medium.c $(SRCDIR)/zbuild.h $(SRCDIR)/defl
 deflate_quick.obj: $(SRCDIR)/deflate_quick.c $(SRCDIR)/zbuild.h $(SRCDIR)/deflate.h $(SRCDIR)/deflate_p.h $(SRCDIR)/functable.h $(SRCDIR)/trees_emit.h
 deflate_slow.obj: $(SRCDIR)/deflate_slow.c $(SRCDIR)/zbuild.h $(SRCDIR)/deflate.h $(SRCDIR)/deflate_p.h $(SRCDIR)/functable.h
 infback.obj: $(SRCDIR)/infback.c $(SRCDIR)/zbuild.h $(SRCDIR)/zutil.h $(SRCDIR)/inftrees.h $(SRCDIR)/inflate.h $(SRCDIR)/inffast.h
-inffast.obj: $(SRCDIR)/inffast.c $(SRCDIR)/zbuild.h $(SRCDIR)/zutil.h $(SRCDIR)/inftrees.h $(SRCDIR)/inflate.h $(SRCDIR)/inffast.h $(SRCDIR)/memcopy.h
-inflate.obj: $(SRCDIR)/inflate.c $(SRCDIR)/zbuild.h $(SRCDIR)/zutil.h $(SRCDIR)/inftrees.h $(SRCDIR)/inflate.h $(SRCDIR)/inffast.h $(SRCDIR)/memcopy.h $(SRCDIR)/functable.h
+inffast.obj: $(SRCDIR)/inffast.c $(SRCDIR)/zbuild.h $(SRCDIR)/zutil.h $(SRCDIR)/inftrees.h $(SRCDIR)/inflate.h $(SRCDIR)/inffast.h $(SRCDIR)/functable.h
+inflate.obj: $(SRCDIR)/inflate.c $(SRCDIR)/zbuild.h $(SRCDIR)/zutil.h $(SRCDIR)/inftrees.h $(SRCDIR)/inflate.h $(SRCDIR)/inffast.h $(SRCDIR)/functable.h $(SRCDIR)/functable.h
 inftrees.obj: $(SRCDIR)/inftrees.c $(SRCDIR)/zbuild.h $(SRCDIR)/zutil.h $(SRCDIR)/inftrees.h
+memchunk.obj: $(SRCDIR)/zbuild.h $(SRCDIR)/zutil.h
 trees.obj: $(SRCDIR)/zbuild.h $(SRCDIR)/deflate.h $(SRCDIR)/trees.h
 zutil.obj: $(SRCDIR)/zbuild.h $(SRCDIR)/zutil.h $(SRCDIR)/gzguts.h
 
