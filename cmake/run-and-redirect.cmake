@@ -5,6 +5,8 @@ if(NOT OUTPUT)
         set(OUTPUT /dev/null)
     endif()
 endif()
+
+string(TIMESTAMP START_TIME "%s" UTC)
 if(INPUT)
     execute_process(COMMAND ${COMMAND}
         RESULT_VARIABLE CMD_RESULT
@@ -15,12 +17,35 @@ else()
         RESULT_VARIABLE CMD_RESULT
         OUTPUT_FILE ${OUTPUT})
 endif()
+string(TIMESTAMP END_TIME "%s" UTC)
+math(EXPR EXEC_TIME "${END_TIME} - ${START_TIME}")
+
+set(EXIT_RESULT ${CMD_RESULT})
 if(SUCCESS_EXIT)
     list(FIND SUCCESS_EXIT ${CMD_RESULT} _INDEX)
     if (${_INDEX} GREATER -1)
-        set(CMD_RESULT 0)
+        set(EXIT_RESULT 0)
     endif()
 endif()
-if(CMD_RESULT)
-    message(FATAL_ERROR "${COMMAND} failed: ${CMD_RESULT}")
+
+if(EVENT)
+    find_package(Python2)
+    if(Python2_FOUND)
+        cmake_host_system_information(RESULT SYSTEM_HOSTNAME QUERY HOSTNAME)
+        execute_process(COMMAND ${Python2_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/cmake/track-test.py
+            "--user_id=${SYSTEM_HOSTNAME}"
+            "--event_name=${EVENT}"
+            --cmd_result=${CMD_RESULT}
+            --exit_result=${EXIT_RESULT}
+            --elapsed_time=${EXEC_TIME}
+            "--input_file=${INPUT}"
+            "--output_file=${OUTPUT}"
+            ${COMMAND})
+    else()
+        message(STATUS "Skipping analytics due to missing python")
+    endif()
+endif()
+
+if(EXIT_RESULT)
+    message(FATAL_ERROR "${COMMAND} failed: ${EXIT_RESULT}")
 endif()

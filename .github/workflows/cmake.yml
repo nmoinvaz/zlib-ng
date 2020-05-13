@@ -365,6 +365,10 @@ jobs:
       run: |
         python -u -m pip -v install git+https://github.com/nmoinvaz/codecov-python.git@master
 
+    - name: Install mixpanel
+      run: |
+        python -u -m pip -v install mixpanel
+
     - name: Generate project files
       # Shared libaries turned off for qemu ppc* and sparc & reduce code coverage sources
       # Gzip file operations turned on to reduce code coverage sources across multiple tests
@@ -386,12 +390,13 @@ jobs:
     - name: Run test cases
       run: |
         cd ${{ matrix.build-dir || '.' }}
-        ctest -C Release --output-on-failure --max-width 120
+        ctest -C Release --output-on-failure --verbose --max-width 120
       env:
         ASAN_OPTIONS: ${{ matrix.asan-options || 'verbosity=1' }}
         MSAN_OPTIONS: ${{ matrix.msan-options || 'verbosity=1' }}
         TSAN_OPTIONS: ${{ matrix.tsan-options || 'verbosity=1' }}
         LSAN_OPTIONS: ${{ matrix.lsan-options || 'verbosity=1' }}
+        MIXPANEL_TOKEN: ${{secrets.MIXPANEL_TOKEN}}
 
     - name: Upload coverage report
       if: matrix.codecov && ( env.CODECOV_TOKEN_SECRET != '' || github.repository == 'zlib-ng/zlib-ng' )
