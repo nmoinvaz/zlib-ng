@@ -28,7 +28,7 @@ i = 0
 for i in range(1, len(event_info)):
     # Look for first part containing open mode and
     # compression level
-    if len(event_info[i]) <= 2:
+    if len(event_info[i]) > 2:
         file_info.append(event_info[i])
     else:
         break
@@ -37,13 +37,13 @@ track_info = {
     "Elapsed Time": args.elapsed_time,
     "Command": command,
     "File": "-".join(file_info),
-    "Mode": event_info[i][0],
+    "Open Mode": event_info[i][0],
     "Test": " ".join(event_info[i+1:]),
     "Full Command": " ".join(unknown_args)
 }
 
 if len(event_info[i]) > 1:
-    track_info["Level"] = event_info[i][1]
+    track_info["Compression Level"] = event_info[i][1]
 
 github_workflow = os.getenv("GITHUB_WORKFLOW")
 if github_workflow:
@@ -82,9 +82,9 @@ if args.output_file and len(args.output_file) > 0:
 
 if input_file_size > 0 and output_file_size > 0 and args.output_file.endswith(".gz"):
     ratio = (float(output_file_size) / float(input_file_size)) * 100
-    track_info["Ratio"] = "{:.2f}".format(ratio) + "%"
+    track_info["Ratio"] = "{:.2f}".format(ratio)
 if input_file_size > 0 and output_file_size > 0 and args.input_file.endswith(".gz"):
     ratio = (float(input_file_size) / float(output_file_size)) * 100
-    track_info["Ratio"] = "{:.2f}".format(ratio) + "%"
+    track_info["Ratio"] = "{:.2f}".format(ratio)
 
 mp.track(args.user_id, args.event_name, track_info)
