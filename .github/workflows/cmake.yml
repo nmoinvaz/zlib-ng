@@ -368,6 +368,7 @@ jobs:
     - name: Install mixpanel
       run: |
         python -u -m pip -v install mixpanel
+        python3 -u -m pip -v install mixpanel
 
     - name: Generate project files
       # Shared libaries turned off for qemu ppc* and sparc & reduce code coverage sources
