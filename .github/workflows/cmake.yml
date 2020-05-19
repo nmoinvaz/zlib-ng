@@ -55,7 +55,6 @@ jobs:
           - name: Windows CYGWIN GCC
             os: windows-latest
             compiler: gcc
-            cmake-args: -G Ninja
             packages: cygwin
             codecov: win64_cygwin_gcc
 
