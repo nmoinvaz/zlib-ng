@@ -24,6 +24,12 @@ set(VALID_C_STANDARDS "99" "11")
 if(NOT CMAKE_C_STANDARD IN_LIST VALID_C_STANDARDS)
    MESSAGE(FATAL_ERROR "CMAKE_C_STANDARD:STRING=${CMAKE_C_STANDARD} not in know standards list\n ${VALID_C_STANDARDS}")
 endif()
+if(CMAKE_SYSTEM_NAME)
+    message(STATUS "CMake system name: ${CMAKE_SYSTEM_NAME}")
+endif()
+if(CYGWIN)
+    message(STATUS "Detected CYGWIN")
+endif()
 
 # Parse the full version number from zlib.h and include in ZLIB_FULL_VERSION
 file(READ ${CMAKE_CURRENT_SOURCE_DIR}/zlib${SUFFIX}.h _zlib_h_contents)
