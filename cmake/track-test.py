@@ -37,13 +37,13 @@ track_info = {
     "Elapsed Time": args.elapsed_time,
     "Command": command,
     "File": "-".join(file_info),
-    "Open Mode": event_info[i][0],
+    "Compression Level": event_info[i][0],
     "Test": " ".join(event_info[i+1:]),
     "Full Command": " ".join(unknown_args)
 }
 
 if len(event_info[i]) > 1:
-    track_info["Compression Level"] = event_info[i][1]
+    track_info["Open Mode"] = event_info[i][1]
 
 github_workflow = os.getenv("GITHUB_WORKFLOW")
 if github_workflow:
