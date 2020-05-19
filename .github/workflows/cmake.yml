@@ -73,15 +73,16 @@ jobs:
       run: |
         choco install ninja ${{ matrix.packages }}
 
+    - uses: numworks/setup-msys2@v1
+      if: runner.os == 'Windows' && matrix.codecov && contains(matrix.name, 'MING')
+
     - name: Install packages (Windows/GCC)
-      uses: numworks/setup-msys2@v1
       if: runner.os == 'Windows' && matrix.codecov && contains(matrix.name, 'MING')
       # Use gcov-7 via mingw on windows because gcov-8 throws tons of warnings
       # https://partner-bugzilla.redhat.com/show_bug.cgi?id=1577508
       run: |
         msys2do uname -a
-        choco install mingw --version=7.3.0 --force --allow-downgrade
-        msys2do uname -a
+
 
     - name: Install packages (macOS)
       if: runner.os == 'macOS'
