@@ -297,6 +297,8 @@ int main(int argc, char *argv[]) {
             keep = 1;
         else if (strcmp(argv[i], "-A") == 0)
             type = "";
+        else if (strcmp(argv[i], "-b") == 0)
+            continue;
         else if (argv[i][0] == '-' && (argv[i][1] == 'f' || argv[i][1] == 'h' ||
                  argv[i][1] == 'R' || argv[i][1] == 'F' || argv[i][1] == 'T') && argv[i][2] == 0)
             strategy = argv[i] + 1;
