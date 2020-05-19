@@ -29,10 +29,10 @@ if(SUCCESS_EXIT)
 endif()
 
 if(EVENT)
-    find_package(Python2)
-    if(Python2_FOUND)
+    #find_package(Python2)
+    #if(Python2_FOUND)
         cmake_host_system_information(RESULT SYSTEM_HOSTNAME QUERY HOSTNAME)
-        execute_process(COMMAND ${Python2_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/cmake/track-test.py
+        execute_process(COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/cmake/track-test.py
             "--user_id=${SYSTEM_HOSTNAME}"
             "--event_name=${EVENT}"
             --cmd_result=${CMD_RESULT}
@@ -41,9 +41,9 @@ if(EVENT)
             "--input_file=${INPUT}"
             "--output_file=${OUTPUT}"
             ${COMMAND})
-    else()
-        message(STATUS "Skipping analytics due to missing python")
-    endif()
+    #else()
+    #    message(STATUS "Skipping analytics due to missing python")
+    #endif()
 endif()
 
 if(EXIT_RESULT)
