@@ -397,6 +397,7 @@ jobs:
         TSAN_OPTIONS: ${{ matrix.tsan-options || 'verbosity=1' }}
         LSAN_OPTIONS: ${{ matrix.lsan-options || 'verbosity=1' }}
         MIXPANEL_TOKEN: ${{secrets.MIXPANEL_TOKEN}}
+        MATRIX_NAME: ${{ matrix.name }}
 
     - name: Upload coverage report
       if: matrix.codecov && ( env.CODECOV_TOKEN_SECRET != '' || github.repository == 'zlib-ng/zlib-ng' )

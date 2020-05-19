@@ -63,6 +63,9 @@ if github_action:
 github_actor = os.getenv("GITHUB_ACTOR")
 if github_actor:
     track_info["GitHub Actor"] = github_actor
+matrix_name = os.getenv("MATRIX_NAME")
+if matrix_name:
+    track_info["Matrix Name"] = matrix_name
 
 if args.cmd_result:
     track_info["Command Result"] = args.cmd_result
