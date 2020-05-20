@@ -1043,7 +1043,6 @@ if (ZLIB_ENABLE_TESTS)
         add_test(NAME ${target}-${name}-file-compr
             COMMAND ${CMAKE_COMMAND}
             "-DCOMMAND=${GZ_COMMAND}"
-            -DEVENT=${target}-${name}-file-compr
             "-DSUCCESS_EXIT=0;1"
             -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/run-and-redirect.cmake)
     endmacro()
@@ -1053,7 +1052,6 @@ if (ZLIB_ENABLE_TESTS)
         add_test(NAME ${target}-${name}-file-uncompr
             COMMAND ${CMAKE_COMMAND}
             "-DCOMMAND=${GZ_COMMAND}"
-            -DEVENT=${target}-${name}-file-uncompr
             "-DSUCCESS_EXIT=0;1"
             -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/run-and-redirect.cmake)
     endmacro()
@@ -1099,7 +1097,6 @@ if (ZLIB_ENABLE_TESTS)
                 add_test(NAME ${target}-${name}-${GZ_ARGS}-gzip-uncompr
                     COMMAND ${CMAKE_COMMAND}
                     "-DCOMMAND=${GZ_COMMAND}"
-                    -DEVENT=${target}-${name}-${GZ_ARGS}-gzip-uncompr
                     -DINPUT=${CMAKE_CURRENT_SOURCE_DIR}/${path}.gz
                     -DOUTPUT=${CMAKE_CURRENT_SOURCE_DIR}/${path}.gzip.out
                     "-DSUCCESS_EXIT=0;1"
@@ -1113,7 +1110,6 @@ if (ZLIB_ENABLE_TESTS)
                 add_test(NAME ${target}-${name}-${GZ_ARGS}-gzip-compr
                     COMMAND ${CMAKE_COMMAND}
                     "-DCOMMAND=${GZ_COMMAND}"
-                    -DEVENT=${target}-${name}-${GZ_ARGS}-gzip-compr
                     -DINPUT=${CMAKE_CURRENT_SOURCE_DIR}/${path}
                     -DOUTPUT=${CMAKE_CURRENT_SOURCE_DIR}/${path}.gzip.gz
                     "-DSUCCESS_EXIT=0;1"
@@ -1122,7 +1118,6 @@ if (ZLIB_ENABLE_TESTS)
                 add_test(NAME ${target}-${name}-${GZ_ARGS}-minigzip-uncompr
                     COMMAND ${CMAKE_COMMAND}
                     "-DCOMMAND=${GZ_COMMAND}"
-                    -DEVENT=${target}-${name}-${GZ_ARGS}-minigzip-uncompr
                     -DINPUT=${CMAKE_CURRENT_SOURCE_DIR}/${path}.gzip.gz
                     -DOUTPUT=${CMAKE_CURRENT_SOURCE_DIR}/${path}.gzip.out
                     "-DSUCCESS_EXIT=0;1"
