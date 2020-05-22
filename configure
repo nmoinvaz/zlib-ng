@@ -1099,8 +1099,8 @@ case "${ARCH}" in
             CFLAGS="${CFLAGS} -DX86_CPUID"
             SFLAGS="${SFLAGS} -DX86_CPUID"
 
-            ARCH_STATIC_OBJS="${ARCH_STATIC_OBJS} adler32_x86.o x86.o"
-            ARCH_SHARED_OBJS="${ARCH_SHARED_OBJS} adler32_x86.lo x86.lo"
+            ARCH_STATIC_OBJS="${ARCH_STATIC_OBJS} x86.o"
+            ARCH_SHARED_OBJS="${ARCH_SHARED_OBJS} x86.lo"
 
             if test ${HAVE_SSE2_INTRIN} -eq 1; then
                 CFLAGS="${CFLAGS} -DX86_SSE2"

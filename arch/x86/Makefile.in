@@ -19,7 +19,7 @@ SRCDIR=.
 SRCTOP=../..
 TOPDIR=$(SRCTOP)
 
-all: x86.o x86.lo  adler32_sse3.o adler32_sse3.lo adler32_ssse3.o adler32_ssse3.lo adler32_sse4.o adler32_sse4.lo adler32_x86.o adler32_x86.lo adler32_xop.o adler32_xop.lo deflate_quick.o deflate_quick.lo insert_string_sse.o insert_string_sse.lo crc_folding.o crc_folding.lo slide_avx.o slide_avx.lo slide_sse.o slide_sse.lo
+all: x86.o x86.lo  adler32_sse3.o adler32_sse3.lo adler32_ssse3.o adler32_ssse3.lo adler32_sse4.o adler32_sse4.lo adler32_xop.o adler32_xop.lo deflate_quick.o deflate_quick.lo insert_string_sse.o insert_string_sse.lo crc_folding.o crc_folding.lo slide_avx.o slide_avx.lo slide_sse.o slide_sse.lo
 
 x86.o:
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $(SRCDIR)/x86.c
@@ -44,12 +44,6 @@ adler32_sse4.o: $(SRCDIR)/adler32_sse4.c
 
 adler32_sse4.lo: $(SRCDIR)/adler32_sse4.c
 	$(CC) $(SFLAGS) $(SSE4FLAG) $(INCLUDES) -c -o $@ $(SRCDIR)/adler32_sse4.c
-
-adler32_x86.o: $(SRCDIR)/adler32_x86.c
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $(SRCDIR)/adler32_x86.c
-
-adler32_x86.lo: $(SRCDIR)/adler32_x86.c
-	$(CC) $(SFLAGS) $(INCLUDES) -c -o $@ $(SRCDIR)/adler32_x86.c
 
 adler32_xop.o: $(SRCDIR)/adler32_xop.c
 	$(CC) $(CFLAGS) $(XOPFLAG) $(INCLUDES) -c -o $@ $(SRCDIR)/adler32_xop.c

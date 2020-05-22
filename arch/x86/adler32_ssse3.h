@@ -4,12 +4,8 @@
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 
-/* @(#) $Id$ */
-
 #ifndef __ADLER32_SSSE3__
 #define __ADLER32_SSSE3__
-
-#include "zlib.h"
 
 uint32_t adler32_ssse3(uint32_t adler, const unsigned char *buf, size_t len);
 
