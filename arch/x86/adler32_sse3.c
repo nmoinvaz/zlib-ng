@@ -26,15 +26,15 @@ uint32_t adler32_sse3(uint32_t adler, const unsigned char *buf, size_t len) {
     int n = NMAX;
     unsigned int done = 0, i;
     unsigned int al = 0;
-
+    
     /* split Adler-32 into component sums */
     sum2 = (adler >> 16) & 0xffff;
     adler &= 0xffff;
-
+    
     /* in case user likes doing a byte at a time, keep it fast */
     if (UNLIKELY(len == 1))
         return adler32_len_1(adler, buf, sum2);
-
+    
     /* initial Adler-32 value (deferred check for len == 1 speed) */
     if (UNLIKELY(buf == NULL))
         return 1L;

@@ -19,6 +19,8 @@ extern "C" uint32_t adler32_sse3(uint32_t adler, const unsigned char *buf, size_
 #endif
 #ifdef X86_SSE4_ADLER32
 extern "C" uint32_t adler32_sse4(uint32_t adler, const unsigned char *buf, size_t len);
+extern "C" uint32_t adler32_vec(uint32_t adler, const unsigned char *buf, size_t len);
+extern "C" uint32_t adler32_avx(uint32_t adler, const unsigned char *buf, size_t len);
 #endif
 #ifdef X86_SSSE3_ADLER32
 extern "C" uint32_t adler32_ssse3(uint32_t adler, const unsigned char *buf, size_t len);
@@ -46,6 +48,17 @@ static void adler32_sse3_bench(benchmark::State& state) {
 }
 BENCHMARK(adler32_sse3_bench);
 
+static void adler32_sse4_bench(benchmark::State& state) {
+    int32_t j = 0;
+    uint32_t a = 0;
+    while (state.KeepRunning()) {
+        uint32_t hash = adler32_sse4(a, (const unsigned char *)random_ints, j * sizeof(uint32_t));
+        benchmark::DoNotOptimize(hash);
+        if (++j >= MAX_RANDOM_INTS) j = 0;
+    }
+}
+BENCHMARK(adler32_sse4_bench);
+
 static void adler32_ssse3_bench(benchmark::State& state) {
     int32_t j = 0;
     uint32_t a = 0;
@@ -57,16 +70,27 @@ static void adler32_ssse3_bench(benchmark::State& state) {
 }
 BENCHMARK(adler32_ssse3_bench);
 
-static void adler32_sse4_bench(benchmark::State& state) {
+static void adler32_vec_bench(benchmark::State& state) {
     int32_t j = 0;
     uint32_t a = 0;
     while (state.KeepRunning()) {
-        uint32_t hash = adler32_sse4(a, (const unsigned char *)random_ints, j * sizeof(uint32_t));
+        uint32_t hash = adler32_vec(a, (const unsigned char *)random_ints, j * sizeof(uint32_t));
         benchmark::DoNotOptimize(hash);
         if (++j >= MAX_RANDOM_INTS) j = 0;
     }
 }
-BENCHMARK(adler32_sse4_bench);
+BENCHMARK(adler32_vec_bench);
+
+static void adler32_avx_bench(benchmark::State& state) {
+    int32_t j = 0;
+    uint32_t a = 0;
+    while (state.KeepRunning()) {
+        uint32_t hash = adler32_avx(a, (const unsigned char *)random_ints, j * sizeof(uint32_t));
+        benchmark::DoNotOptimize(hash);
+        if (++j >= MAX_RANDOM_INTS) j = 0;
+    }
+}
+BENCHMARK(adler32_avx_bench);
 
 int main(int argc, char** argv)
 {

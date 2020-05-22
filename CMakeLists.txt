@@ -1,11 +1,12 @@
-cmake_minimum_required(VERSION 3.5.1)
+#cmake_minimum_required(VERSION 3.5.1)
+cmake_minimum_required(VERSION 3.17)
 if(CMAKE_VERSION VERSION_LESS 3.12)
   cmake_policy(VERSION ${CMAKE_VERSION})
 else()
   cmake_policy(VERSION 3.5.1...3.13.2)
 endif()
 message(STATUS "Using CMake version ${CMAKE_VERSION}")
-
+cmake_policy(SET CMP0091 NEW)
 set(CMAKE_MACOSX_RPATH 1)
 
 # If not specified on the command line, enable C99 as the default
@@ -36,7 +37,7 @@ message(STATUS "ZLIBNG_HEADER_VERSION: ${ZLIBNG_HEADER_VERSION}")
 
 project(zlib
   VERSION ${ZLIB_HEADER_VERSION}
-  LANGUAGES C)
+  LANGUAGES C CXX)
 
 set(INSTALL_BIN_DIR "${CMAKE_INSTALL_PREFIX}/bin" CACHE PATH "Installation directory for executables")
 set(INSTALL_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib" CACHE PATH "Installation directory for libraries")
@@ -1087,6 +1088,13 @@ if (ZLIB_ENABLE_TESTS)
             set_source_files_properties(test/minigzip.c PROPERTIES COMPILE_DEFINITIONS BUFLEN=262144)
         endif()
     endif()
+
+    add_executable(adler32_benchmark)
+    target_sources(adler32_benchmark PRIVATE adler32_benchmark.cc)
+    target_include_directories(adler32_benchmark PRIVATE benchmark/include)
+    target_link_directories(adler32_benchmark PRIVATE benchmark/build/src/Release)
+    configure_test_executable(adler32_benchmark)
+    target_link_libraries(adler32_benchmark benchmark shlwapi zlib)
 
     add_executable(switchlevels test/switchlevels.c)
     configure_test_executable(switchlevels)
