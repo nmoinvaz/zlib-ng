@@ -510,7 +510,7 @@ if(BASEARCH_X86_FOUND)
         set(CMAKE_REQUIRED_FLAGS "${SSE3FLAG}")
     endif()
     check_c_source_compile_or_run(
-        "#include <x86intrin.h>
+        "#include <immintrin.h>
          
         int main(void)
         {
@@ -532,7 +532,7 @@ if(BASEARCH_X86_FOUND)
         set(CMAKE_REQUIRED_FLAGS "${SSSE3FLAG}")
     endif()
     check_c_source_compile_or_run(
-        "#include <x86intrin.h>
+        "#include <immintrin.h>
 
         int main(void)
         {
@@ -551,7 +551,7 @@ if(BASEARCH_X86_FOUND)
         set(CMAKE_REQUIRED_FLAGS "${SSE4FLAG}")
     endif()
     check_c_source_compile_or_run(
-        "#include <x86intrin.h>
+        "#include <immintrin.h>
 
         int main(void)
         {
@@ -627,7 +627,7 @@ if(BASEARCH_X86_FOUND)
         set(CMAKE_REQUIRED_FLAGS "${XOPFLAG}")
     endif()
     check_c_source_compile_or_run(
-        "#include <x86intrin.h>
+        "#include <immintrin.h>
         int main(void)
         {
             __m128i a = _mm_set1_epi8(1);

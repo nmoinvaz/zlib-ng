@@ -71,7 +71,7 @@ void ZLIB_INTERNAL x86_check_features(void) {
         x86_cpu_has_sse41 = ecx & 0x80000;
         x86_cpu_has_sse42 = ecx & 0x100000;
         x86_cpu_has_pclmulqdq = ecx & 0x2;
-        x86_cpu_has_avx = (ecx & 0x18000000) && avx_enabled();
+        x86_cpu_has_avx = ecx & 0x18000000;
     }
     if (maxbasic >= 7) {
         cpuidex(7, 0, &eax, &ebx, &ecx, &edx);

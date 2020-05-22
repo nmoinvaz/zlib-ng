@@ -68,6 +68,7 @@ static inline __m128i haddd_epu16(__m128i a)
   ret.m128i_u32[1] = a.m128i_u16[2] + a.m128i_u16[3];
   ret.m128i_u32[2] = a.m128i_u16[4] + a.m128i_u16[5];
   ret.m128i_u32[3] = a.m128i_u16[6] + a.m128i_u16[7];
+  return ret;
 #else
   v2si b = (v2si)a;
   v4si ret;
