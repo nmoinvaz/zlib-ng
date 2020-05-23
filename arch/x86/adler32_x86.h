@@ -29,9 +29,9 @@ static inline void sse_accum32(uint32_t *s, const unsigned char *buf, size_t len
         __m128i d0 = _mm_load_si128((__m128i *)buf);
         __m128i sum2;
         sum2  =                      _mm_mullo_epi16(  cvtepu8_epi16(t0),   cvtepu8_epi16(d0));
-        sum2  = _mm_add_epi16(sum2,  _mm_mullo_epi16(cvtepu8hi_epi16(t0), cvtepu8hi_epi16(d0)));
+        sum2  = _mm_maddubs_epi16(d0, t0);
         s2acc = _mm_add_epi32(s2acc, _mm_slli_epi32(adacc, 4));
-        s2acc = _mm_add_epi32(s2acc, haddd_epu16(sum2));
+        s2acc = _mm_add_epi32(s2acc, _mm_madd_epi16(sum2, _mm_set1_epi16(1)));
         adacc = _mm_add_epi32(adacc, haddd_epu8(d0));
         buf += 16;
         len--;
