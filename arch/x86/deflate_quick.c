@@ -64,7 +64,7 @@ ZLIB_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
             hash_head = functable.quick_insert_string(s, s->strstart);
             dist = s->strstart - hash_head;
 
-            if (dist > 0 && (dist-1) < (s->w_size - 1)) {
+            if (dist > 0 && dist < (s->w_size - 1)) {
                 match_len = functable.compare258(s->window + s->strstart, s->window + hash_head);
 
                 if (match_len >= MIN_MATCH) {
