@@ -28,8 +28,8 @@
  * the previous length of the hash chain.
  */
 
-ZLIB_INTERNAL Pos QUICK_INSERT_STRING(deflate_state *const s, const Pos str) {
-    Pos head;
+ZLIB_INTERNAL wpos_t QUICK_INSERT_STRING(deflate_state *const s, const wpos_t str) {
+    wpos_t head;
     uint32_t val, hm, h = 0;
 
 #ifdef UNALIGNED_OK
@@ -61,8 +61,8 @@ ZLIB_INTERNAL Pos QUICK_INSERT_STRING(deflate_state *const s, const Pos str) {
  *    (except for the last MIN_MATCH-1 bytes of the input file).
  */
 
-ZLIB_INTERNAL Pos INSERT_STRING(deflate_state *const s, const Pos str, unsigned int count) {
-    Pos idx, ret;
+ZLIB_INTERNAL wpos_t INSERT_STRING(deflate_state *const s, const wpos_t str, unsigned int count) {
+    wpos_t idx, ret;
     uint8_t *strstart, *strend;
 
     if (UNLIKELY(count == 0)) {
@@ -87,7 +87,7 @@ ZLIB_INTERNAL Pos INSERT_STRING(deflate_state *const s, const Pos str, unsigned 
         UPDATE_HASH(s, h, val);
         hm = h & s->hash_mask;
 
-        Pos head = s->head[hm];
+        wpos_t head = s->head[hm];
         if (head != idx) {
             s->prev[idx & s->w_mask] = head;
             s->head[hm] = idx;

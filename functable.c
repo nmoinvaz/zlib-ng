@@ -15,19 +15,19 @@
 #endif
 
 /* insert_string */
-extern Pos insert_string_c(deflate_state *const s, const Pos str, unsigned int count);
+extern wpos_t insert_string_c(deflate_state *const s, const wpos_t str, unsigned int count);
 #ifdef X86_SSE42_CRC_HASH
-extern Pos insert_string_sse4(deflate_state *const s, const Pos str, unsigned int count);
+extern wpos_t insert_string_sse4(deflate_state *const s, const wpos_t str, unsigned int count);
 #elif defined(ARM_ACLE_CRC_HASH)
-extern Pos insert_string_acle(deflate_state *const s, const Pos str, unsigned int count);
+extern wpos_t insert_string_acle(deflate_state *const s, const wpos_t str, unsigned int count);
 #endif
 
 /* quick_insert_string */
-extern Pos quick_insert_string_c(deflate_state *const s, const Pos str);
+extern wpos_t quick_insert_string_c(deflate_state *const s, const wpos_t str);
 #ifdef X86_SSE42_CRC_HASH
-extern Pos quick_insert_string_sse4(deflate_state *const s, const Pos str);
+extern wpos_t quick_insert_string_sse4(deflate_state *const s, const wpos_t str);
 #elif defined(ARM_ACLE_CRC_HASH)
-extern Pos quick_insert_string_acle(deflate_state *const s, const Pos str);
+extern wpos_t quick_insert_string_acle(deflate_state *const s, const wpos_t str);
 #endif
 /* slide_hash */
 #ifdef X86_SSE2
@@ -59,41 +59,41 @@ extern uint32_t crc32_big(uint32_t, const unsigned char *, uint64_t);
 #endif
 
 /* compare258 */
-extern int32_t compare258_c(const unsigned char *src0, const unsigned char *src1);
+extern wlen_t compare258_c(const unsigned char *src0, const unsigned char *src1);
 #ifdef UNALIGNED_OK
-extern int32_t compare258_unaligned_16(const unsigned char *src0, const unsigned char *src1);
-extern int32_t compare258_unaligned_32(const unsigned char *src0, const unsigned char *src1);
-extern int32_t compare258_unaligned_64(const unsigned char *src0, const unsigned char *src1);
+extern wlen_t compare258_unaligned_16(const unsigned char *src0, const unsigned char *src1);
+extern wlen_t compare258_unaligned_32(const unsigned char *src0, const unsigned char *src1);
+extern wlen_t compare258_unaligned_64(const unsigned char *src0, const unsigned char *src1);
 #ifdef X86_SSE42_CMP_STR
-extern int32_t compare258_unaligned_sse4(const unsigned char *src0, const unsigned char *src1);
+extern wlen_t compare258_unaligned_sse4(const unsigned char *src0, const unsigned char *src1);
 #endif
 #if defined(X86_AVX2) && defined(HAVE_BUILTIN_CTZ)
-extern int32_t compare258_unaligned_avx2(const unsigned char *src0, const unsigned char *src1);
+extern wlen_t compare258_unaligned_avx2(const unsigned char *src0, const unsigned char *src1);
 #endif
 #endif
 
 /* longest_match */
-extern int32_t longest_match_c(deflate_state *const s, IPos cur_match);
+extern uint16_t longest_match_c(deflate_state *const s, wpos_t cur_match);
 #ifdef UNALIGNED_OK
-extern int32_t longest_match_unaligned_16(deflate_state *const s, IPos cur_match);
-extern int32_t longest_match_unaligned_32(deflate_state *const s, IPos cur_match);
-extern int32_t longest_match_unaligned_64(deflate_state *const s, IPos cur_match);
+extern wlen_t longest_match_unaligned_16(deflate_state *const s, wpos_t cur_match);
+extern wlen_t longest_match_unaligned_32(deflate_state *const s, wpos_t cur_match);
+extern wlen_t longest_match_unaligned_64(deflate_state *const s, wpos_t cur_match);
 #ifdef X86_SSE42_CMP_STR
-extern int32_t longest_match_unaligned_sse4(deflate_state *const s, IPos cur_match);
+extern wlen_t longest_match_unaligned_sse4(deflate_state *const s, wpos_t cur_match);
 #endif
 #if defined(X86_AVX2) && defined(HAVE_BUILTIN_CTZ)
-extern int32_t longest_match_unaligned_avx2(deflate_state *const s, IPos cur_match);
+extern wlen_t longest_match_unaligned_avx2(deflate_state *const s, wpos_t cur_match);
 #endif
 #endif
 
 /* stub definitions */
-ZLIB_INTERNAL Pos insert_string_stub(deflate_state *const s, const Pos str, unsigned int count);
-ZLIB_INTERNAL Pos quick_insert_string_stub(deflate_state *const s, const Pos str);
+ZLIB_INTERNAL wpos_t insert_string_stub(deflate_state *const s, const wpos_t str, unsigned int count);
+ZLIB_INTERNAL wpos_t quick_insert_string_stub(deflate_state *const s, const wpos_t str);
 ZLIB_INTERNAL uint32_t adler32_stub(uint32_t adler, const unsigned char *buf, size_t len);
 ZLIB_INTERNAL uint32_t crc32_stub(uint32_t crc, const unsigned char *buf, uint64_t len);
 ZLIB_INTERNAL void slide_hash_stub(deflate_state *s);
-ZLIB_INTERNAL int32_t compare258_stub(const unsigned char *src0, const unsigned char *src1);
-ZLIB_INTERNAL int32_t longest_match_stub(deflate_state *const s, IPos cur_match);
+ZLIB_INTERNAL wlen_t compare258_stub(const unsigned char *src0, const unsigned char *src1);
+ZLIB_INTERNAL wlen_t longest_match_stub(deflate_state *const s, wpos_t cur_match);
 
 /* functable init */
 ZLIB_INTERNAL __thread struct functable_s functable = {
@@ -120,7 +120,7 @@ ZLIB_INTERNAL void cpu_check_features(void)
 }
 
 /* stub functions */
-ZLIB_INTERNAL Pos insert_string_stub(deflate_state *const s, const Pos str, unsigned int count) {
+ZLIB_INTERNAL wpos_t insert_string_stub(deflate_state *const s, const wpos_t str, unsigned int count) {
     // Initialize default
 
     functable.insert_string = &insert_string_c;
@@ -137,7 +137,7 @@ ZLIB_INTERNAL Pos insert_string_stub(deflate_state *const s, const Pos str, unsi
     return functable.insert_string(s, str, count);
 }
 
-ZLIB_INTERNAL Pos quick_insert_string_stub(deflate_state *const s, const Pos str) {
+ZLIB_INTERNAL wpos_t quick_insert_string_stub(deflate_state *const s, const wpos_t str) {
     functable.quick_insert_string = &quick_insert_string_c;
 
 #ifdef X86_SSE42_CRC_HASH
@@ -217,7 +217,7 @@ ZLIB_INTERNAL uint32_t crc32_stub(uint32_t crc, const unsigned char *buf, uint64
     return functable.crc32(crc, buf, len);
 }
 
-ZLIB_INTERNAL int32_t compare258_stub(const unsigned char *src0, const unsigned char *src1) {
+ZLIB_INTERNAL wlen_t compare258_stub(const unsigned char *src0, const unsigned char *src1) {
 
     functable.compare258 = &compare258_c;
 
@@ -242,7 +242,7 @@ ZLIB_INTERNAL int32_t compare258_stub(const unsigned char *src0, const unsigned 
     return functable.compare258(src0, src1);
 }
 
-ZLIB_INTERNAL int32_t longest_match_stub(deflate_state *const s, IPos cur_match) {
+ZLIB_INTERNAL wlen_t longest_match_stub(deflate_state *const s, wpos_t cur_match) {
 
     functable.longest_match = &longest_match_c;
 

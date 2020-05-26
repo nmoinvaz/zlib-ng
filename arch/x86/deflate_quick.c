@@ -32,8 +32,9 @@ extern const ct_data static_ltree[L_CODES+2];
 extern const ct_data static_dtree[D_CODES];
 
 ZLIB_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
-    IPos hash_head;
-    unsigned dist, match_len, last;
+    wpos_t hash_head, dist;
+    wlen_t match_len;
+    uint8_t last;
 
     if (s->block_open == 0) {
         last = (flush == Z_FINISH) ? 1 : 0;

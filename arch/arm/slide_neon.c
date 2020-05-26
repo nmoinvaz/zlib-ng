@@ -18,14 +18,14 @@
 #include "../../deflate.h"
 
 /* SIMD version of hash_chain rebase */
-static inline void slide_hash_chain(Pos *table, unsigned int entries, uint16_t window_size) {
+static inline void slide_hash_chain(wpos_t *table, unsigned int entries, wpos_t window_size) {
     register uint16x8_t v, *p;
     register size_t n;
 
     size_t size = entries*sizeof(table[0]);
     Assert((size % sizeof(uint16x8_t) * 8 == 0), "hash table size err");
 
-    Assert(sizeof(Pos) == 2, "Wrong Pos size");
+    Assert(sizeof(wpos_t) == 2, "Wrong Pos size");
     v = vdupq_n_u16(window_size);
 
     p = (uint16x8_t *)table;
@@ -44,7 +44,7 @@ static inline void slide_hash_chain(Pos *table, unsigned int entries, uint16_t w
 }
 
 ZLIB_INTERNAL void slide_hash_neon(deflate_state *s) {
-    unsigned int wsize = s->w_size;
+    wpos_t wsize = s->w_size;
 
     slide_hash_chain(s->head, s->hash_size, wsize);
     slide_hash_chain(s->prev, wsize, wsize);

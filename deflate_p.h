@@ -12,7 +12,7 @@
 /* Forward declare common non-inlined functions declared in deflate.c */
 
 #ifdef ZLIB_DEBUG
-void check_match(deflate_state *s, IPos start, IPos match, int length);
+void check_match(deflate_state *s, wpos_t start, wpos_t match, int length);
 #else
 #define check_match(s, start, match, length)
 #endif
@@ -26,7 +26,7 @@ void flush_pending(PREFIX3(stream) *strm);
 extern const unsigned char ZLIB_INTERNAL zng_length_code[];
 extern const unsigned char ZLIB_INTERNAL zng_dist_code[];
 
-static inline int zng_tr_tally_lit(deflate_state *s, unsigned char c) {
+static inline int zng_tr_tally_lit(deflate_state *s, uint8_t c) {
     /* c is the unmatched char */
     s->sym_buf[s->sym_next++] = 0;
     s->sym_buf[s->sym_next++] = 0;
@@ -36,12 +36,12 @@ static inline int zng_tr_tally_lit(deflate_state *s, unsigned char c) {
     return (s->sym_next == s->sym_end);
 }
 
-static inline int zng_tr_tally_dist(deflate_state *s, unsigned dist, unsigned char len) {
+static inline int zng_tr_tally_dist(deflate_state *s, wpos_t dist, uint32_t len) {
     /* dist: distance of matched string */
     /* len: match length-MIN_MATCH */
-    s->sym_buf[s->sym_next++] = dist;
-    s->sym_buf[s->sym_next++] = dist >> 8;
-    s->sym_buf[s->sym_next++] = len;
+    s->sym_buf[s->sym_next++] = (uint8_t)(dist);
+    s->sym_buf[s->sym_next++] = (uint8_t)(dist >> 8);
+    s->sym_buf[s->sym_next++] = (uint8_t)(len);
     s->matches++;
     dist--;
     Assert((uint16_t)dist < (uint16_t)MAX_DIST(s) &&

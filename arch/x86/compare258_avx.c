@@ -5,6 +5,7 @@
 
 #include "../../zbuild.h"
 #include "../../zutil.h"
+#include "../../deflate.h"
 
 #include "fallback_builtins.h"
 
@@ -16,8 +17,8 @@
 #endif
 
 /* UNALIGNED_OK, AVX2 intrinsic comparison */
-static inline int32_t compare256_unaligned_avx2_static(const unsigned char *src0, const unsigned char *src1) {
-    int32_t len = 0;
+static inline wlen_t compare256_unaligned_avx2_static(const unsigned char *src0, const unsigned char *src1) {
+    wlen_t len = 0;
 
     do {
         __m256i ymm_src0, ymm_src1, ymm_cmp;
@@ -27,7 +28,7 @@ static inline int32_t compare256_unaligned_avx2_static(const unsigned char *src0
         int mask = _mm256_movemask_epi8(ymm_cmp);
         if ((unsigned int)mask != 0xFFFFFFFF) {
             int match_byte = __builtin_ctz(~mask); /* Invert bits so identical = 0 */
-            return (int32_t)(len + match_byte);
+            return (wlen_t)(len + match_byte);
         }
 
         src0 += 32, src1 += 32, len += 32;
@@ -38,7 +39,7 @@ static inline int32_t compare256_unaligned_avx2_static(const unsigned char *src0
         mask = _mm256_movemask_epi8(ymm_cmp);
         if ((unsigned int)mask != 0xFFFFFFFF) {
             int match_byte = __builtin_ctz(~mask);
-            return (int32_t)(len + match_byte);
+            return (wlen_t)(len + match_byte);
         }
 
         src0 += 32, src1 += 32, len += 32;
@@ -47,14 +48,14 @@ static inline int32_t compare256_unaligned_avx2_static(const unsigned char *src0
     return 256;
 }
 
-static inline int32_t compare258_unaligned_avx2_static(const unsigned char *src0, const unsigned char *src1) {
+static inline wlen_t compare258_unaligned_avx2_static(const unsigned char *src0, const unsigned char *src1) {
     if (*(uint16_t *)src0 != *(uint16_t *)src1)
         return (*src0 == *src1);
 
     return compare256_unaligned_avx2_static(src0+2, src1+2) + 2;
 }
 
-int32_t compare258_unaligned_avx2(const unsigned char *src0, const unsigned char *src1) {
+wlen_t compare258_unaligned_avx2(const unsigned char *src0, const unsigned char *src1) {
     return compare258_unaligned_avx2_static(src0, src1);
 }
 

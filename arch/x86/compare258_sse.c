@@ -17,6 +17,7 @@
 
 #include "../../zbuild.h"
 #include "../../zutil.h"
+#include "../../deflate.h"
 
 #ifdef X86_SSE42_CMP_STR
 
@@ -26,8 +27,8 @@
 #endif
 
 /* UNALIGNED_OK, SSE4.2 intrinsic comparison */
-static inline int32_t compare256_unaligned_sse4_static(const unsigned char *src0, const unsigned char *src1) {
-    int32_t len = 0;
+static inline wlen_t compare256_unaligned_sse4_static(const unsigned char *src0, const unsigned char *src1) {
+    wlen_t len = 0;
 
     do {
         #define mode _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_EACH | _SIDD_NEGATIVE_POLARITY
@@ -38,7 +39,7 @@ static inline int32_t compare256_unaligned_sse4_static(const unsigned char *src0
         xmm_src1 = _mm_loadu_si128((__m128i *)src1);
         ret = _mm_cmpestri(xmm_src0, 16, xmm_src1, 16, mode);
         if (_mm_cmpestrc(xmm_src0, 16, xmm_src1, 16, mode)) {
-            return (int32_t)(len + ret);
+            return (wlen_t)(len + ret);
         }
         src0 += 16, src1 += 16, len += 16;
 
@@ -46,7 +47,7 @@ static inline int32_t compare256_unaligned_sse4_static(const unsigned char *src0
         xmm_src1 = _mm_loadu_si128((__m128i *)src1);
         ret = _mm_cmpestri(xmm_src0, 16, xmm_src1, 16, mode);
         if (_mm_cmpestrc(xmm_src0, 16, xmm_src1, 16, mode)) {
-            return (int32_t)(len + ret);
+            return (wlen_t)(len + ret);
         }
         src0 += 16, src1 += 16, len += 16;
     } while (len < 256);
@@ -54,14 +55,14 @@ static inline int32_t compare256_unaligned_sse4_static(const unsigned char *src0
     return 256;
 }
 
-static inline int32_t compare258_unaligned_sse4_static(const unsigned char *src0, const unsigned char *src1) {
+static inline wlen_t compare258_unaligned_sse4_static(const unsigned char *src0, const unsigned char *src1) {
     if (*(uint16_t *)src0 != *(uint16_t *)src1)
         return (*src0 == *src1);
 
     return compare256_unaligned_sse4_static(src0+2, src1+2) + 2;
 }
 
-int32_t compare258_unaligned_sse4(const unsigned char *src0, const unsigned char *src1) {
+wlen_t compare258_unaligned_sse4(const unsigned char *src0, const unsigned char *src1) {
     return compare258_unaligned_sse4_static(src0, src1);
 }
 

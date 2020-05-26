@@ -94,12 +94,8 @@ typedef struct tree_desc_s {
     const static_tree_desc *stat_desc; /* the corresponding static tree */
 } tree_desc;
 
-typedef uint16_t Pos;
-typedef unsigned IPos;
-
-/* A Pos is an index in the character window. We use short instead of int to
- * save space in the various tables. IPos is used only for parameter passing.
- */
+typedef uint16_t wpos_t;               /* index into the character window */
+typedef uint16_t wlen_t;               /* match length in character window */
 
 typedef struct internal_state {
     PREFIX3(stream)      *strm;            /* pointer back to this zlib stream */
@@ -120,7 +116,7 @@ typedef struct internal_state {
 
                 /* used by deflate.c: */
 
-    unsigned int  w_size;            /* LZ77 window size (32K by default) */
+    wpos_t        w_size;            /* LZ77 window size (32K by default) */
     unsigned int  w_bits;            /* log2(w_size)  (8..16) */
     unsigned int  w_mask;            /* w_size - 1 */
 
@@ -139,13 +135,13 @@ typedef struct internal_state {
      * is directly used as sliding window.
      */
 
-    Pos *prev;
+    wpos_t *prev;
     /* Link to older string with same hash index. To limit the size of this
      * array to 64K, this link is maintained only for the last 32K strings.
      * An index in this array is thus a window index modulo 32K.
      */
 
-    Pos *head; /* Heads of the hash chains or NIL. */
+    wpos_t *head; /* Heads of the hash chains or NIL. */
 
     unsigned int  hash_size;         /* number of elements in hash table */
     unsigned int  hash_bits;         /* log2(hash_size) */
@@ -156,14 +152,14 @@ typedef struct internal_state {
      * negative when the window is moved backwards.
      */
 
-    unsigned int match_length;       /* length of best match */
-    IPos         prev_match;         /* previous match */
+    wlen_t       match_length;       /* length of best match */
+    wpos_t       prev_match;         /* previous match */
     int          match_available;    /* set if previous match exists */
-    unsigned int strstart;           /* start of string to insert */
-    unsigned int match_start;        /* start of matching string */
-    unsigned int lookahead;          /* number of valid bytes ahead in window */
+    wpos_t       strstart;           /* start of string to insert */
+    wpos_t       match_start;        /* start of matching string */
+    wpos_t       lookahead;          /* number of valid bytes ahead in window */
 
-    unsigned int prev_length;
+    wlen_t       prev_length;
     /* Length of the best match at previous step. Matches not greater than this
      * are discarded. This is used in the lazy match evaluation.
      */
@@ -188,10 +184,11 @@ typedef struct internal_state {
     int level;    /* compression level (1..9) */
     int strategy; /* favor or force Huffman coding*/
 
-    unsigned int good_match;
+    wlen_t good_match;
     /* Use a faster search when the previous match is longer than this */
 
-    int nice_match; /* Stop searching when current match exceeds this */
+    wlen_t nice_match;
+    /* Stop searching when current match exceeds this */
 
                 /* used by trees.c: */
     /* Didn't use ct_data typedef below to suppress compiler warning */
@@ -244,8 +241,8 @@ typedef struct internal_state {
 
     unsigned long opt_len;        /* bit length of current block with optimal trees */
     unsigned long static_len;     /* bit length of current block with static trees */
-    unsigned int matches;         /* number of string matches in current block */
-    unsigned int insert;          /* bytes at end of window left to insert */
+    unsigned int  matches;        /* number of string matches in current block */
+    wlen_t        insert;         /* bytes at end of window left to insert */
 
 #ifdef ZLIB_DEBUG
     unsigned long compressed_len; /* total bit length of compressed file mod 2^32 */

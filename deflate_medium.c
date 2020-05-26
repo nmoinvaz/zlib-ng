@@ -14,10 +14,10 @@
 #include "functable.h"
 
 struct match {
-    uint16_t match_start;
-    uint16_t match_length;
-    uint16_t strstart;
-    uint16_t orgstart;
+    wpos_t match_start;
+    wpos_t match_length;
+    wpos_t strstart;
+    wpos_t orgstart;
 };
 
 static int emit_match(deflate_state *s, struct match match) {
@@ -98,7 +98,7 @@ static void insert_match(deflate_state *s, struct match match) {
 }
 
 static void fizzle_matches(deflate_state *s, struct match *current, struct match *next) {
-    IPos limit;
+    wpos_t limit;
     unsigned char *match, *orig;
     int changed = 0;
     struct match c, n;
@@ -169,7 +169,7 @@ ZLIB_INTERNAL block_state deflate_medium(deflate_state *s, int flush) {
     memset(&next_match, 0, sizeof(struct match));
 
     for (;;) {
-        IPos hash_head = 0;   /* head of the hash chain */
+        wpos_t hash_head = 0; /* head of the hash chain */
         int bflush = 0;       /* set if current block must be flushed */
 
         /* Make sure that we always have enough lookahead, except

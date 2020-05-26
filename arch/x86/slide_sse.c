@@ -14,9 +14,9 @@
 #include <immintrin.h>
 
 ZLIB_INTERNAL void slide_hash_sse2(deflate_state *s) {
-    Pos *p;
+    wpos_t *p;
+    wpos_t wsize = s->w_size;
     unsigned n;
-    unsigned wsize = s->w_size;
     const __m128i xmm_wsize = _mm_set1_epi16(wsize);
 
     n = s->hash_size;
