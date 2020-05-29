@@ -57,7 +57,7 @@ jobs:
       uses: actions/cache@v2
       if: runner.os == 'Windows'
       with:
-        key: win-chocolatey-${{matrix.compiler}}
+        key: win-chocolatey2-${{matrix.compiler}}
         path: |
           ${{env.TEMP}}\chocolatey\
           ${{env.USERAPPDATA}}\Local\Temp\chocolately\
