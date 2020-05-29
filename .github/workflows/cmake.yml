@@ -37,7 +37,7 @@ jobs:
       with:
         key: zlib-ng-win-chocolatey-${{matrix.compiler}}
         path: |
-          ${{env.localAppData}}\Local\Temp\chocolately\
+          ${{env.localAppData}}\Local\Temp\chocolatey\
 
     - name: Install packages (Windows) test
       if: runner.os == 'Windows'
