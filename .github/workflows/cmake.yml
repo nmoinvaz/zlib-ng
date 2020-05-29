@@ -39,7 +39,7 @@ jobs:
         path: |
           ${{env.localAppData}}\Local\Temp\chocolatey\
 
-    - name: Install packages (Windows) test
+    - name: Install packages (Windows)
       if: runner.os == 'Windows'
       run: |
         choco install ninja ${{ matrix.packages }} --no-progress
