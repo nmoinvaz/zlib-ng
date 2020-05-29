@@ -35,9 +35,9 @@ jobs:
       uses: actions/cache@v2
       if: runner.os == 'Windows'
       with:
-        key: zlib-ng-win-chocolatey3-${{matrix.compiler}}
+        key: zlib-ng-win-chocolatey4-${{matrix.compiler}}
         path: |
-          ${{env.localAppData}}\Local\Temp\chocolatey\
+          ${{env.localAppData}}\Local\Temp\chocolatey\mingw\7.3.0\
 
     - name: Install packages (Windows)
       if: runner.os == 'Windows'
