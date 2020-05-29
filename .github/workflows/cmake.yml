@@ -59,7 +59,8 @@ jobs:
       with:
         key: win-chocolatey-${{matrix.compiler}}
         path: |
-          %TEMP%\chocolatey\
+          ${{env.TEMP}}\chocolatey\
+          ${{env.USERAPPDATA}}\Local\Temp\chocolately\
 
     - name: Install packages (Windows)
       if: runner.os == 'Windows'
