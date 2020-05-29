@@ -31,7 +31,7 @@ jobs:
     - name: Set environment variables (Windows)
       run:  echo "::set-env name=localAppData::$($env:LOCALAPPDATA)"
 
-    - name: Cache packages (Windows)
+    - name: Cache packages (Windows) test
       uses: actions/cache@v2
       if: runner.os == 'Windows'
       with:
