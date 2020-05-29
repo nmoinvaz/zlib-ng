@@ -55,9 +55,9 @@ jobs:
 
     - name: Cache packages (Windows)
       uses: actions/cache@v2
-      if: runner.os == 'Windows' && matrix.codecov && matrix.compiler == 'gcc'
+      if: runner.os == 'Windows'
       with:
-        key: win-chocolatey
+        key: win-chocolatey-${{matrix.compiler}}
         path: |
           %TEMP%\chocolatey\
 
