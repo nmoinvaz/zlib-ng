@@ -44,7 +44,8 @@ jobs:
             codecov: win64_gcc_compat_no_opt
 
     steps:
-    - uses: actions/checkout@v1
+    - name: Checkout repository
+      uses: actions/checkout@v1
 
     - name: Install packages (Ubuntu)
       if: runner.os == 'Linux' && matrix.packages
@@ -52,17 +53,18 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y ${{ matrix.packages }}
 
+    - name: Cache packages (Windows)
+      uses: actions/cache@v2
+      if: runner.os == 'Windows' && matrix.codecov && matrix.compiler == 'gcc'
+      with:
+        key: win-chocolatey
+        path: |
+          %TEMP%\chocolatey\
+
     - name: Install packages (Windows)
       if: runner.os == 'Windows'
       run: |
         choco install ninja ${{ matrix.packages }}
-
-    - uses: actions/cache@v2
-      if: runner.os == 'Windows' && matrix.codecov && matrix.compiler == 'gcc'
-      with:
-        key: mingw-7.3.0
-        path: |
-          %TEMP%\chocolatey\mingw\7.3.0
 
     - name: Install packages (Windows/GCC)
       if: runner.os == 'Windows' && matrix.codecov && matrix.compiler == 'gcc'
