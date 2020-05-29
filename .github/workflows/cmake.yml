@@ -8,40 +8,15 @@ jobs:
       fail-fast: false
       matrix:
         name: [
-          Windows MSVC Win32,
-          Windows MSVC Win64,
-          Windows GCC,
-          Windows GCC Compat,
-          Windows GCC Compat No Opt
+          Windows GCC
         ]
         include:
-          - name: Windows MSVC Win32
-            os: windows-latest
-            compiler: cl
-            cmake-args: -A Win32
-
-          - name: Windows MSVC Win64
-            os: windows-latest
-            compiler: cl
-            cmake-args: -A x64
-
           - name: Windows GCC
             os: windows-latest
             compiler: gcc
             cmake-args: -G Ninja
             codecov: win64_gcc
 
-          - name: Windows GCC Compat
-            os: windows-latest
-            compiler: gcc
-            cmake-args: -G Ninja -DZLIB_COMPAT=ON -DWITH_NEW_STRATEGIES=OFF -DWITH_OPTIM=OFF
-            codecov: win64_gcc_compat
-
-          - name: Windows GCC Compat No Opt
-            os: windows-latest
-            compiler: gcc
-            cmake-args: -G Ninja -DZLIB_COMPAT=ON -DWITH_NEW_STRATEGIES=OFF -DWITH_OPTIM=OFF
-            codecov: win64_gcc_compat_no_opt
 
     steps:
     - name: Checkout repository
@@ -53,15 +28,18 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y ${{ matrix.packages }}
 
+    - name: Set environment variables (Windows)
+      run:  echo "::set-env name=localAppData::$($env:LOCALAPPDATA)"
+
     - name: Cache packages (Windows)
       uses: actions/cache@v2
       if: runner.os == 'Windows'
       with:
-        key: win-chocolatey3-${{matrix.compiler}}
+        key: zlib-ng-win-chocolatey-${{matrix.compiler}}
         path: |
-          ~\AppData\Local\Temp\chocolately\
+          ${{env.localAppData}}\Local\Temp\chocolately\
 
-    - name: Install packages (Windows) test
+    - name: Install packages (Windows)
       if: runner.os == 'Windows'
       run: |
         choco install ninja ${{ matrix.packages }} --no-progress
