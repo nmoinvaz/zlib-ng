@@ -35,7 +35,7 @@ jobs:
       uses: actions/cache@v2
       if: runner.os == 'Windows'
       with:
-        key: zlib-ng-win-chocolatey-${{matrix.compiler}}
+        key: zlib-ng-win-chocolatey3-${{matrix.compiler}}
         path: |
           ${{env.localAppData}}\Local\Temp\chocolatey\
 
