@@ -210,7 +210,8 @@ static int32_t zng_tr_emit_lit(deflate_state *s, const ct_data *ltree, unsigned 
     int32_t len = zng_emit_lit(s, ltree, c);
     Assert(c <= (MAX_MATCH-MIN_MATCH), "zng_tr_emit_lit: bad literal");
     cmpr_bits_add(s, len);
-    return len;
+    s->sym_next += 3;
+    return (s->sym_next == s->sym_end);
 }
 
 /* ===========================================================================
@@ -223,7 +224,8 @@ static int32_t zng_tr_emit_dist(deflate_state *s, const ct_data *ltree, const ct
     Assert((uint16_t)dist < (uint16_t)MAX_DIST(s) &&
            (uint16_t)d_code(dist) < (uint16_t)D_CODES,  "zng_tr_emit_dist: bad match");
     cmpr_bits_add(s, len);
-    return len;
+    s->sym_next += 3;
+    return (s->sym_next == s->sym_end);
 }
 
 /* ===========================================================================

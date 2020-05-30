@@ -47,11 +47,12 @@ static inline void emit_block_end(deflate_state *s, int last) {
 
 ZLIB_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
     IPos hash_head;
-    unsigned dist, match_len = 0, last;
+    Pos match_len = 0, last;
+    int bflush = 0;
 
     last = (flush == Z_FINISH) ? 1 : 0;
     
-    do {
+    for (;;) {
         if (s->block_open == 0) {
             emit_block_start(s, last);
         }
@@ -80,28 +81,23 @@ ZLIB_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
 
             check_match(s, s->strstart, hash_head, match_len);
 
-            zng_tr_emit_dist(s, static_ltree, static_dtree, s->strstart - hash_head, match_len - MIN_MATCH);
+            bflush = zng_tr_emit_dist(s, static_ltree, static_dtree, s->strstart - hash_head, match_len - MIN_MATCH);
             s->lookahead -= match_len;
             s->strstart += match_len;
 
             match_len = 0;
         } else {
-            zng_tr_emit_lit(s, static_ltree, s->window[s->strstart]);
+            bflush = zng_tr_emit_lit(s, static_ltree, s->window[s->strstart]);
 
             s->strstart++;
             s->lookahead--;
         }
 
-        s->sym_next += 3;
-        if (s->sym_next == s->sym_end)
+        if (bflush)
             QUICK_FLUSH_BLOCK(s, 0);
-    } while (s->strm->avail_out != 0);
-
-    if (s->strm->avail_out == 0 && flush != Z_FINISH)
-        return need_more;
+    }
 
     s->insert = s->strstart < MIN_MATCH-1 ? s->strstart : MIN_MATCH-1;
-
     if (flush == Z_FINISH) {
         QUICK_FLUSH_BLOCK(s, last);
         return finish_done;
