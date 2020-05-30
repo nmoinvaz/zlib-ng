@@ -56,6 +56,7 @@ ZLIB_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
     for (;;) {
         if (s->block_open == 0) {
             emit_block_start(s, last);
+            flush_pending(s->strm);
         }
 
         if (s->lookahead < MIN_LOOKAHEAD) {
