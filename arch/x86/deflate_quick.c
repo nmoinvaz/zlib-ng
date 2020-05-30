@@ -47,10 +47,9 @@ static inline void emit_block_end(deflate_state *s, int last) {
 
 ZLIB_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
     IPos hash_head;
-    Pos match_len = 0, last;
+    Pos match_len = 0;
     int bflush = 0;
-
-    last = (flush == Z_FINISH) ? 1 : 0;
+    int last = (flush == Z_FINISH) ? 1 : 0;
     
     for (;;) {
         if (s->block_open == 0) {
