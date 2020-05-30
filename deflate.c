@@ -582,7 +582,7 @@ int ZEXPORT PREFIX(deflatePending)(PREFIX3(stream) *strm, uint32_t *pending, int
 /* ========================================================================= */
 int ZEXPORT PREFIX(deflatePrime)(PREFIX3(stream) *strm, int bits, int value) {
     deflate_state *s;
-    int put;
+    uint64_t put;
 
     if (deflateStateCheck(strm))
         return Z_STREAM_ERROR;
