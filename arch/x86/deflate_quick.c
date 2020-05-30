@@ -55,7 +55,6 @@ ZLIB_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
     
     for (;;) {
         if (s->block_open == 0) {
-            flush_pending(s->strm);
             emit_block_start(s, last);
         }
 
@@ -75,7 +74,7 @@ ZLIB_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
         }
 
         if (hash_head != 0 && s->strstart - hash_head <= MAX_DIST(s)) {
-            match_len =  functable.longest_match(s, hash_head);//functable.compare258(s->window + s->strstart, s->window + hash_head);
+            match_len = functable.compare258(s->window + s->strstart, s->window + hash_head);
         }
 
         if (match_len >= MIN_MATCH)  {
