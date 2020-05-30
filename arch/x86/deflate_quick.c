@@ -99,11 +99,10 @@ ZLIB_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
     }
 
     s->insert = s->strstart < MIN_MATCH-1 ? s->strstart : MIN_MATCH-1;
+    QUICK_FLUSH_BLOCK(s, last);
     if (last) {
-        QUICK_FLUSH_BLOCK(s, 1);
         return finish_done;
     }
-    if (s->sym_next)
-        QUICK_FLUSH_BLOCK(s, 0);
+
     return block_done;
 }
