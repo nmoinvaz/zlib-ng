@@ -39,7 +39,7 @@ static inline void emit_block_start(deflate_state *s, int last) {
 }
 
 static inline void emit_block_end(deflate_state *s, int last) {
-    zng_tr_emit_end_block(s, static_ltree, 0);
+    zng_tr_emit_end_block(s, static_ltree, last);
     s->block_open = 0;
     s->block_start = s->strstart;
     s->sym_next = 0;
@@ -55,16 +55,6 @@ ZLIB_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
         if (s->block_open == 0) {
             emit_block_start(s, last);
         }
-
-        /*if (s->pending + ((BIT_BUF_SIZE + 7) >> 3) > s->pending_buf_size) {
-            flush_pending(s->strm);
-            if (flush != Z_FINISH)
-            {
-                if (s->strm->avail_in == 0 || s->strm->avail_out == 0) {
-                    return need_more;
-                }
-            }
-        }*/
 
         if (s->lookahead < MIN_LOOKAHEAD) {
             fill_window(s);
