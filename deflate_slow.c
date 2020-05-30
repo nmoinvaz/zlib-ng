@@ -115,7 +115,6 @@ ZLIB_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
              * single literal. If there was a match but the current match
              * is longer, truncate the previous match to a single literal.
              */
-            Tracevv((stderr, "%c", s->window[s->strstart-1]));
             bflush = zng_tr_tally_lit(s, s->window[s->strstart-1]);
             if (bflush)
                 FLUSH_BLOCK_ONLY(s, 0);
@@ -134,7 +133,6 @@ ZLIB_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
     }
     Assert(flush != Z_NO_FLUSH, "no flush?");
     if (s->match_available) {
-        Tracevv((stderr, "%c", s->window[s->strstart-1]));
         bflush = zng_tr_tally_lit(s, s->window[s->strstart-1]);
         s->match_available = 0;
     }

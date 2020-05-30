@@ -77,8 +77,7 @@ static void bi_flush(deflate_state *s) {
         put_uint64(s, s->bi_buf);
         s->bi_buf = 0;
         s->bi_valid = 0;
-    }
-    else {
+    } else {
         if (s->bi_valid >= 32) {
             put_uint32(s, (uint32_t)s->bi_buf);
             s->bi_buf >>= 32;
@@ -125,7 +124,7 @@ static void bi_windup(deflate_state *s) {
 /* ===========================================================================
  * Emit literal code
  */
-static inline uint32_t zng_emit_lit(deflate_state *s, const ct_data *ltree, unsigned c) {
+static uint32_t zng_emit_lit(deflate_state *s, const ct_data *ltree, unsigned c) {
     uint32_t bi_valid = s->bi_valid;
     uint64_t bi_buf = s->bi_buf;
 
@@ -206,16 +205,25 @@ static inline void zng_emit_end_block(deflate_state *s, const ct_data *ltree, co
 /* ===========================================================================
  * Emit literal and count bits
  */
-static inline void zng_tr_emit_lit(deflate_state *s, const ct_data *ltree, unsigned c) {
-    cmpr_bits_add(s, zng_emit_lit(s, ltree, c));
+static int32_t zng_tr_emit_lit(deflate_state *s, const ct_data *ltree, unsigned c) {
+    Tracevv((stderr, "%c", c));
+    int32_t len = zng_emit_lit(s, ltree, c);
+    Assert(c <= (MAX_MATCH-MIN_MATCH), "zng_tr_emit_lit: bad literal");
+    cmpr_bits_add(s, len);
+    return len;
 }
 
 /* ===========================================================================
  * Emit match and count bits
  */
-static inline void zng_tr_emit_dist(deflate_state *s, const ct_data *ltree, const ct_data *dtree, 
-    uint32_t lc, uint32_t dist) {
-    cmpr_bits_add(s, zng_emit_dist(s, ltree, dtree, lc, dist));
+static int32_t zng_tr_emit_dist(deflate_state *s, const ct_data *ltree, const ct_data *dtree, 
+    uint32_t dist, uint32_t lc) {
+    int32_t len = zng_emit_dist(s, ltree, dtree, lc, dist);
+    dist--;
+    Assert((uint16_t)dist < (uint16_t)MAX_DIST(s) &&
+           (uint16_t)d_code(dist) < (uint16_t)D_CODES,  "zng_tr_emit_dist: bad match");
+    cmpr_bits_add(s, len);
+    return len;
 }
 
 /* ===========================================================================

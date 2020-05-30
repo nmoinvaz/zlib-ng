@@ -1636,7 +1636,6 @@ static block_state deflate_huff(deflate_state *s, int flush) {
 
         /* Output a literal byte */
         s->match_length = 0;
-        Tracevv((stderr, "%c", s->window[s->strstart]));
         bflush = zng_tr_tally_lit(s, s->window[s->strstart]);
         s->lookahead--;
         s->strstart++;

@@ -28,6 +28,7 @@ extern const unsigned char ZLIB_INTERNAL zng_dist_code[];
 
 static inline int zng_tr_tally_lit(deflate_state *s, unsigned char c) {
     /* c is the unmatched char */
+    Tracevv((stderr, "%c", c));
     s->sym_buf[s->sym_next++] = 0;
     s->sym_buf[s->sym_next++] = 0;
     s->sym_buf[s->sym_next++] = c;
@@ -70,6 +71,17 @@ static inline int zng_tr_tally_dist(deflate_state *s, unsigned dist, unsigned ch
 /* Same but force premature exit if necessary. */
 #define FLUSH_BLOCK(s, last) { \
     FLUSH_BLOCK_ONLY(s, last); \
+    if (s->strm->avail_out == 0) return (last) ? finish_started : need_more; \
+}
+
+#define QUICK_BLOCK_ONLY(s, last) { \
+    emit_block_end(s, last); \
+    s->block_start = s->strstart; \
+    flush_pending(s->strm); \
+    Tracev((stderr, "[FLUSH]")); \
+}
+#define QUICK_FLUSH_BLOCK(s, last) { \
+    QUICK_BLOCK_ONLY(s, last); \
     if (s->strm->avail_out == 0) return (last) ? finish_started : need_more; \
 }
 
