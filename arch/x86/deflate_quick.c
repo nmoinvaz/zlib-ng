@@ -71,16 +71,16 @@ ZLIB_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
         }
 
         if (hash_head != 0 && s->strstart - hash_head <= MAX_DIST(s)) {
-            match_len = functable.compare258(s->window + s->strstart, s->window + hash_head);
+            match_len =  functable.longest_match(s, hash_head);//functable.compare258(s->window + s->strstart, s->window + hash_head);
         }
 
         if (match_len >= MIN_MATCH)  {
             if (match_len > s->lookahead)
                 match_len = s->lookahead;
 
-            check_match(s, s->strstart, hash_head, match_len);
+            check_match(s, s->strstart,  s->match_start, match_len);
 
-            bflush = zng_tr_emit_dist(s, static_ltree, static_dtree, s->strstart - hash_head, match_len - MIN_MATCH);
+            bflush = zng_tr_emit_dist(s, static_ltree, static_dtree, s->strstart -  s->match_start, match_len - MIN_MATCH);
             s->lookahead -= match_len;
             s->strstart += match_len;
 
