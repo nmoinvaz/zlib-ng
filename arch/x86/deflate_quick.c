@@ -46,7 +46,7 @@ static inline void emit_block_end(deflate_state *s, int last) {
 }
 
 ZLIB_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
-    IPos hash_head = 0;
+    IPos hash_head;
     unsigned dist, match_len = 0, last;
 
     last = (flush == Z_FINISH) ? 1 : 0;
@@ -59,7 +59,6 @@ ZLIB_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
         if (s->lookahead < MIN_LOOKAHEAD) {
             fill_window(s);
             if (s->lookahead < MIN_LOOKAHEAD && flush == Z_NO_FLUSH) {
-                //flush_pending(s->strm);
                 return need_more;
             }
             if (s->lookahead == 0)
@@ -96,8 +95,6 @@ ZLIB_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
         s->sym_next += 3;
         if (s->sym_next == s->sym_end)
             QUICK_FLUSH_BLOCK(s, 0);
-            //emit_block_end(s, 0);
-
     } while (s->strm->avail_out != 0);
 
     if (s->strm->avail_out == 0 && flush != Z_FINISH)
@@ -105,14 +102,11 @@ ZLIB_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
 
     s->insert = s->strstart < MIN_MATCH-1 ? s->strstart : MIN_MATCH-1;
 
-    QUICK_FLUSH_BLOCK(s, last);
-
-    if (last) {
-        if (s->strm->avail_out == 0)
-            return s->strm->avail_in == 0 ? finish_started : need_more;
-        else
-            return finish_done;
+    if (flush == Z_FINISH) {
+        QUICK_FLUSH_BLOCK(s, last);
+        return finish_done;
     }
-
+    if (s->sym_next)
+        QUICK_FLUSH_BLOCK(s, 0);
     return block_done;
 }
