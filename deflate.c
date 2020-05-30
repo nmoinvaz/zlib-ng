@@ -303,8 +303,8 @@ int ZEXPORT PREFIX(deflateInit2_)(PREFIX3(stream) *strm, int level, int method, 
         windowBits = 9;  /* until 256-byte window bug fixed */
 
 #ifdef X86_QUICK_STRATEGY
-    if (level == 1)
-        windowBits = 13;
+    //if (level == 1)
+      //  windowBits = 13;
 #endif
 
     s = (deflate_state *) ZALLOC_STATE(strm, 1, sizeof(deflate_state));
