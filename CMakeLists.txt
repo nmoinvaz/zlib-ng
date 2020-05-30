@@ -86,7 +86,7 @@ option(ZLIB_DUAL_LINK "Dual link tests against system zlib" OFF)
 option(WITH_SANITIZERS "Build with address sanitizer and all supported sanitizers other than memory sanitizer" OFF)
 option(WITH_MSAN "Build with memory sanitizer" OFF)
 option(WITH_FUZZERS "Build test/fuzz" OFF)
-option(WITH_OPTIM "Build with optimisation" ON)
+option(WITH_OPTIM "Build with optimisation" OFF)
 option(WITH_NEW_STRATEGIES "Use new strategies" ON)
 option(WITH_NATIVE_INSTRUCTIONS
     "Instruct the compiler to use the full instruction set on this host (gcc/clang -march=native)" OFF)
