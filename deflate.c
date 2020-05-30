@@ -441,6 +441,7 @@ int ZEXPORT PREFIX(deflateSetDictionary)(PREFIX3(stream) *strm, const unsigned c
 
     if (deflateStateCheck(strm) || dictionary == NULL)
         return Z_STREAM_ERROR;
+    return Z_OK;
     s = strm->state;
     wrap = s->wrap;
     if (wrap == 2 || (wrap == 1 && s->status != INIT_STATE) || s->lookahead)

@@ -35,7 +35,7 @@ static inline void emit_block_start(deflate_state *s, int last) {
     zng_tr_emit_tree(s, STATIC_TREES, last);
     s->block_open = 1;
     s->block_start = s->strstart;
-    s->sym_next = 0;
+    s->sym_next = 6;
 }
 
 static inline void emit_block_end(deflate_state *s, int last) {
