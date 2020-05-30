@@ -593,8 +593,8 @@ void ZLIB_INTERNAL zng_tr_stored_block(deflate_state *s, char *buf, unsigned lon
     zng_tr_emit_tree(s, STORED_BLOCK, last); /* send block type */
     zng_tr_emit_align(s);                    /* align on byte boundary */
     cmpr_bits_align(s);
-    put_short(s, (uint16_t)stored_len);
-    put_short(s, (uint16_t)~stored_len);
+    put_short(s,  ((uint16_t)stored_len));
+    put_short(s, ~((uint16_t)stored_len));
     cmpr_bits_add(s, 32);
     sent_bits_add(s, 32);
     if (stored_len) {
