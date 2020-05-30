@@ -49,7 +49,9 @@ ZLIB_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
     IPos hash_head;
     Pos match_len = 0;
     int bflush = 0;
-    int last = (flush == Z_FINISH) ? 1 : 0;
+    int last;
+    
+    last = (flush == Z_FINISH) ? 1 : 0;
     
     for (;;) {
         if (s->block_open == 0) {
@@ -59,6 +61,7 @@ ZLIB_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
         if (s->lookahead < MIN_LOOKAHEAD) {
             fill_window(s);
             if (s->lookahead < MIN_LOOKAHEAD && flush == Z_NO_FLUSH) {
+                QUICK_FLUSH_BLOCK(s, 0);
                 return need_more;
             }
             if (s->lookahead == 0)

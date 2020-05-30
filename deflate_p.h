@@ -77,7 +77,6 @@ static inline int zng_tr_tally_dist(deflate_state *s, unsigned dist, unsigned ch
 #define QUICK_BLOCK_ONLY(s, last) { \
     emit_block_end(s, last); \
     s->block_start = s->strstart; \
-    s->block_open = 0; \
     flush_pending(s->strm); \
     Tracev((stderr, "[FLUSH]")); \
 }
