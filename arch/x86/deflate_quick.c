@@ -45,13 +45,6 @@ extern const ct_data static_dtree[D_CODES];
     } \
 } 
 
-#define QUICK_FLUSH_BLOCK(s, last) { \
-    if (s->block_open) { \
-        QUICK_END_BLOCK(s, last); \
-        flush_pending(s->strm); \
-    } \
-} 
-
 ZLIB_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
     Pos hash_head;
     unsigned dist, match_len, last;
@@ -109,7 +102,8 @@ ZLIB_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
     } while (s->strm->avail_out != 0);
 
     last = (flush == Z_FINISH) ? 1 : 0;
-    QUICK_FLUSH_BLOCK(s, last);
+    QUICK_END_BLOCK(s, last);
+    flush_pending(s->strm);
 
     s->insert = s->strstart < MIN_MATCH-1 ? s->strstart : MIN_MATCH-1;
 
