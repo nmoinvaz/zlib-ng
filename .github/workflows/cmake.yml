@@ -349,7 +349,7 @@ jobs:
       uses: actions/cache@v2
       if: runner.os == 'Windows'
       with:
-        key: zlib-ng-win-choco-${{matrix.compiler}}
+        key: zlib-ng-win-choco-${{matrix.compiler}}-latest
         path: |
           ${{env.temp}}\chocolatey\
 
@@ -360,10 +360,8 @@ jobs:
 
     - name: Install packages (Windows/GCC)
       if: runner.os == 'Windows' && matrix.codecov && matrix.compiler == 'gcc'
-      # Use gcov-7 via mingw on windows because gcov-8 throws tons of warnings
-      # https://partner-bugzilla.redhat.com/show_bug.cgi?id=1577508
       run: |
-        choco install mingw --version=7.3.0 --force --allow-downgrade --no-progress
+        choco install mingw --no-progress
 
     - name: Install packages (macOS)
       if: runner.os == 'macOS'
