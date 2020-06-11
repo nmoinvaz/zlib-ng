@@ -271,9 +271,9 @@ void ZLIB_INTERNAL zng_inflate_fast(PREFIX3(stream) *strm, unsigned long start) 
                        stay within 258 bytes of `out`.
                     */
                     if (dist >= len || dist >= functable.chunksize())
-                        out = functable.chunkcopy(out, out - dist, len);
+                        out = functable.chunkcopy_safe(out, out - dist, len, out+len);
                     else
-                        out = functable.chunkmemset(out, dist, len);
+                        out = functable.chunkmemset(out, dist, len, len);
                 }
             } else if ((op & 64) == 0) {          /* 2nd level distance code */
                 here = dcode + here->val + BITS(op);
