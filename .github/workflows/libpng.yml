@@ -1,5 +1,5 @@
 name: CI Libpng
-on: [pull_request]
+on: [push]
 jobs:
   pngtest:
     name: Ubuntu Clang
