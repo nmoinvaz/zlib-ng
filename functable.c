@@ -260,7 +260,7 @@ ZLIB_INTERNAL uint32_t adler32_stub(uint32_t adler, const unsigned char *buf, si
 
     return functable.adler32(adler, buf, len);
 }
-
+#undef X86_AVX_MEMCHUNK
 ZLIB_INTERNAL uint32_t chunksize_stub(void) {
     // Initialize default
     functable.chunksize = &chunksize_c;
