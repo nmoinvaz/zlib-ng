@@ -809,7 +809,7 @@ int ZEXPORT PREFIX(inflate)(PREFIX3(stream) *strm, int flush) {
             state->mode = LEN;
 
         case LEN:
-            /* use inflate_fast() if we have enough input and output */
+            /* use inflate_fast() if we have enough input and output
             if (have >= INFLATE_FAST_MIN_HAVE &&
                 left >= INFLATE_FAST_MIN_LEFT) {
                 RESTORE();
@@ -818,7 +818,7 @@ int ZEXPORT PREFIX(inflate)(PREFIX3(stream) *strm, int flush) {
                 if (state->mode == TYPE)
                     state->back = -1;
                 break;
-            }
+            } */
             state->back = 0;
 
             /* get a literal, length, or end-of-block code */
