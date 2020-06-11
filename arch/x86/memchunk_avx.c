@@ -10,35 +10,30 @@
 #ifdef X86_AVX_MEMCHUNK
 #include <immintrin.h>
 
-typedef __m256i memchunk_t;
+typedef __m128i memchunk_t;
 
 #define HAVE_CHUNKMEMSET_1
-#define HAVE_CHUNKMEMSET_2
 #define HAVE_CHUNKMEMSET_4
 #define HAVE_CHUNKMEMSET_8
 
 static inline void chunkmemset_1(uint8_t *from, memchunk_t *chunk) {
-    *chunk = _mm256_set1_epi8(*(int8_t *)from);
-}
-
-static inline void chunkmemset_2(uint8_t *from, memchunk_t *chunk) {
-    *chunk = _mm256_set1_epi16(*(int16_t *)from);
+    *chunk = _mm_broadcastb_epi8(_mm_loadu_si16((int8_t *)from));
 }
 
 static inline void chunkmemset_4(uint8_t *from, memchunk_t *chunk) {
-    *chunk = _mm256_set1_epi32(*(int32_t *)from);
+    *chunk = _mm_broadcastd_epi32(_mm_loadu_si32((int32_t *)from));
 }
 
 static inline void chunkmemset_8(uint8_t *from, memchunk_t *chunk) {
-    *chunk = _mm256_set1_epi64x(*(int64_t *)from);
+    *chunk = _mm_broadcastq_epi64(_mm_loadu_si64((int64_t *)from));
 }
 
 static inline void loadchunk(uint8_t const *s, memchunk_t *chunk) {
-    *chunk = _mm256_loadu_si256((__m256i *)s);
+    *chunk = _mm_loadu_si128((__m128i *)s);
 }
 
 static inline void storechunk(uint8_t *out, memchunk_t *chunk) {
-    _mm256_storeu_si256((__m256i *)out, *chunk);
+    _mm_storeu_si128((__m128i *)out, *chunk);
 }
 
 #define CHUNKSIZE        chunksize_avx
