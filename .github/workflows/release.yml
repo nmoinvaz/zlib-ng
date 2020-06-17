@@ -142,7 +142,7 @@ jobs:
       with:
         asset_name: zlibng-${{ matrix.deploy-name }}.tar.gz
         file: zlibng-${{ matrix.deploy-name }}.tar.gz
-        tag: ${{ github.ref }}
+        tag: ${{ github.event.release.tag_name }}
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         overwrite: true
       env:
@@ -158,7 +158,7 @@ jobs:
       with:
         asset_name: zlibng-${{ matrix.deploy-name }}.zip
         file: zlibng-${{ matrix.deploy-name }}.zip
-        tag: ${{ github.ref }}
+        tag: ${{ github.event.release.tag_name }}
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         overwrite: true
       env:
