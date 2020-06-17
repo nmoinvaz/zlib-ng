@@ -127,24 +127,24 @@ jobs:
 
     - name: Generate project files
       run: |
-        cmake . ${{ matrix.cmake-args }} -DCMAKE_BUILD_TYPE=Release -DWITH_GZFILEOP=ON -DCMAKE_INSTALL_PREFIX=out
+        cmake . ${{ matrix.cmake-args }} -DCMAKE_BUILD_TYPE=Release -DWITH_GZFILEOP=ON -DCMAKE_INSTALL_PREFIX=.
       env:
         CC: ${{ matrix.compiler }}
         CI: true
 
     - name: Compile source code
       run: |
-        cmake --build . --config ${{ matrix.build-config || 'Release' }} --target install
+        cmake --build . --config Release --target install
 
     - name: Package release (Ubuntu/macOS)
       if: (runner.os == 'Linux' || runner.os == 'macOS')
       run: |
-        cd out/usr/local/
+        cd zlib-ng/usr/local/
         ls * | tar -czvf ../../../zlibng-${{ matrix.deploy-name }}.tar.gz -T -
 
     - name: Upload release (Ubuntu/macOS)
       uses: svenstaro/upload-release-action@v1-release
-      if: (runner.os == 'Linux' || runner.os == 'macOS') && env.GITHUB_TOKEN != ''
+      if: (runner.os == 'Linux' || runner.os == 'macOS')
       with:
         asset_name: zlibng-${{ matrix.deploy-name }}.tar.gz
         file: zlibng-${{ matrix.deploy-name }}.tar.gz
@@ -161,7 +161,7 @@ jobs:
 
     - name: Upload release (Windows)
       uses: svenstaro/upload-release-action@v1-release
-      if: runner.os == 'Windows' && env.GITHUB_TOKEN != ''
+      if: runner.os == 'Windows'
       with:
         asset_name: zlibng-${{ matrix.deploy-name }}.zip
         file: zlibng-${{ matrix.deploy-name }}.zip
