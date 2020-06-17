@@ -1,8 +1,5 @@
 name: CI Release
-on:
-  create:
-    tags:
-      - '*'
+on: [push]
 jobs:
   ci-cmake:
     name: ${{ matrix.name }}
