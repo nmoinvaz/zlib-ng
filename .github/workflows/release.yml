@@ -138,8 +138,7 @@ jobs:
 
     - name: Package release (Ubuntu/macOS)
       if: (runner.os == 'Linux' || runner.os == 'macOS')
-      run: |
-        ls out -r | tar -czvf zlibng-${{ matrix.deploy-name }}.tar.gz -T -
+      run: tar -czvf zlibng-${{ matrix.deploy-name }}.tar.gz out
 
     - name: Upload release (Ubuntu/macOS)
       uses: svenstaro/upload-release-action@v1-release
@@ -155,8 +154,7 @@ jobs:
 
     - name: Package release (Windows)
       if: runner.os == 'Windows'
-      run: |
-        7z a -tzip zlibng-${{ matrix.deploy-name }}.zip ${{env.programFiles}}/zlib/*
+      run: 7z a -tzip zlibng-${{ matrix.deploy-name }}.zip ${{env.programFiles}}/zlib/*
 
     - name: Upload release (Windows)
       uses: svenstaro/upload-release-action@v1-release
