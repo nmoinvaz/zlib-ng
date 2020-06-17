@@ -9,17 +9,29 @@ jobs:
       matrix:
         name: [
           Ubuntu GCC ARM SF,
+          Ubuntu GCC ARM SF Compat,
           Ubuntu GCC ARM HF,
+          Ubuntu GCC ARM HF Compat,
           Ubuntu GCC AARCH64,
+          Ubuntu GCC AARCH64 Compat,
           Ubuntu GCC PPC,
+          Ubuntu GCC PPC Compat,
           Ubuntu GCC PPC64,
+          Ubuntu GCC PPC64 Compat,
           Ubuntu GCC PPC64LE,
+          Ubuntu GCC PPC64LE Compat,
           Ubuntu GCC SPARC64,
+          Ubuntu GCC SPARC64 Compat,
           Ubuntu GCC S390X,
+          Ubuntu GCC S390X Compat,
           Ubuntu Clang,
+          Ubuntu Clang Compat,
           Windows MSVC Win32,
+          Windows MSVC Win32 Compat,
           Windows MSVC Win64,
-          macOS Clang
+          Windows MSVC Win64 Compat,
+          macOS Clang,
+          macOS Clang Compat
         ]
         include:
           - name: Ubuntu GCC ARM SF
@@ -29,12 +41,26 @@ jobs:
             packages: qemu gcc-arm-linux-gnueabi libc-dev-armel-cross
             deploy-name: arm-sf
 
+          - name: Ubuntu GCC ARM SF Compat
+            os: ubuntu-latest
+            compiler: arm-linux-gnueabi-gcc
+            cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-arm.cmake -DCMAKE_C_COMPILER_TARGET=arm-linux-gnueabi -DZLIB_COMPAT=ON
+            packages: qemu gcc-arm-linux-gnueabi libc-dev-armel-cross
+            deploy-name: arm-sf-compat
+
           - name: Ubuntu GCC ARM HF
             os: ubuntu-latest
             compiler: arm-linux-gnueabihf-gcc
             cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-arm.cmake -DCMAKE_C_COMPILER_TARGET=arm-linux-gnueabihf
             packages: qemu gcc-arm-linux-gnueabihf libc-dev-armel-cross
             deploy-name: arm-hf
+
+          - name: Ubuntu GCC ARM HF Compat
+            os: ubuntu-latest
+            compiler: arm-linux-gnueabihf-gcc
+            cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-arm.cmake -DCMAKE_C_COMPILER_TARGET=arm-linux-gnueabihf -DZLIB_COMPAT=ON
+            packages: qemu gcc-arm-linux-gnueabihf libc-dev-armel-cross
+            deploy-name: arm-hf-compat
 
           - name: Ubuntu GCC AARCH64
             os: ubuntu-latest
@@ -43,12 +69,26 @@ jobs:
             packages: qemu gcc-aarch64-linux-gnu libc-dev-arm64-cross
             deploy-name: aarch64
 
+          - name: Ubuntu GCC AARCH64 Compat
+            os: ubuntu-latest
+            compiler: aarch64-linux-gnu-gcc
+            cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-aarch64.cmake -DZLIB_COMPAT=ON
+            packages: qemu gcc-aarch64-linux-gnu libc-dev-arm64-cross
+            deploy-name: aarch64-compat
+
           - name: Ubuntu GCC PPC
             os: ubuntu-latest
             compiler: powerpc-linux-gnu-gcc
             cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-powerpc.cmake
             packages: qemu gcc-powerpc-linux-gnu libc-dev-powerpc-cross
             deploy-name: ppc
+
+          - name: Ubuntu GCC PPC Compat
+            os: ubuntu-latest
+            compiler: powerpc-linux-gnu-gcc
+            cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-powerpc.cmake -DZLIB_COMPAT=ON
+            packages: qemu gcc-powerpc-linux-gnu libc-dev-powerpc-cross
+            deploy-name: ppc compat
 
           - name: Ubuntu GCC PPC64
             os: ubuntu-latest
@@ -57,12 +97,26 @@ jobs:
             packages: qemu gcc-powerpc64-linux-gnu libc-dev-ppc64-cross
             deploy-name: ppc64
 
+          - name: Ubuntu GCC PPC64 Compat
+            os: ubuntu-latest
+            compiler: powerpc64-linux-gnu-gcc
+            cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-powerpc64.cmake -DZLIB_COMPAT=ON
+            packages: qemu gcc-powerpc64-linux-gnu libc-dev-ppc64-cross
+            deploy-name: ppc64-compat
+
           - name: Ubuntu GCC PPC64LE
             os: ubuntu-latest
             compiler: powerpc64le-linux-gnu-gcc
             cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-powerpc64le.cmake
             packages: qemu gcc-powerpc64le-linux-gnu libc-dev-ppc64el-cross
             deploy-name: ppc64le
+
+          - name: Ubuntu GCC PPC64LE Compat
+            os: ubuntu-latest
+            compiler: powerpc64le-linux-gnu-gcc
+            cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-powerpc64le.cmake -DZLIB_COMPAT=ON
+            packages: qemu gcc-powerpc64le-linux-gnu libc-dev-ppc64el-cross
+            deploy-name: ppc64le-compat
 
           - name: Ubuntu GCC SPARC64
             os: ubuntu-latest
@@ -71,6 +125,13 @@ jobs:
             packages: qemu gcc-sparc64-linux-gnu libc-dev-sparc64-cross
             deploy-name: sparc64
 
+          - name: Ubuntu GCC SPARC64 Compat
+            os: ubuntu-latest
+            compiler: sparc64-linux-gnu-gcc
+            cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-sparc64.cmake -DZLIB_COMPAT=ON
+            packages: qemu gcc-sparc64-linux-gnu libc-dev-sparc64-cross
+            deploy-name: sparc64-compat
+
           - name: Ubuntu GCC S390X
             os: ubuntu-latest
             compiler: s390x-linux-gnu-gcc
@@ -78,10 +139,23 @@ jobs:
             packages: qemu gcc-s390x-linux-gnu libc-dev-s390x-cross
             deploy-name: s390x
 
+          - name: Ubuntu GCC S390X Compat
+            os: ubuntu-latest
+            compiler: s390x-linux-gnu-gcc
+            cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-s390x.cmake -DZLIB_COMPAT=ON
+            packages: qemu gcc-s390x-linux-gnu libc-dev-s390x-cross
+            deploy-name: s390x-compat
+
           - name: Ubuntu Clang
             os: ubuntu-latest
             compiler: clang
             deploy-name: linux
+
+          - name: Ubuntu Clang Compat
+            os: ubuntu-latest
+            compiler: clang
+            cmake-args: -DZLIB_COMPAT=ON
+            deploy-name: linux-compat
 
           - name: Windows MSVC Win32
             os: windows-latest
@@ -89,17 +163,34 @@ jobs:
             cmake-args: -A Win32
             deploy-name: win-x86
 
+          - name: Windows MSVC Win32 Compat
+            os: windows-latest
+            compiler: cl
+            cmake-args: -A Win32 -DZLIB_COMPAT=ON
+            deploy-name: win-x86-compat
+
           - name: Windows MSVC Win64
             os: windows-latest
             compiler: cl
             cmake-args: -A x64
             deploy-name: win-x64
 
+          - name: Windows MSVC Win64 Compat
+            os: windows-latest
+            compiler: cl
+            cmake-args: -A x64 -DZLIB_COMPAT=ON
+            deploy-name: win-x64-compat
+
           - name: macOS Clang
             os: macOS-latest
             compiler: clang
-            codecov: macos_clang
             deploy-name: mac
+
+          - name: macOS Clang Compat
+            os: macOS-latest
+            compiler: clang
+            cmake-args: -DZLIB_COMPAT=ON
+            deploy-name: mac-compat
 
     steps:
     - name: Checkout repository
