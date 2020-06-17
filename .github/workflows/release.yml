@@ -1,0 +1,174 @@
+name: CI Release
+on:
+  create:
+    tags:
+      - '*'
+jobs:
+  ci-cmake:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        name: [
+          Ubuntu GCC ARM SF,
+          Ubuntu GCC ARM HF,
+          Ubuntu GCC AARCH64,
+          Ubuntu GCC PPC,
+          Ubuntu GCC PPC64,
+          Ubuntu GCC PPC64LE,
+          Ubuntu GCC SPARC64,
+          Ubuntu GCC S390X,
+          Ubuntu Clang,
+          Windows MSVC Win32,
+          Windows MSVC Win64,
+          macOS Clang
+        ]
+        include:
+          - name: Ubuntu GCC ARM SF
+            os: ubuntu-latest
+            compiler: arm-linux-gnueabi-gcc
+            cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-arm.cmake -DCMAKE_C_COMPILER_TARGET=arm-linux-gnueabi
+            packages: qemu gcc-arm-linux-gnueabi libc-dev-armel-cross
+            deploy-name: arm-sf
+
+          - name: Ubuntu GCC ARM HF
+            os: ubuntu-latest
+            compiler: arm-linux-gnueabihf-gcc
+            cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-arm.cmake -DCMAKE_C_COMPILER_TARGET=arm-linux-gnueabihf
+            packages: qemu gcc-arm-linux-gnueabihf libc-dev-armel-cross
+            deploy-name: arm-hf
+
+          - name: Ubuntu GCC AARCH64
+            os: ubuntu-latest
+            compiler: aarch64-linux-gnu-gcc
+            cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-aarch64.cmake
+            packages: qemu gcc-aarch64-linux-gnu libc-dev-arm64-cross
+            deploy-name: aarch64
+
+          - name: Ubuntu GCC PPC
+            os: ubuntu-latest
+            compiler: powerpc-linux-gnu-gcc
+            cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-powerpc.cmake
+            packages: qemu gcc-powerpc-linux-gnu libc-dev-powerpc-cross
+            deploy-name: ppc
+
+          - name: Ubuntu GCC PPC64
+            os: ubuntu-latest
+            compiler: powerpc64-linux-gnu-gcc
+            cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-powerpc64.cmake
+            packages: qemu gcc-powerpc64-linux-gnu libc-dev-ppc64-cross
+            deploy-name: ppc64
+
+          - name: Ubuntu GCC PPC64LE
+            os: ubuntu-latest
+            compiler: powerpc64le-linux-gnu-gcc
+            cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-powerpc64le.cmake
+            packages: qemu gcc-powerpc64le-linux-gnu libc-dev-ppc64el-cross
+            deploy-name: ppc64le
+
+          - name: Ubuntu GCC SPARC64
+            os: ubuntu-latest
+            compiler: sparc64-linux-gnu-gcc
+            cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-sparc64.cmake
+            packages: qemu gcc-sparc64-linux-gnu libc-dev-sparc64-cross
+            deploy-name: sparc64
+
+          - name: Ubuntu GCC S390X
+            os: ubuntu-latest
+            compiler: s390x-linux-gnu-gcc
+            cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-s390x.cmake
+            packages: qemu gcc-s390x-linux-gnu libc-dev-s390x-cross
+            deploy-name: s390x
+
+          - name: Ubuntu Clang
+            os: ubuntu-latest
+            compiler: clang
+            deploy-name: linux
+
+          - name: Windows MSVC Win32
+            os: windows-latest
+            compiler: cl
+            cmake-args: -A Win32
+            deploy-name: win-x86
+
+          - name: Windows MSVC Win64
+            os: windows-latest
+            compiler: cl
+            cmake-args: -A x64
+            deploy-name: win-x64
+
+          - name: macOS Clang
+            os: macOS-latest
+            compiler: clang
+            codecov: macos_clang
+            deploy-name: mac
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v1
+
+    - name: Install packages (Ubuntu)
+      if: runner.os == 'Linux' && matrix.packages
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ${{ matrix.packages }}
+
+    - name: Install packages (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        choco install ninja ${{ matrix.packages }} --no-progress
+
+    - name: Install packages (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install ninja ${{ matrix.packages }}
+
+    - name: Set environment variables (Windows)
+      run:  echo "::set-env name=programFiles::$($env:PROGRAMFILES(X86))"
+
+    - name: Generate project files
+      run: |
+        cmake . ${{ matrix.cmake-args }} -DCMAKE_BUILD_TYPE=Release -DWITH_GZFILEOP=ON -DCMAKE_INSTALL_PREFIX=out
+      env:
+        CC: ${{ matrix.compiler }}
+        CI: true
+
+    - name: Compile source code
+      run: |
+        cmake --build . --config ${{ matrix.build-config || 'Release' }} --target install
+
+    - name: Package release (Ubuntu/macOS)
+      if: (runner.os == 'Linux' || runner.os == 'macOS') && matrix.deploy && startsWith(github.ref, 'refs/tags/')
+      run: |
+        cd out/usr/local/
+        ls * | tar -czvf ../../../zlibng-${{ matrix.deploy-name }}.tar.gz -T -
+
+    - name: Upload release (Ubuntu/macOS)
+      uses: svenstaro/upload-release-action@v1-release
+      if: (runner.os == 'Linux' || runner.os == 'macOS') && matrix.deploy && startsWith(github.ref, 'refs/tags/') && env.GITHUB_TOKEN != ''
+      with:
+        asset_name: zlibng-${{ matrix.deploy-name }}.tar.gz
+        file: zlibng-${{ matrix.deploy-name }}.tar.gz
+        tag: ${{ github.ref }}
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        overwrite: true
+      env:
+        GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+
+    - name: Package release (Windows)
+      if: runner.os == 'Windows' && matrix.deploy && startsWith(github.ref, 'refs/tags/')
+      run: |
+        7z a -tzip zlibng-${{ matrix.deploy-name }}.zip ${{env.programFiles}}/zlib/*
+
+    - name: Upload release (Windows)
+      uses: svenstaro/upload-release-action@v1-release
+      if: runner.os == 'Windows' && matrix.deploy && startsWith(github.ref, 'refs/tags/') && env.GITHUB_TOKEN != ''
+      with:
+        asset_name: zlibng-${{ matrix.deploy-name }}.zip
+        file: zlibng-${{ matrix.deploy-name }}.zip
+        tag: ${{ github.ref }}
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        overwrite: true
+      env:
+        GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
