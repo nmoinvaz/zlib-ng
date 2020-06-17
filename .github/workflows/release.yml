@@ -146,9 +146,9 @@ jobs:
       uses: svenstaro/upload-release-action@v1-release
       if: (runner.os == 'Linux' || runner.os == 'macOS')
       with:
-        asset_name: zlibng-${{env.tag}-${{ matrix.deploy-name }}.tar.gz
+        asset_name: zlibng-${{env.tag}}-${{ matrix.deploy-name }}.tar.gz
         file: zlibng-${{ matrix.deploy-name }}.tar.gz
-        tag: ${{env.tag}
+        tag: ${{env.tag}}
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         overwrite: true
       env:
@@ -163,9 +163,9 @@ jobs:
       uses: svenstaro/upload-release-action@v1-release
       if: runner.os == 'Windows'
       with:
-        asset_name: zlibng-${{env.tag}-${{ matrix.deploy-name }}.zip
+        asset_name: zlibng-${{env.tag}}-${{ matrix.deploy-name }}.zip
         file: zlibng-${{ matrix.deploy-name }}.zip
-        tag: ${{env.tag}
+        tag: ${{env.tag}}
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         overwrite: true
       env:
