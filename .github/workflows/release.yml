@@ -123,11 +123,11 @@ jobs:
 
     - name: Set environment variables (Windows)
       if: runner.os == 'Windows'
-      run:  echo "::set-env name=programFiles::$($env:PROGRAMFILES(X86))"
+      run:  echo "::set-env name=programFiles::$($env:PROGRAMFILES\(X86\))"
 
     - name: Generate project files
       run: |
-        cmake . ${{ matrix.cmake-args }} -DCMAKE_BUILD_TYPE=Release -DWITH_GZFILEOP=ON -DCMAKE_INSTALL_PREFIX=.
+        cmake . ${{ matrix.cmake-args }} -DCMAKE_BUILD_TYPE=Release -DWITH_GZFILEOP=ON -DCMAKE_INSTALL_PREFIX=out
       env:
         CC: ${{ matrix.compiler }}
         CI: true
@@ -139,8 +139,7 @@ jobs:
     - name: Package release (Ubuntu/macOS)
       if: (runner.os == 'Linux' || runner.os == 'macOS')
       run: |
-        cd zlib-ng/usr/local/
-        ls * | tar -czvf ../../../zlibng-${{ matrix.deploy-name }}.tar.gz -T -
+        ls out -r | tar -czvf zlibng-${{ matrix.deploy-name }}.tar.gz -T -
 
     - name: Upload release (Ubuntu/macOS)
       uses: svenstaro/upload-release-action@v1-release
