@@ -157,7 +157,8 @@ jobs:
     - name: Package release (Windows)
       if: runner.os == 'Windows'
       run: |
-        7z a -tzip zlibng-${{ matrix.deploy-name }}.zip "C:/Program Files (x86)/zlib/*"
+        cd out
+        7z a -tzip ../zlibng-${{ matrix.deploy-name }}.zip *
 
     - name: Upload release (Windows)
       uses: svenstaro/upload-release-action@v1-release
