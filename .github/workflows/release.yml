@@ -125,6 +125,7 @@ jobs:
         brew install ninja ${{ matrix.packages }}
 
     - name: Set environment variables (Windows)
+      if: runner.os == 'Windows'
       run:  echo "::set-env name=programFiles::$($env:PROGRAMFILES(X86))"
 
     - name: Generate project files
