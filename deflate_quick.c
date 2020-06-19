@@ -115,7 +115,7 @@ ZLIB_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
     if (last) {
         if (s->strm->avail_out == 0)
             return s->strm->avail_in == 0 ? finish_started : need_more;
-        else
+        else 
             return finish_done;
     }
 
