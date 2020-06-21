@@ -47,7 +47,13 @@ cd btmp1
   # Use same optimization level as cmake did.
   CFLAGS="$(awk -F= '/CMAKE_C_FLAGS_RELEASE:STRING=/ {print $2}' < ../btmp2/CMakeCache.txt)"
   export CFLAGS
-  ../configure
+  # Hack: oddly, given CHOST=powerpc-linux-gnu, configure concludes uname is gnu,
+  # causing it to set LDSHAREDFLAGS to a different value than cmake uses.
+  # So override it when appropriate.  FIXME
+  case "$CHOST" in
+  *linux*) bash ../configure --uname=linux;;
+  *)       bash ../configure;;
+  esac
   make
   make install
 cd ..
