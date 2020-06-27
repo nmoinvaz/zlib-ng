@@ -69,14 +69,14 @@ jobs:
       if: runner.os == 'Windows'
       run: |
         cd out
-        7z a -tzip ../zlibng-${{ matrix.deploy-name }}.zip *
+        7z a -tzip ../zlibng-${{ matrix.deploy-name }}.zip bin include lib
 
     - name: Upload release (Windows)
       uses: svenstaro/upload-release-action@v1-release
       if: runner.os == 'Windows'
       with:
-        asset_name: zlibng-${{ matrix.deploy-name }}.zip
-        file: zlibng-${{ matrix.deploy-name }}.zip
+        asset_name: zlib-ng-${{ matrix.deploy-name }}.zip
+        file: zlib-ng-${{ matrix.deploy-name }}.zip
         tag: ${{env.tag}}
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         overwrite: true
