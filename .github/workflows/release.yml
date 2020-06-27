@@ -69,7 +69,7 @@ jobs:
       if: runner.os == 'Windows'
       run: |
         cd out
-        7z a -tzip ../zlibng-${{ matrix.deploy-name }}.zip bin include lib
+        7z a -tzip ../zlib-ng-${{ matrix.deploy-name }}.zip bin include lib
 
     - name: Upload release (Windows)
       uses: svenstaro/upload-release-action@v1-release
