@@ -197,7 +197,7 @@ then
   # Don't complain about new variables or functions, since zlib-ng does define new ones.
   # FIXME: use --no-added-syms for now, but we probably want to be more strict.
   # In compat mode, should we declare ng-ish symbols ZLIB_INTERNAL ?
-  if abidiff --no-added-syms "$ABIFILE" zlib${suffix}-built.abi
+  if abidiff "$ABIFILE" zlib${suffix}-built.abi
   then
     echo "pkgcheck-abi-check PASS"
   else
