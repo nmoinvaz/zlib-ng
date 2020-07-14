@@ -14,6 +14,9 @@ endif()
 if(NOT DECOMPRESS_ARGS)
     set(DECOMPRESS_ARGS -d -c)
 endif()
+if(NOT GZIP_VERIFY)
+    set(GZIP_VERIFY ON)
+endif()
 if(NOT SUCCESS_EXIT)
     set(SUCCESS_EXIT 0)
 endif()
@@ -49,7 +52,7 @@ execute_process(COMMAND ${CMAKE_COMMAND}
 execute_process(COMMAND ${CMAKE_COMMAND}
     -E compare_files ${INPUT} ${OUTPUT}.out)
 
-if(NOT "${COMPRESS_ARGS}" MATCHES "-T")
+if(GZIP_VERIFY AND NOT "${COMPRESS_ARGS}" MATCHES "-T")
     # Transparent writing does not use gzip format
     find_program(GZIP gzip)
     if(GZIP)
