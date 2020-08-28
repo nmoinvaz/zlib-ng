@@ -55,7 +55,9 @@ ZLIB_INTERNAL int32_t LONGEST_MATCH(deflate_state *const s, Pos cur_match) {
     chain_length = s->max_chain_length;
     if (best_len >= s->good_match)
         chain_length >>= 2;
-
+    unsigned char* match_base = s->window + cur_match;
+    if (best_len >= MIN_MATCH)
+        cur_match += offset;
     /*
      * Do not look for matches beyond the end of the input. This is
      * necessary to make deflate deterministic
@@ -66,6 +68,7 @@ ZLIB_INTERNAL int32_t LONGEST_MATCH(deflate_state *const s, Pos cur_match) {
      * Stop when cur_match becomes <= limit. To simplify the code,
      * we prevent matches with the string of window index 0
      */
+    
     limit = strstart > MAX_DIST(s) ? strstart - MAX_DIST(s) : 0;
 
     scan_start = *(bestcmp_t *)(scan);
@@ -114,11 +117,60 @@ ZLIB_INTERNAL int32_t LONGEST_MATCH(deflate_state *const s, Pos cur_match) {
         Assert(scan+len <= window+(unsigned)(s->window_size-1), "wild scan");
 
         if (len > best_len) {
+            if (best_len >= MIN_MATCH)
+                cur_match -= offset;
             s->match_start = cur_match;
             best_len = len;
             if (len >= nice_match)
                 break;
             scan_end = *(bestcmp_t *)(scan+best_len-1);
+             if (best_len >= MIN_MATCH) {
+                cur_match += offset;
+                /*Pos pos = functable.insert_string(s, cur_match, 3);
+                if (pos > len && pos < cur_match) {
+                    cur_match = pos;
+                    if (cur_match > limit)
+                        continue;
+                    return best_len;
+                }*/
+                //continue;
+             }
+            
+#if 0
+            if (len > MIN_MATCH) {// && cur_match - offset + len < strstart) {
+                Pos    pos, next_pos;
+                register int i;
+                register uInt hash;
+                Bytef* scan_end;
+#if 1
+                /* go back to offset 0 */
+                //cur_match -= offset;
+                //offset = 0;
+                next_pos = cur_match;
+                for (i = 0; i <= len - MIN_MATCH; i++) {
+                    pos = prev[(cur_match + i) & wmask];
+                    if (pos < next_pos) {
+                        /* this hash chain is more distant, use it */
+                        if (pos <= limit + i) 
+                            return best_len;
+                        next_pos = pos;
+                        //offset = i;
+                    }
+                }
+                /* Switch cur_match to next_pos chain */
+                cur_match = next_pos;
+                //continue;
+#else
+                pos = functable.quick_insert_string(s, strstart+len-MIN_MATCH+1);
+                if (pos > len && pos < cur_match) {
+                    cur_match = pos-(len-MIN_MATCH);
+                    if (cur_match > limit)
+                        continue;
+                    return best_len;
+                }
+#endif
+            }
+#endif
         } else {
             /*
              * The probability of finding a match later if we here
