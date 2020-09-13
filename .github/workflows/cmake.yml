@@ -18,14 +18,14 @@ jobs:
             os: ubuntu-latest
             compiler: i686-w64-mingw32-gcc
             cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-mingw-i686.cmake
-            packages: gcc-mingw-w64
+            packages: wine qemu gcc-mingw-w64
             codecov: ubuntu_gcc_mingw64_i686
 
           - name: Ubuntu Mingw64
             os: windows-latest
             compiler: x86_64-w64-mingw32-gcc
             cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-mingw-x86_64.cmake
-            packages: gcc-mingw-w64
+            packages: wine qemu gcc-mingw-w64
             codecov: ubuntu_gcc_mingw32_x86_64
 
     steps:
