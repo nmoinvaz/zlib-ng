@@ -8,6 +8,10 @@ if(NOT DEFINED OUTPUT)
 endif()
 
 if(INPUT)
+    # Check to see that input file exists
+    if(NOT EXISTS ${INPUT})
+        message(FATAL_ERROR "Cannot locate input: ${INPUT}")
+    endif()
     # Execute with both stdin and stdout file
     execute_process(COMMAND ${COMMAND}
         RESULT_VARIABLE CMD_RESULT

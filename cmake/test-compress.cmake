@@ -39,6 +39,10 @@ macro(cleanup)
 endmacro()
 
 # Compress input file
+if(NOT EXISTS ${INPUT})
+    message(FATAL_ERROR "Cannot locate compress input: ${INPUT}")
+endif()
+
 set(COMPRESS_COMMAND ${COMPRESS_TARGET} ${COMPRESS_ARGS})
 
 execute_process(COMMAND ${CMAKE_COMMAND}
@@ -55,6 +59,10 @@ if(CMD_RESULT)
 endif()
 
 # Decompress output
+if(NOT EXISTS ${OUTPUT}.gz)
+    message(FATAL_ERROR "Cannot locate decompress input: ${OUTPUT}.gz")
+endif()
+
 set(DECOMPRESS_COMMAND ${DECOMPRESS_TARGET} ${DECOMPRESS_ARGS})
 
 execute_process(COMMAND ${CMAKE_COMMAND}
@@ -86,6 +94,10 @@ if(GZIP_VERIFY AND NOT "${COMPRESS_ARGS}" MATCHES "-T")
     # Transparent writing does not use gzip format
     find_program(GZIP gzip)
     if(GZIP)
+        if(NOT EXISTS ${GZIP})
+            message(FATAL_ERROR "Cannot locate gzip: ${GZIP}")
+        endif()
+
         # Check gzip can decompress our compressed output
         set(GZ_DECOMPRESS_COMMAND ${GZIP} --decompress)
 
