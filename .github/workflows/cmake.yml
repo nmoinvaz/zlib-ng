@@ -378,7 +378,6 @@ jobs:
       run: |
         choco install ninja ${{ matrix.packages }} --no-progress
 
-
     - name: Install packages (macOS)
       if: runner.os == 'macOS'
       run: |
