@@ -119,9 +119,14 @@ rm -rf btmp1 pkgtmp1
 mkdir btmp1 pkgtmp1
 export DESTDIR=$(pwd)/pkgtmp1
 cd btmp1
-  cmake -G Ninja ${CMAKE_ARGS} ..
-  ninja -v
-  ninja install
+  case $(uname) in
+  Darwin)
+    export LDFLAGS="-Wl,-headerpad_max_install_names"
+    ;;
+  esac
+  ../configure $CONFIGURE_ARGS
+  make
+  make install
 cd ..
 
 repack_ar() {
