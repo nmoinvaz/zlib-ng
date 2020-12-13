@@ -109,9 +109,11 @@ rm -rf btmp2 pkgtmp2
 mkdir btmp2 pkgtmp2
 export DESTDIR=$(pwd)/pkgtmp2
 cd btmp2
-  cmake ${CMAKE_ARGS} .. -DCMAKE_OSX_DEPLOYMENT_TARGET=""
-  make
-  make install
+  cmake -G ${CMAKE_ARGS} .. -DCMAKE_OSX_DEPLOYMENT_TARGET="" -DCMAKE_OSX_SYSROOT=""
+  ninja -v
+  ninja install
+  #make
+  #make install
 cd ..
 
 # Original build system
