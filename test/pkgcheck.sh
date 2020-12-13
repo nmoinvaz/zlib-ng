@@ -109,7 +109,7 @@ rm -rf btmp2 pkgtmp2
 mkdir btmp2 pkgtmp2
 export DESTDIR=$(pwd)/pkgtmp2
 cd btmp2
-  cmake ${CMAKE_ARGS} ..
+  cmake ${CMAKE_ARGS} .. -DCMAKE_OSX_DEPLOYMENT_TARGET=""
   make
   make install
 cd ..
