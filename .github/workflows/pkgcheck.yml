@@ -15,7 +15,7 @@ jobs:
           - name: macOS Clang
             os: macOS-10.15
             compiler: clang
-            cmake-args:  -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 -DCMAKE_OSX_SYSROOT=/Applications/Xcode_12.2.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.15.sdk
+            cmake-args:  -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15
 
     steps:
     - name: Checkout repository
