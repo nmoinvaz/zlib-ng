@@ -109,7 +109,7 @@ rm -rf btmp2 pkgtmp2
 mkdir btmp2 pkgtmp2
 export DESTDIR=$(pwd)/pkgtmp2
 cd btmp2
-  cmake -G Ninja ${CMAKE_ARGS} ..
+  cmake -G "Unix Makefiles" ${CMAKE_ARGS} ..
   ninja -v
   ninja install
 cd ..
