@@ -109,7 +109,7 @@ rm -rf btmp2 pkgtmp2
 mkdir btmp2 pkgtmp2
 export DESTDIR=$(pwd)/pkgtmp2
 cd btmp2
-  cmake -G Ninja ${CMAKE_ARGS} .. -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15
+  cmake -G Ninja ${CMAKE_ARGS} .. -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
   ninja -v
   ninja install
   #make
