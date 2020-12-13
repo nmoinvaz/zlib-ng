@@ -108,6 +108,7 @@ fi
 rm -rf btmp2 pkgtmp2
 mkdir btmp2 pkgtmp2
 export DESTDIR=$(pwd)/pkgtmp2
+export LDFLAGS="-Wl,-weak_library /usr/lib/libSystem.B.dylib"
 cd btmp2
   cmake -G Ninja ${CMAKE_ARGS} ..
   ninja -v
@@ -123,7 +124,7 @@ export DESTDIR=$(pwd)/pkgtmp1
 cd btmp1
   case $(uname) in
   Darwin)
-    export LDFLAGS="-Wl,-headerpad_max_install_names"
+    export LDFLAGS="-Wl,-headerpad_max_install_names -Wl,-weak_library /usr/lib/libSystem.B.dylib"
     ;;
   esac
   ../configure $CONFIGURE_ARGS
