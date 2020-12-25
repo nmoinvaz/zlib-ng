@@ -27,8 +27,10 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
          * for the next match, plus MIN_MATCH bytes to insert the
          * string following the next match.
          */
-        if (s->lookahead < MIN_LOOKAHEAD && s->prev_length < MIN_MATCH) {
+        uint8_t need_more = s->lookahead < MIN_LOOKAHEAD;
+        if (need_more && s->prev_length < MIN_MATCH) {
             fill_window(s);
+            need_more = 0;
             if (UNLIKELY(s->lookahead < MIN_LOOKAHEAD && flush == Z_NO_FLUSH)) {
                 return need_more;
             }
@@ -36,45 +38,44 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
                 break; /* flush the current block */
         }
 
-        //if (s->lookahead >= MIN_LOOKAHEAD) {
-        /* Insert the string window[strstart .. strstart+2] in the
-         * dictionary, and set hash_head to the head of the hash chain:
-        */
-        hash_head = 0;
-        if (LIKELY(s->lookahead >= MIN_MATCH)) {
-            hash_head = functable.quick_insert_string(s, s->strstart);
-        }
-
-        /* Find the longest match, discarding those <= prev_length.
-         */
-
         s->prev_match = (Pos)s->match_start;
+        if (!need_more) {
+            /* Insert the string window[strstart .. strstart+2] in the
+            * dictionary, and set hash_head to the head of the hash chain:
+            */
+            hash_head = 0;
+            if (LIKELY(s->lookahead >= MIN_MATCH)) {
+                hash_head = functable.quick_insert_string(s, s->strstart);
+            }
+            /* Find the longest match, discarding those <= prev_length.
+            */
 
-        match_len = MIN_MATCH-1;
+            match_len = MIN_MATCH-1;
 
             dist = (int64_t)s->strstart - hash_head;
 
             if (dist <= MAX_DIST(s) && dist > 0 && s->prev_length < s->max_lazy_match) {
                 /* To simplify the code, we prevent matches with the string
-                 * of window index 0 (in particular we have to avoid a match
-                 * of the string with itself at the start of the input file).
-                 */
-                match_len = functable.longest_match(s, hash_head);
+                    * of window index 0 (in particular we have to avoid a match
+                    * of the string with itself at the start of the input file).
+                    */
+
+                    match_len = functable.longest_match(s, hash_head);
+
                 /* longest_match() sets match_start */
 
                 if (match_len <= 5 && (s->strategy == Z_FILTERED)) {
                     /* If prev_match is also MIN_MATCH, match_start is garbage
-                     * but we will ignore the current match anyway.
-                     */
+                        * but we will ignore the current match anyway.
+                        */
                     match_len = MIN_MATCH-1;
                 }
             }
-        //}
+        }
         /* If there was a match at the previous step and the current
          * match is not better, output the previous match:
          */
-        if (s->prev_length >= MIN_MATCH && (match_len <= s->prev_length ||
-            s->lookahead < MIN_LOOKAHEAD)) {
+        if (s->prev_length >= MIN_MATCH && (match_len <= s->prev_length || need_more)) {
             unsigned int max_insert = s->strstart + s->lookahead - MIN_MATCH;
             /* Do not insert strings in hash table beyond this. */
 
