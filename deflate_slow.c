@@ -41,7 +41,7 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
                 s->prev_match = (Pos)s->match_start;
             }
         }
-
+        match_len = MIN_MATCH-1;
         if (!need_more) {
             /* Insert the string window[strstart .. strstart+2] in the
             * dictionary, and set hash_head to the head of the hash chain:
@@ -54,7 +54,7 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
             */
 
             s->prev_match = (Pos)s->match_start;
-            match_len = MIN_MATCH-1;
+
             dist = (int64_t)s->strstart - hash_head;
 
             if (dist <= MAX_DIST(s) && dist > 0 && s->prev_length < s->max_lazy_match) {
