@@ -28,17 +28,20 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
          * string following the next match.
          */
         uint8_t need_more = s->lookahead < MIN_LOOKAHEAD;
-        if (need_more && s->prev_length < MIN_MATCH) {
-            fill_window(s);
-            need_more = 0;
-            if (UNLIKELY(s->lookahead < MIN_LOOKAHEAD && flush == Z_NO_FLUSH)) {
-                return need_more;
+        if (need_more) {
+            if (s->prev_length < MIN_MATCH) {
+                fill_window(s);
+                need_more = 0;
+                if (UNLIKELY(s->lookahead < MIN_LOOKAHEAD && flush == Z_NO_FLUSH)) {
+                    return need_more;
+                }
+                if (UNLIKELY(s->lookahead == 0))
+                    break; /* flush the current block */
+            } else {
+                s->prev_match = (Pos)s->match_start;
             }
-            if (UNLIKELY(s->lookahead == 0))
-                break; /* flush the current block */
         }
 
-        s->prev_match = (Pos)s->match_start;
         if (!need_more) {
             /* Insert the string window[strstart .. strstart+2] in the
             * dictionary, and set hash_head to the head of the hash chain:
@@ -50,8 +53,8 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
             /* Find the longest match, discarding those <= prev_length.
             */
 
+            s->prev_match = (Pos)s->match_start;
             match_len = MIN_MATCH-1;
-
             dist = (int64_t)s->strstart - hash_head;
 
             if (dist <= MAX_DIST(s) && dist > 0 && s->prev_length < s->max_lazy_match) {
@@ -60,7 +63,7 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
                     * of the string with itself at the start of the input file).
                     */
 
-                    match_len = functable.longest_match(s, hash_head);
+                match_len = functable.longest_match(s, hash_head);
 
                 /* longest_match() sets match_start */
 
