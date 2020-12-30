@@ -27,11 +27,11 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
          * for the next match, plus MIN_MATCH bytes to insert the
          * string following the next match.
          */
-        uint8_t need_more = s->lookahead < MIN_LOOKAHEAD;
-        if (need_more) {
+        int32_t fill = s->lookahead < MIN_LOOKAHEAD;
+        if (fill) {
             if (s->prev_length < MIN_MATCH) {
                 fill_window(s);
-                need_more = 0;
+                fill = 0;
                 if (UNLIKELY(s->lookahead < MIN_LOOKAHEAD && flush == Z_NO_FLUSH)) {
                     return need_more;
                 }
@@ -42,7 +42,7 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
             }
         }
         match_len = MIN_MATCH-1;
-        if (!need_more) {
+        if (!fill) {
             /* Insert the string window[strstart .. strstart+2] in the
             * dictionary, and set hash_head to the head of the hash chain:
             */
@@ -78,7 +78,7 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
         /* If there was a match at the previous step and the current
          * match is not better, output the previous match:
          */
-        if (s->prev_length >= MIN_MATCH && (match_len <= s->prev_length || need_more)) {
+        if (s->prev_length >= MIN_MATCH && (match_len <= s->prev_length || fill)) {
             unsigned int max_insert = s->strstart + s->lookahead - MIN_MATCH;
             /* Do not insert strings in hash table beyond this. */
 
