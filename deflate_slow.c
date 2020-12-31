@@ -35,13 +35,6 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
             }
             if (UNLIKELY(s->lookahead == 0))
                 break; /* flush the current block */
-
-        }
-
-        match_len = MIN_MATCH-1;
-
-        if (s->lookahead >= MIN_LOOKAHEAD || s->prev_length >= MIN_MATCH) {
-            s->prev_match = (Pos)s->match_start;
         }
 
         /* Insert the string window[strstart .. strstart+2] in the
@@ -53,7 +46,8 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
         }
         /* Find the longest match, discarding those <= prev_length.
         */
-
+        match_len = MIN_MATCH-1;
+        s->prev_match = (Pos)s->match_start;
         dist = (int64_t)s->strstart - hash_head;
 
         if (dist <= MAX_DIST(s) && dist > 0 && s->prev_length < s->max_lazy_match) {
