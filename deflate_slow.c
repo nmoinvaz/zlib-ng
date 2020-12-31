@@ -68,7 +68,7 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
         /* If there was a match at the previous step and the current
          * match is not better, output the previous match:
          */
-        if (s->prev_length >= MIN_MATCH && match_len <= s->prev_length) {
+        if (s->match_start > 0 && s->prev_length >= MIN_MATCH && match_len <= s->prev_length) {
             unsigned int max_insert = s->strstart + s->lookahead - MIN_MATCH;
             /* Do not insert strings in hash table beyond this. */
 
