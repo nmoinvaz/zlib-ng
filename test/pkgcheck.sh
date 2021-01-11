@@ -105,16 +105,21 @@ fi
 # (which itself is a bug, https://github.com/madler/zlib/issues/162 )
 # which triggers another bug later in configure,
 # https://github.com/madler/zlib/issues/499
-sudo xcode-select -r
+
 rm -rf btmp2 pkgtmp2
 mkdir btmp2 pkgtmp2
 export DESTDIR=$(pwd)/pkgtmp2
 cd btmp2
-  cmake ${CMAKE_ARGS} ..
-  make
-  make install
+  case $(uname) in
+  Darwin)
+    export LDFLAGS="-Wl,-headerpad_max_install_names"
+    ;;
+  esac
+  cmake -G Ninja ${CMAKE_ARGS} ..
+  ninja -v
+  ninja install
 cd ..
-sudo xcode-select -r
+
 # Original build system
 rm -rf btmp1 pkgtmp1
 mkdir btmp1 pkgtmp1
