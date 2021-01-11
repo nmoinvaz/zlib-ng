@@ -105,6 +105,7 @@ fi
 # (which itself is a bug, https://github.com/madler/zlib/issues/162 )
 # which triggers another bug later in configure,
 # https://github.com/madler/zlib/issues/499
+sudo xcode-select -r
 rm -rf btmp2 pkgtmp2
 mkdir btmp2 pkgtmp2
 export DESTDIR=$(pwd)/pkgtmp2
@@ -113,7 +114,7 @@ cd btmp2
   ninja -v
   ninja install
 cd ..
-
+sudo xcode-select -r
 # Original build system
 rm -rf btmp1 pkgtmp1
 mkdir btmp1 pkgtmp1
