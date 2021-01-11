@@ -88,6 +88,15 @@ Darwin)
   ;;
 esac
 
+case $(uname) in
+Darwin)
+  # Remove the build uuid.
+  sysroot=$(xcrun --show-sdk-path)
+  CFLAGS="$CFLAGS -isysroot $sysroot"
+  LDFLAGS="$LDFLAGS -isysroot $sysroot"
+  ;;
+esac
+
 # Use same compiler for make and cmake builds
 if test "$CC"x = ""x
 then
@@ -110,11 +119,6 @@ rm -rf btmp2 pkgtmp2
 mkdir btmp2 pkgtmp2
 export DESTDIR=$(pwd)/pkgtmp2
 cd btmp2
-  case $(uname) in
-  Darwin)
-    export LDFLAGS="-Wl,-headerpad_max_install_names"
-    ;;
-  esac
   cmake -G Ninja ${CMAKE_ARGS} ..
   ninja -v
   ninja install
