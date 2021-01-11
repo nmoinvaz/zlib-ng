@@ -79,20 +79,12 @@ export SOURCE_DATE_EPOCH=0
 case $(uname) in
 Darwin)
   # Tell Apple's ar etc. to use zero timestamps
-  export ZERO_AR_DATE=2
+  #export ZERO_AR_DATE=1
   # What CPU are we running on, exactly?
   sysctl -n machdep.cpu.brand_string
   sysctl -n machdep.cpu.features
   sysctl -n machdep.cpu.leaf7_features
   sysctl -n machdep.cpu.extfeatures
-  ;;
-esac
-
-case $(uname) in
-Darwin)
-  # Remove the build uuid.
-  sysroot=$(xcrun --show-sdk-path)
-  LDFLAGS="$LDFLAGS -isysroot $sysroot"
   ;;
 esac
 
@@ -107,6 +99,14 @@ then
     export CC=gcc
   fi
 fi
+
+# Use the same version of macOS SDK when linking
+case $(uname) in
+Darwin)
+  sysroot=$(xcrun --show-sdk-path)
+  LDFLAGS="$LDFLAGS -isysroot $sysroot"
+  ;;
+esac
 
 # New build system
 # Happens to delete top-level zconf.h
