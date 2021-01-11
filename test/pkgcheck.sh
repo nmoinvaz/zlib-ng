@@ -79,7 +79,7 @@ export SOURCE_DATE_EPOCH=0
 case $(uname) in
 Darwin)
   # Tell Apple's ar etc. to use zero timestamps
-  export ZERO_AR_DATE=1
+  export ZERO_AR_DATE=2
   # What CPU are we running on, exactly?
   sysctl -n machdep.cpu.brand_string
   sysctl -n machdep.cpu.features
@@ -92,7 +92,6 @@ case $(uname) in
 Darwin)
   # Remove the build uuid.
   sysroot=$(xcrun --show-sdk-path)
-  CFLAGS="$CFLAGS -isysroot $sysroot"
   LDFLAGS="$LDFLAGS -isysroot $sysroot"
   ;;
 esac
