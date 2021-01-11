@@ -118,9 +118,9 @@ rm -rf btmp2 pkgtmp2
 mkdir btmp2 pkgtmp2
 export DESTDIR=$(pwd)/pkgtmp2
 cd btmp2
-  cmake -G Ninja ${CMAKE_ARGS} ..
-  ninja -v
-  ninja install
+  cmake ${CMAKE_ARGS} ..
+  make
+  make install
 cd ..
 
 # Original build system
@@ -130,7 +130,6 @@ export DESTDIR=$(pwd)/pkgtmp1
 cd btmp1
   case $(uname) in
   Darwin)
-    export ZERO_AR_DATE=1
     export LDFLAGS="-Wl,-headerpad_max_install_names"
     ;;
   esac
