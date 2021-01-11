@@ -49,7 +49,7 @@ set -ex
 
 # Caller can also set CMAKE_ARGS or CONFIGURE_ARGS if desired
 CMAKE_ARGS=${CMAKE_ARGS}
-CONFIGURE_ARGS="${CONFIGURE_ARGS} -isysroot=$SDKROOT"
+CONFIGURE_ARGS="${CONFIGURE_ARGS} -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX11.0.sdk"
 
 case "$1" in
 --zlib-compat)
