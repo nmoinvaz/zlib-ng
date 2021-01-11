@@ -11,8 +11,8 @@ jobs:
           - name: macOS Clang
             os: macOS-latest
             compiler: clang
-            cflags: -isysroot /Applications/Xcode_12.2.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX11.0.sdk -mmacosx-version-min=10.15
-            ldflags: -isysroot /Applications/Xcode_12.2.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX11.0.sdk -mmacosx-version-min=10.15
+            cflags: -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.15.sdk
+            ldflags: -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.15.sdk
 
     steps:
     - name: Checkout repository
