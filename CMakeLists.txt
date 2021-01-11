@@ -93,8 +93,8 @@ add_option(WITH_INFLATE_STRICT "Build with strict inflate distance checking" OFF
 add_option(WITH_INFLATE_ALLOW_INVALID_DIST "Build with zero fill for inflate invalid distances" OFF)
 add_option(WITH_UNALIGNED "Support unaligned reads on platforms that support it" ON)
 
-SET(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> -crD <TARGET> <LINK_FLAGS> <OBJECTS>")
-SET(CMAKE_C_ARCHIVE_APPEND "<CMAKE_AR> -rD <TARGET> <LINK_FLAGS> <OBJECTS>")
+#SET(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> -crD <TARGET> <LINK_FLAGS> <OBJECTS>")
+#SET(CMAKE_C_ARCHIVE_APPEND "<CMAKE_AR> -rD <TARGET> <LINK_FLAGS> <OBJECTS>")
 SET(CMAKE_C_ARCHIVE_FINISH "<CMAKE_RANLIB> -D <TARGET>")
 
 if(BASEARCH_ARM_FOUND)
