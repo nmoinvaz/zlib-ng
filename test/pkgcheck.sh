@@ -79,7 +79,7 @@ export SOURCE_DATE_EPOCH=0
 case $(uname) in
 Darwin)
   # Tell Apple's ar etc. to use zero timestamps
-  #export ZERO_AR_DATE=1
+  export ZERO_AR_DATE=1
   # What CPU are we running on, exactly?
   sysctl -n machdep.cpu.brand_string
   sysctl -n machdep.cpu.features
@@ -130,6 +130,7 @@ export DESTDIR=$(pwd)/pkgtmp1
 cd btmp1
   case $(uname) in
   Darwin)
+    export ZERO_AR_DATE=1
     export LDFLAGS="-Wl,-headerpad_max_install_names"
     ;;
   esac
