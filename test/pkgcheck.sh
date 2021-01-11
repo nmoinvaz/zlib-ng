@@ -119,8 +119,9 @@ rm -rf btmp2 pkgtmp2
 mkdir btmp2 pkgtmp2
 export DESTDIR=$(pwd)/pkgtmp2
 cd btmp2
-  cmake -G Xcode ${CMAKE_ARGS} .. -DCMAKE_OSX_SYSROOT=$sysroot
-  cmake --build . --config Release
+  cmake -G Ninja ${CMAKE_ARGS} .. -DCMAKE_OSX_SYSROOT=$sysroot -DCMAKE_SKIP_RPATH=ON
+  ninja -v
+  ninja install
 cd ..
 
 # Original build system
