@@ -155,8 +155,8 @@ Darwin)
   # Remove the build uuid.
   dylib1=$(find pkgtmp1 -type f -name '*.dylib*')
   dylib2=$(find pkgtmp2 -type f -name '*.dylib*')
-  strip -x -no_uuid "$dylib1"
-  strip -x -no_uuid "$dylib2"
+  strip -x -D -no_uuid "$dylib1"
+  strip -x -D -no_uuid "$dylib2"
   ;;
 esac
 
