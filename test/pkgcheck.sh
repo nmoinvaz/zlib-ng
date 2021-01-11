@@ -114,13 +114,13 @@ esac
 # (which itself is a bug, https://github.com/madler/zlib/issues/162 )
 # which triggers another bug later in configure,
 # https://github.com/madler/zlib/issues/499
-
+#v -DCMAKE_C_CREATE_SHARED_LIBRARY="/usr/bin/xcrun libtool -D -o <TARGET> <LINK_FLAGS> <OBJECTS>"
 rm -rf btmp2 pkgtmp2
 mkdir btmp2 pkgtmp2
 export DESTDIR=$(pwd)/pkgtmp2
 cd btmp2
-  cmake ${CMAKE_ARGS} .. -DCMAKE_C_CREATE_SHARED_LIBRARY="/usr/bin/xcrun libtool -D -o <TARGET> <LINK_FLAGS> <OBJECTS>"
-  make
+  cmake -G Ninja ${CMAKE_ARGS} ..
+  cmake --verbose --build .
   make install
 cd ..
 
