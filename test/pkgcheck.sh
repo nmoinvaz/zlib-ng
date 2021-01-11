@@ -99,6 +99,7 @@ then
     export CC=gcc
   fi
 fi
+export LD=ld
 # Use the same version of macOS SDK when linking
 case $(uname) in
 Darwin)
@@ -116,7 +117,7 @@ rm -rf btmp2 pkgtmp2
 mkdir btmp2 pkgtmp2
 export DESTDIR=$(pwd)/pkgtmp2
 cd btmp2
-  cmake ${CMAKE_ARGS} .. -DCMAKE_C_CREATE_STATIC_LIBRARY="/usr/bin/xcrun libtool -static -D -o <TARGET> <LINK_FLAGS> <OBJECTS>"
+  cmake ${CMAKE_ARGS} .. -D -DCMAKE_C_CREATE_STATIC_LIBRARY="/usr/bin/xcrun libtool -static -D -o <TARGET> <LINK_FLAGS> <OBJECTS>"
   make
   make install
 cd ..
