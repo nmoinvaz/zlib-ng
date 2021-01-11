@@ -11,8 +11,6 @@ jobs:
           - name: macOS Clang
             os: macOS-latest
             compiler: clang
-            cmake-args: -DCMAKE_SKIP_RPATH=ON
-            cflags: -mmacosx-version-min=10.15
 
     steps:
     - name: Checkout repository
@@ -29,10 +27,6 @@ jobs:
       run: |
         brew install ninja diffoscope ${{ matrix.packages }}
 
-    - name: Reset Xcode Command Line Tools
-      if: runner.os == 'macOS'
-      run: sudo xcode-select -r
-
     - name: Compare builds
       run: |
         sh test/pkgcheck.sh
@@ -42,10 +36,6 @@ jobs:
         CHOST: ${{ matrix.chost }}
         CMAKE_ARGS: ${{ matrix.cmake-args }}
         LDFLAGS: ${{ matrix.ldflags }}
-
-    - name: Reset Xcode Command Line Tools
-      if: runner.os == 'macOS'
-      run: sudo xcode-select -r
 
     - name: Compare builds (compat)
       run: |
