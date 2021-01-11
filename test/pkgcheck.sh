@@ -104,6 +104,7 @@ export LD=ld
 case $(uname) in
 Darwin)
   sysroot=$(xcrun --show-sdk-path)
+  CFLAGS="$CFLAGS -mmacosx-version-min=10.15"
   LDFLAGS="$LDFLAGS -isysroot $sysroot"
   ;;
 esac
