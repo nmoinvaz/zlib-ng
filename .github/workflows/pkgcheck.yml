@@ -11,6 +11,7 @@ jobs:
           - name: macOS Clang
             os: macOS-latest
             compiler: clang
+            cmake-args: -DCMAKE_SKIP_RPATH=ON
 
     steps:
     - name: Checkout repository
