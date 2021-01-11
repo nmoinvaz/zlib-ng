@@ -26,6 +26,7 @@ jobs:
     - name: Install packages (macOS)
       if: runner.os == 'macOS'
       run: |
+        sudo xcode-select -r
         brew install ninja diffoscope ${{ matrix.packages }}
 
     - name: Compare builds
