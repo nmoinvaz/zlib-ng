@@ -12,6 +12,7 @@ jobs:
             os: macOS-latest
             compiler: clang
             cmake-args: -DCMAKE_SKIP_RPATH=ON
+            cflags: -mmacosx-version-min=10.15
 
     steps:
     - name: Checkout repository
