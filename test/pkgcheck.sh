@@ -104,8 +104,9 @@ export LD=ld
 case $(uname) in
 Darwin)
   sysroot=$(xcrun --show-sdk-path)
-  CFLAGS="$CFLAGS -mmacosx-version-min=10.15"
-  LDFLAGS="$LDFLAGS -isysroot $sysroot"
+  export CFLAGS="$CFLAGS -mmacosx-version-min=10.15"
+  export LDFLAGS="$LDFLAGS -isysroot $sysroot"
+  export MACOSX_DEPLOYMENT_TARGET=10.15
   ;;
 esac
 # New build system
