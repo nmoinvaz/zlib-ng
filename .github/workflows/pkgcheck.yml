@@ -51,6 +51,7 @@ jobs:
           - name: macOS Clang
             os: macOS-latest
             compiler: clang
+            cmake-args: -DCMAKE_SYSROOT_LINK=
 
     steps:
     - name: Checkout repository
