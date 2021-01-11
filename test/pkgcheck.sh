@@ -99,7 +99,13 @@ then
     export CC=gcc
   fi
 fi
-
+# Use the same version of macOS SDK when linking
+case $(uname) in
+Darwin)
+  sysroot=$(xcrun --show-sdk-path)
+  LDFLAGS="$LDFLAGS -isysroot $sysroot"
+  ;;
+esac
 # New build system
 # Happens to delete top-level zconf.h
 # (which itself is a bug, https://github.com/madler/zlib/issues/162 )
@@ -122,7 +128,7 @@ export DESTDIR=$(pwd)/pkgtmp1
 cd btmp1
   case $(uname) in
   Darwin)
-    export LDFLAGS="$LDFLAGS -isysroot $(xcrun --show-sdk-path) -Wl,-headerpad_max_install_names"
+    export LDFLAGS="$LDFLAGS -Wl,-headerpad_max_install_names"
     ;;
   esac
   ../configure $CONFIGURE_ARGS
