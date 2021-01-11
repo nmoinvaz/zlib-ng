@@ -110,7 +110,7 @@ rm -rf btmp2 pkgtmp2
 mkdir btmp2 pkgtmp2
 export DESTDIR=$(pwd)/pkgtmp2
 cd btmp2
-  cmake ${CMAKE_ARGS} ..
+  cmake ${CMAKE_ARGS} .. -DCMAKE_C_CREATE_STATIC_LIBRARY="/usr/bin/xcrun libtool -static -D -o <TARGET> <LINK_FLAGS> <OBJECTS>"
   make
   make install
 cd ..
