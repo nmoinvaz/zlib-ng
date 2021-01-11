@@ -121,7 +121,7 @@ export DESTDIR=$(pwd)/pkgtmp2
 cd btmp2
   cmake -G Ninja ${CMAKE_ARGS} .. -DCMAKE_OSX_SYSROOT=$sysroot
   cmake --verbose --build .
-  cmake --install
+  cmake --install .
 cd ..
 
 # Original build system
