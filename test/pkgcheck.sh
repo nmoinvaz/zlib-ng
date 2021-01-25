@@ -123,7 +123,7 @@ cd btmp2
   ninja -v
   ninja install
 cd ..
-
+ZERO_AR_DATE = $ZERO_AR_DATE
 # Original build system
 rm -rf btmp1 pkgtmp1
 mkdir btmp1 pkgtmp1
