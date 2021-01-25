@@ -120,7 +120,7 @@ mkdir btmp2 pkgtmp2
 
 export DESTDIR=$(pwd)/pkgtmp2
 cd btmp2
-  cmake -G Ninja ${CMAKE_ARGS} .. -DCMAKE_OSX_SYSROOT=$sysroot -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=ld" -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_LINKER=libtool -DZLIB_ENABLE_TESTS=OFF
+  cmake -G Ninja ${CMAKE_ARGS} .. -DCMAKE_OSX_SYSROOT=$sysroot -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_CXX_CREATE_SHARED_LIBRARY="/usr/bin/xcrun libtool -D -o <TARGET> <LINK_FLAGS> <OBJECTS>" -DZLIB_ENABLE_TESTS=OFF
   cmake --build . --target install
 cd ..
 echo "ZERO_AR_DATE = $ZERO_AR_DATE"
