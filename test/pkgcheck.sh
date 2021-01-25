@@ -117,7 +117,7 @@ esac
 #v -DCMAKE_C_CREATE_SHARED_LIBRARY="/usr/bin/xcrun libtool -D -o <TARGET> <LINK_FLAGS> <OBJECTS>"
 rm -rf btmp2 pkgtmp2
 mkdir btmp2 pkgtmp2
-export LD=ld64
+export LD=libtool
 export DESTDIR=$(pwd)/pkgtmp2
 cd btmp2
   cmake -G Ninja ${CMAKE_ARGS} .. -DCMAKE_OSX_SYSROOT=$sysroot -DCMAKE_SKIP_RPATH=ON -DCMAKE_VERBOSE_MAKEFILE=ON
