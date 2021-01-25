@@ -154,6 +154,10 @@ dylib2=$(find btmp2 -type f -name '*.dylib*' -print -o -type f -name '*.so.*' -p
 abidw $dylib2 > btmp2/zlib${suffix}-built.abi
 abidiff --version
 gcc --version
+echo "XYZ"
+cat btmp1/configure.log
+echo "ABC"
+cat btmp2/configure.log
 # Compare it to the reference
 # FIXME: use --no-added-syms for now, but we probably want to be more strict.
 if abidiff --no-added-syms --suppressions test/abi/ignore "$ABIFILE" btmp2/zlib${suffix}-built.abi
