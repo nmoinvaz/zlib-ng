@@ -79,28 +79,6 @@ else
 fi
 # FIXME: even when using a tag, check the hash.
 
-# Test compat build for ABI compatibility with zlib
-if test "$CHOST" = ""
-then
-  # Note: don't export CHOST here, as we don't want configure seeing it
-  # when it's just the name for the build machine.
-  # Leave it as a plain shell variable, not an environment variable.
-  CHOST=$(detect_chost)
-  # Support -m32 for non-cross builds.
-  case "$CFLAGS" in
-  *-m32*) M32="-m32";;
-  *) M32="";;
-  esac
-else
-  # Canonicalize CHOST to work around bug in original
-  # zlib's configure
-  export CHOST=$(sh $TESTDIR/../tools/config.sub $CHOST)
-fi
-if test "$CHOST" = ""
-then
-  echo "abicheck: SKIP, as we don't know CHOST"
-  exit 0
-fi
 
 ABIFILE="test/abi/zlib$suffix-$ABI_GIT_COMMIT-$CHOST$M32.abi"
 if ! $refresh && $refresh_if && ! test -f "$ABIFILE"
