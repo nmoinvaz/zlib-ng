@@ -29,6 +29,11 @@ jobs:
       env:
         HOMEBREW_NO_INSTALL_CLEANUP: 1
 
+    - name: select xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: '11.7'
+
     - name: Compare builds
       run: |
         sh test/pkgcheck.sh
