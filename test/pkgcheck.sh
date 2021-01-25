@@ -121,7 +121,7 @@ mkdir btmp2 pkgtmp2
 export DESTDIR=$(pwd)/pkgtmp2
 cd btmp2
   cmake -G Xcode ${CMAKE_ARGS} .. -DCMAKE_OSX_SYSROOT=$sysroot -DCMAKE_SHARED_LINKER_FLAGS="-fused-ld=libtool" -DCMAKE_SKIP_RPATH=ON -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_LINKER=libtool -DCMAKE_C_LINKER_EXECUTABLE="libtool -D -o <TARGET> <LINK_FLAGS> <OBJECTS>"
-  cmake --build .. --target install
+  cmake --build . --target install
 cd ..
 echo "ZERO_AR_DATE = $ZERO_AR_DATE"
 # Original build system
