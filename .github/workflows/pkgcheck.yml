@@ -87,17 +87,6 @@ jobs:
         CMAKE_ARGS: ${{ matrix.cmake-args }}
         LDFLAGS: ${{ matrix.ldflags }}
 
-    - name: Check ABI
-      # macOS runner does not contain abigail
-      if: runner.os != 'macOS'
-      run: |
-        sh test/abicheck.sh --refresh_if
-      env:
-        CC: ${{ matrix.compiler }}
-        CFLAGS: ${{ matrix.cflags }}
-        CHOST: ${{ matrix.chost }}
-        LDFLAGS: ${{ matrix.ldflags }}
-
     - name: Check ABI (compat)
       # macOS runner does not contain abigail
       if: runner.os != 'macOS'
