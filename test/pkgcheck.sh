@@ -104,8 +104,8 @@ fi
 case $(uname) in
 Darwin)
   sysroot=$(xcrun --show-sdk-path)
-  export CFLAGS="$CFLAGS -mmacosx-version-min=10.15 "
-  export LDFLAGS="$LDFLAGS -isysroot $sysroot -fuse-ld=libtool"
+  export CFLAGS="$CFLAGS -mmacosx-version-min=10.15"
+  export LDFLAGS="$LDFLAGS -isysroot $sysroot"
   export MACOSX_DEPLOYMENT_TARGET=10.15
   ;;
 esac
@@ -120,7 +120,7 @@ mkdir btmp2 pkgtmp2
 
 export DESTDIR=$(pwd)/pkgtmp2
 cd btmp2
-  cmake -G Ninja ${CMAKE_ARGS} .. -DCMAKE_OSX_SYSROOT=$sysroot -DCMAKE_SKIP_RPATH=ON -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_LINKER=libtool
+  cmake -G Ninja ${CMAKE_ARGS} .. -DCMAKE_OSX_SYSROOT=$sysroot -DCMAKE_SKIP_RPATH=ON -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_C_CREATE_SHARED_LIBRARY="/usr/bin/xcrun libtool -D -o <TARGET> <LINK_FLAGS> <OBJECTS>"
   ninja -v
   ninja install
 cd ..
