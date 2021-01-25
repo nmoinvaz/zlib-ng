@@ -120,6 +120,7 @@ then
   git fetch origin $ABI_GIT_COMMIT
   git reset --hard FETCH_HEAD
   cd ..
+  uname -a
   # Build unstripped, uninstalled, very debug shared library
   CFLAGS="$CFLAGS -ggdb" sh src.d/configure $CONFIGURE_ARGS
   make -j2
@@ -141,7 +142,8 @@ else
   echo "abicheck: SKIP: $ABIFILE not found; rerun with --refresh or --refresh_if"
   exit 0
 fi
-
+echo uname -a
+uname -a
 # Build unstripped, uninstalled, very debug shared library
 rm -rf btmp2
 mkdir btmp2
@@ -158,6 +160,7 @@ echo "XYZ"
 cat btmp1/configure.log
 echo "ABC"
 cat btmp2/configure.log
+uname -a
 # Compare it to the reference
 # FIXME: use --no-added-syms for now, but we probably want to be more strict.
 if abidiff --no-added-syms --suppressions test/abi/ignore "$ABIFILE" btmp2/zlib${suffix}-built.abi
