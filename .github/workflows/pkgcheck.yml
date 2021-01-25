@@ -9,7 +9,7 @@ jobs:
       matrix:
         include:
           - name: macOS Clang
-            os: macOS-latest
+            os: macOS-10.15
             compiler: clang
 
     steps:
