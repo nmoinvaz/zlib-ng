@@ -39,6 +39,15 @@ jobs:
         CMAKE_ARGS: ${{ matrix.cmake-args }}
         LDFLAGS: ${{ matrix.ldflags }}
 
+    - name: Upload Dylibs
+      uses: actions/upload-artifact@v2
+      if: failure()
+      with:
+          name: my-artifact
+          path: |
+            pkgtmp1/usr/local/lib/libz-ng.1.9.9.dylib
+            pkgtmp2/usr/local/lib/libz-ng.1.9.9.dylib
+
     - name: Compare builds (compat)
       run: |
         sh test/pkgcheck.sh --zlib-compat
