@@ -14,6 +14,7 @@ jobs:
 
           - name: Ubuntu GCC -m32
             os: ubuntu-latest
+            chost: i686-linux-gnu
             compiler: gcc-7
             packages: gcc-multilib gcc-7
             cmake-args: -DCMAKE_C_FLAGS=-m32
