@@ -104,7 +104,7 @@ fi
 case $(uname) in
 Darwin)
   sysroot=$(xcrun --show-sdk-path)
-  export CFLAGS="$CFLAGS -mmacosx-version-min=10.15"
+  export CFLAGS="$CFLAGS -mmacosx-version-min=10.15 -fuse-ld=libtool"
   export LDFLAGS="$LDFLAGS -isysroot $sysroot"
   export MACOSX_DEPLOYMENT_TARGET=10.15
   ;;
