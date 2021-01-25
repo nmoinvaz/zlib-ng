@@ -17,6 +17,7 @@ jobs:
             compiler: gcc-7
             packages: gcc-multilib gcc-7
             cmake-args: -DCMAKE_C_FLAGS=-m32
+            sflags: -m32
             cflags: -m32
             ldflags: -m32
 
@@ -106,5 +107,6 @@ jobs:
       env:
         CC: ${{ matrix.compiler }}
         CFLAGS: ${{ matrix.cflags }}
+        SFLAGS: ${{ matrix.sflags }}
         CHOST: ${{ matrix.chost }}
         LDFLAGS: ${{ matrix.ldflags }}
