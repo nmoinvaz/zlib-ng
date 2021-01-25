@@ -363,6 +363,7 @@ if test "$gcc" -eq 1 && ($cc $CFLAGS -c $test.c) >> configure.log 2>&1; then
   if test -z "$uname"; then
     uname=`(uname -s || echo unknown) 2>/dev/null`
   fi
+  echo "UNAME $uname"
   case "$uname" in
   Linux* | linux* | GNU | GNU/* | solaris*)
         LDSHARED=${LDSHARED-"$cc"}
