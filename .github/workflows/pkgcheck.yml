@@ -70,3 +70,11 @@ jobs:
         CFLAGS: ${{ matrix.cflags }}
         CHOST: ${{ matrix.chost }}
         LDFLAGS: ${{ matrix.ldflags }}
+
+    - name: Upload Dylibs
+      uses: actions/upload-artifact@v2
+      with:
+          name: my-artifact
+          path: |
+            pkgtmp1/usr/local/lib/libz-ng.1.9.9.dylib
+            pkgtmp2/usr/local/lib/libz-ng.1.9.9.dylib
