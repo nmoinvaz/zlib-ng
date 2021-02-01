@@ -1,0 +1,32 @@
+name: CI VM Actions
+on: [push, pull_request]
+jobs:
+  FreeBSD:
+   runs-on: macos-latest
+   steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Checkout test corpora
+      uses: actions/checkout@v2
+      with:
+        repository: nmoinvaz/corpora
+        path: test/data/corpora
+
+    - name: Run in FreeBSD
+      uses: vmactions/freebsd-vm@v0.1.2
+      with:
+        usesh: true
+        prepare: pkg install -y cmake bash gmake gcc
+        run: |
+          mkdir build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
+          cmake --build . --config Release
+          ctest --verbose -C Release --output-on-failure --max-width 120 -j 6
+          cd ..
+          mkdir ../build
+          cd ../build
+          ../zlib-ng/configure
+          gmake -j2
+          gmake test

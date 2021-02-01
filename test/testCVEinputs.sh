@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 TESTDIR="$(dirname "$0")"
 
 # check for QEMU if QEMU_RUN is set
