@@ -52,6 +52,12 @@ jobs:
             os: macOS-latest
             compiler: clang
 
+          - name: macOS Clang
+            os: macOS-latest
+            compiler: clang
+            cmake-args: -DWITH_NATIVE_INSTRUCTIONS=ON
+            configure-args: --native
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v1
@@ -86,6 +92,7 @@ jobs:
         CFLAGS: ${{ matrix.cflags }}
         CHOST: ${{ matrix.chost }}
         CMAKE_ARGS: ${{ matrix.cmake-args }}
+        CONFIGURE_ARGS: ${{ matrix.configure-args }}
         LDFLAGS: ${{ matrix.ldflags }}
 
     - name: Compare builds (compat)
@@ -96,6 +103,7 @@ jobs:
         CFLAGS: ${{ matrix.cflags }}
         CHOST: ${{ matrix.chost }}
         CMAKE_ARGS: ${{ matrix.cmake-args }}
+        CONFIGURE_ARGS: ${{ matrix.configure-args }}
         LDFLAGS: ${{ matrix.ldflags }}
 
     - name: Check ABI
@@ -107,6 +115,8 @@ jobs:
         CC: ${{ matrix.compiler }}
         CFLAGS: ${{ matrix.cflags }}
         CHOST: ${{ matrix.chost }}
+        CMAKE_ARGS: ${{ matrix.cmake-args }}
+        CONFIGURE_ARGS: ${{ matrix.configure-args }}
         LDFLAGS: ${{ matrix.ldflags }}
 
     - name: Check ABI (compat)
@@ -118,4 +128,6 @@ jobs:
         CC: ${{ matrix.compiler }}
         CFLAGS: ${{ matrix.cflags }}
         CHOST: ${{ matrix.chost }}
+        CMAKE_ARGS: ${{ matrix.cmake-args }}
+        CONFIGURE_ARGS: ${{ matrix.configure-args }}
         LDFLAGS: ${{ matrix.ldflags }}
