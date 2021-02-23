@@ -101,12 +101,12 @@ with_fuzzers=0
 floatabi=
 native=0
 forcesse2=0
-avx2flag="-mavx2"
-sse2flag="-msse2"
-ssse3flag="-mssse3"
-sse4flag="-msse4"
-sse42flag="-msse4.2"
-pclmulflag="-mpclmul"
+avx2flag=""
+sse2flag=""
+ssse3flag=""
+sse4flag=""
+sse42flag=""
+pclmulflag=""
 acleflag=
 neonflag=
 without_optimizations=0
@@ -241,6 +241,14 @@ if test $build64 -eq 1; then
   CFLAGS="${CFLAGS} -m64"
   SFLAGS="${SFLAGS} -m64"
   LDFLAGS="${LDFLAGS} -m64"
+fi
+if test $native -eq 0; then
+  avx2flag="-mavx2"
+  sse2flag="-msse2"
+  ssse3flag="-mssse3"
+  sse4flag="-msse4"
+  sse42flag="-msse4.2"
+  pclmulflag="-mpclmul"
 fi
 
 # Set library name depending on zlib-compat option
