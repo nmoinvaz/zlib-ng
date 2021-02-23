@@ -1098,7 +1098,7 @@ int main(void) {
     return 0;
 }
 EOF
-        if try ${CC} ${CFLAGS} ${avx2flag} $test.c; then
+        if try ${CC} -c ${CFLAGS} ${avx2flag} $test.c; then
             echo "Checking for AVX2 intrinsics ... Yes." | tee -a configure.log
             HAVE_AVX2_INTRIN=1
         else
