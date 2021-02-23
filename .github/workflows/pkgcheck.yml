@@ -103,8 +103,9 @@ jobs:
         name: ${{ matrix.name }}
         path: |
           btmp1/configure.log
+          btmp1/CMakeFiles/CMakeOutput.log
+          btmp1/CMakeFiles/CMakeError.log
           btmp2/configure.log
-          pkgtmp1/CMakeFiles/CMakeOutput.log
-          pkgtmp1/CMakeFiles/CMakeError.log
-          pkgtmp2/configure.log
+          btmp2/CMakeFiles/CMakeOutput.log
+          btmp2/CMakeFiles/CMakeError.log
         retention-days: 30
