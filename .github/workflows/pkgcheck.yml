@@ -102,7 +102,9 @@ jobs:
       with:
         name: ${{ matrix.name }}
         path: |
-          ${{ matrix.build-dir || '.' }}/CMakeFiles/CMakeOutput.log
-          ${{ matrix.build-dir || '.' }}/CMakeFiles/CMakeError.log
-          ${{ matrix.build-dir || '.' }}/configure.log
+          btmp1/configure.log
+          btmp2/configure.log
+          pkgtmp1/CMakeFiles/CMakeOutput.log
+          pkgtmp1/CMakeFiles/CMakeError.log
+          pkgtmp2/configure.log
         retention-days: 30
