@@ -804,19 +804,3 @@ static void bi_flush(deflate_state *s) {
         }
     }
 }
-
-/* ===========================================================================
- * Reverse the first len bits of a code, using straightforward code (a faster
- * method would use a table)
- * IN assertion: 1 <= len <= 15
- */
-Z_INTERNAL unsigned bi_reverse(unsigned code, int len) {
-    /* code: the value to invert */
-    /* len: its bit length */
-    Z_REGISTER unsigned res = 0;
-    do {
-        res |= code & 1;
-        code >>= 1, res <<= 1;
-    } while (--len > 0);
-    return res >> 1;
-}
