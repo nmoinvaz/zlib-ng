@@ -5,7 +5,7 @@ jobs:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         include:
           - name: macOS GCC 1
@@ -185,6 +185,9 @@ jobs:
         path: |
           ${{ matrix.build-dir || '.' }}/CMakeFiles/CMakeOutput.log
           ${{ matrix.build-dir || '.' }}/CMakeFiles/CMakeError.log
-          ${{ matrix.build-dir || '.' }}/**/*.diff
-          ${{ matrix.build-dir || '.' }}/**/*.hex
+          ${{ matrix.build-dir || '.' }}/test/**/*.diff
+          ${{ matrix.build-dir || '.' }}/test/**/*.hex
+          ${{ matrix.build-dir || '.' }}/test/**/*.gz
+          ${{ matrix.build-dir || '.' }}/test/**/*.out
+          ${{ matrix.build-dir || '.' }}/test/**/*.out.gz
         retention-days: 30

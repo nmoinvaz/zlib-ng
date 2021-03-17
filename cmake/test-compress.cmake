@@ -64,11 +64,18 @@ set(OUTPUT_BASE "${CMAKE_CURRENT_BINARY_DIR}/test/${TEST_NAME}-${UNIQUE_ID}")
 get_filename_component(OUTPUT_DIR "${OUTPUT_BASE}" DIRECTORY)
 file(MAKE_DIRECTORY "${OUTPUT_DIR}")
 
-macro(cleanup)
+macro(force_cleanup)
     # Cleanup temporary mingizip files
     file(REMOVE ${OUTPUT_BASE}.gz ${OUTPUT_BASE}.out)
     # Cleanup temporary gzip files
     file(REMOVE ${OUTPUT_BASE}.gzip.gz ${OUTPUT_BASE}.gzip.out)
+endmacro()
+
+macro(cleanup)
+    # Clean up if not on CI
+    if(NOT DEFINED ENV{CI})
+        force_cleanup()
+    endif()
 endmacro()
 
 macro(diff src1 src2)
@@ -83,13 +90,15 @@ macro(diff src1 src2)
             execute_process(COMMAND ${XXD_COMMAND})
 
             set(DIFF_COMMAND ${DIFF} ${src1}.hex ${src2}.hex)
-            execute_process(COMMAND ${DIFF_COMMAND}
-                OUTPUT_FILE ${src2}.diff
-                RESULT_VARIABLE CMD_RESULT)
 
-            if(CMD_RESULT)
-                file(READ ${src2}.diff DIFF_OUTPUT)
-                message(STATUS ${DIFF_OUTPUT})
+            execute_process(COMMAND ${DIFF_COMMAND}
+                OUTPUT_FILE ${src2}.diff)
+
+            file(READ ${src2}.diff DIFF_OUTPUT)
+            message(STATUS ${DIFF_OUTPUT})
+
+            if(NOT DEFINED $ENV{CI})
+                file(REMOVE ${src1}.hex ${src2}.hex ${src2}.diff)
             endif()
         endif()
     endif()
@@ -98,6 +107,9 @@ endmacro()
 # Compress input file
 if(NOT EXISTS ${INPUT})
     message(FATAL_ERROR "Cannot find compress input: ${INPUT}")
+endif()
+if(EXISTS ${OUTPUT}.gz)
+    message(ERROR "Expected compress output already exists: ${OUTPUT}.gz")
 endif()
 
 set(COMPRESS_COMMAND ${COMPRESS_TARGET} ${COMPRESS_ARGS})
@@ -240,4 +252,4 @@ if(GZIP_VERIFY AND NOT "${COMPRESS_ARGS}" MATCHES "-T")
     endif()
 endif()
 
-cleanup()
+force_cleanup()
