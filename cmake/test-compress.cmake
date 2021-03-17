@@ -71,6 +71,30 @@ macro(cleanup)
     file(REMOVE ${OUTPUT_BASE}.gzip.gz ${OUTPUT_BASE}.gzip.out)
 endmacro()
 
+macro(diff src1 src2)
+    find_program(XXD xxd)
+    if(XXD)
+        find_program(DIFF diff)
+        if(DIFF)
+            set(XXD_COMMAND ${XXD} ${src1} ${src1}.hex)
+            execute_process(COMMAND ${XXD_COMMAND})
+
+            set(XXD_COMMAND ${XXD} ${src2} ${src2}.hex)
+            execute_process(COMMAND ${XXD_COMMAND})
+
+            set(DIFF_COMMAND ${DIFF} ${src1}.hex ${src2}.hex)
+            execute_process(COMMAND ${DIFF_COMMAND}
+                OUTPUT_FILE ${src2}.diff
+                RESULT_VARIABLE CMD_RESULT)
+
+            if(CMD_RESULT)
+                file(READ ${src2}.diff DIFF_OUTPUT)
+                message(STATUS ${DIFF_OUTPUT})
+            endif()
+        endif()
+    endif()
+endmacro()
+
 # Compress input file
 if(NOT EXISTS ${INPUT})
     message(FATAL_ERROR "Cannot find compress input: ${INPUT}")
@@ -119,8 +143,9 @@ if(COMPARE)
         RESULT_VARIABLE CMD_RESULT)
 
     if(CMD_RESULT)
+        diff(${INPUT} ${OUTPUT}.out)
         cleanup()
-        message(FATAL_ERROR "Compare minigzip decompress failed: ${CMD_RESULT}")
+        message(FATAL_ERROR "Compare decompress output failed: ${CMD_RESULT}")
     endif()
 endif()
 
@@ -155,6 +180,7 @@ if(GZIP_VERIFY AND NOT "${COMPRESS_ARGS}" MATCHES "-T")
             RESULT_VARIABLE CMD_RESULT)
 
         if(CMD_RESULT)
+            diff(${INPUT} ${OUTPUT}.gzip.out)
             cleanup()
             message(FATAL_ERROR "Compare gzip decompress failed: ${CMD_RESULT}")
         endif()
@@ -206,6 +232,7 @@ if(GZIP_VERIFY AND NOT "${COMPRESS_ARGS}" MATCHES "-T")
                 RESULT_VARIABLE CMD_RESULT)
 
             if(CMD_RESULT)
+                diff(${INPUT} ${OUTPUT}.gzip.out)
                 cleanup()
                 message(FATAL_ERROR "Compare minigzip decompress gzip failed: ${CMD_RESULT}")
             endif()
