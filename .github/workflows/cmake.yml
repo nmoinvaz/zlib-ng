@@ -8,12 +8,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: macOS Clang
-            os: macos-latest
-            compiler: clang
-            cmake-args: -DWITH_SANITIZER=Address
-            codecov: macos_clang
-
           - name: macOS GCC 1
             os: macos-latest
             compiler: gcc-10
@@ -73,6 +67,66 @@ jobs:
             cmake-args: -DWITH_SANITIZER=Undefined
             packages: gcc@10
 
+          - name: macOS GCC 11
+            os: macos-latest
+            compiler: gcc-10
+            cmake-args: -DWITH_SANITIZER=Undefined
+            packages: gcc@10
+
+          - name: macOS GCC 12
+            os: macos-latest
+            compiler: gcc-10
+            cmake-args: -DWITH_SANITIZER=Undefined
+            packages: gcc@10
+
+          - name: macOS GCC 13
+            os: macos-latest
+            compiler: gcc-10
+            cmake-args: -DWITH_SANITIZER=Undefined
+            packages: gcc@10
+
+          - name: macOS GCC 14
+            os: macos-latest
+            compiler: gcc-10
+            cmake-args: -DWITH_SANITIZER=Undefined
+            packages: gcc@10
+
+          - name: macOS GCC 15
+            os: macos-latest
+            compiler: gcc-10
+            cmake-args: -DWITH_SANITIZER=Undefined
+            packages: gcc@10
+
+          - name: macOS GCC 16
+            os: macos-latest
+            compiler: gcc-10
+            cmake-args: -DWITH_SANITIZER=Undefined
+            packages: gcc@10
+
+          - name: macOS GCC 17
+            os: macos-latest
+            compiler: gcc-10
+            cmake-args: -DWITH_SANITIZER=Undefined
+            packages: gcc@10
+
+          - name: macOS GCC 18
+            os: macos-latest
+            compiler: gcc-10
+            cmake-args: -DWITH_SANITIZER=Undefined
+            packages: gcc@10
+
+          - name: macOS GCC 19
+            os: macos-latest
+            compiler: gcc-10
+            cmake-args: -DWITH_SANITIZER=Undefined
+            packages: gcc@10
+
+          - name: macOS GCC 20
+            os: macos-latest
+            compiler: gcc-10
+            cmake-args: -DWITH_SANITIZER=Undefined
+            packages: gcc@10
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
@@ -86,35 +140,12 @@ jobs:
         repository: zlib-ng/corpora
         path: test/data/corpora
 
-    - name: Install packages (Ubuntu)
-      if: runner.os == 'Linux' && matrix.packages
-      run: |
-        sudo dpkg --add-architecture i386 # Required for wine32
-        sudo apt-get update
-        sudo apt-get install -y ${{ matrix.packages }}
-
-    - name: Install packages (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        choco install ninja ${{ matrix.packages }} --no-progress
-
     - name: Install packages (macOS)
       if: runner.os == 'macOS'
       run: |
         brew install ninja ${{ matrix.packages }}
       env:
         HOMEBREW_NO_INSTALL_CLEANUP: 1
-
-    - name: Install codecov.io tools
-      if: matrix.codecov
-      run: |
-        python -u -m pip install codecov
-
-    - name: Initialize Wine
-      # Prevent parallel test jobs from initializing Wine at the same time
-      if: contains(matrix.packages, 'wine')
-      run: |
-        wineboot --init
 
     - name: Generate project files
       # Shared libaries turned off for qemu ppc* and sparc & reduce code coverage sources
@@ -146,20 +177,6 @@ jobs:
         LSAN_OPTIONS: ${{ matrix.lsan-options || 'verbosity=0' }}:abort_on_error=1
         QEMU_RUN: ${{ matrix.qemu-run }}
 
-    - name: Upload coverage report
-      if: matrix.codecov && ( env.CODECOV_TOKEN_SECRET != '' || github.repository == 'zlib-ng/zlib-ng' )
-      shell: bash
-      run: |
-        bash tools/codecov-upload.sh
-      env:
-        # Codecov does not yet support GitHub Actions
-        CODECOV_TOKEN_SECRET: "${{secrets.CODECOV_TOKEN}}"
-        CODECOV_TOKEN: "${{ secrets.CODECOV_TOKEN || 'e4fdf847-f541-4ab1-9d50-3d27e5913906' }}"
-        CODECOV_FLAGS: "${{ matrix.codecov }}"
-        CODECOV_NAME:  "${{ matrix.name }}"
-        CODECOV_EXEC:  "${{ matrix.gcov-exec || 'gcov' }}"
-        CODECOV_DIR:   "${{ matrix.build-dir || '.' }}"
-
     - name: Upload build errors
       uses: actions/upload-artifact@v2
       if: failure()
@@ -168,4 +185,6 @@ jobs:
         path: |
           ${{ matrix.build-dir || '.' }}/CMakeFiles/CMakeOutput.log
           ${{ matrix.build-dir || '.' }}/CMakeFiles/CMakeError.log
+          ${{ matrix.build-dir || '.' }}/**/*.diff
+          ${{ matrix.build-dir || '.' }}/**/*.hex
         retention-days: 30
