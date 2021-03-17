@@ -90,7 +90,6 @@ macro(diff src1 src2)
             execute_process(COMMAND ${XXD_COMMAND})
 
             set(DIFF_COMMAND ${DIFF} ${src1}.hex ${src2}.hex)
-
             execute_process(COMMAND ${DIFF_COMMAND}
                 OUTPUT_FILE ${src2}.diff)
 
