@@ -11,120 +11,69 @@ jobs:
           - name: macOS GCC 1
             os: macos-latest
             compiler: gcc-10
-            cmake-args: -DWITH_SANITIZER=Undefined
             packages: gcc@10
 
           - name: macOS GCC 2
             os: macos-latest
             compiler: gcc-10
-            cmake-args: -DWITH_SANITIZER=Undefined
             packages: gcc@10
 
           - name: macOS GCC 3
             os: macos-latest
             compiler: gcc-10
-            cmake-args: -DWITH_SANITIZER=Undefined
             packages: gcc@10
 
           - name: macOS GCC 4
             os: macos-latest
             compiler: gcc-10
-            cmake-args: -DWITH_SANITIZER=Undefined
             packages: gcc@10
-
           - name: macOS GCC 5
             os: macos-latest
             compiler: gcc-10
-            cmake-args: -DWITH_SANITIZER=Undefined
             packages: gcc@10
 
           - name: macOS GCC 6
             os: macos-latest
             compiler: gcc-10
-            cmake-args: -DWITH_SANITIZER=Undefined
             packages: gcc@10
 
           - name: macOS GCC 7
             os: macos-latest
             compiler: gcc-10
-            cmake-args: -DWITH_SANITIZER=Undefined
             packages: gcc@10
 
           - name: macOS GCC 8
             os: macos-latest
             compiler: gcc-10
-            cmake-args: -DWITH_SANITIZER=Undefined
             packages: gcc@10
-
-          - name: macOS Clang            os: macos-latest
+          - name: macOS GCC 9
+            os: macos-latest
             compiler: gcc-10
-            cmake-args: -DWITH_SANITIZER=Undefined
             packages: gcc@10
 
           - name: macOS GCC 10
             os: macos-latest
             compiler: gcc-10
-            cmake-args: -DWITH_SANITIZER=Undefined
             packages: gcc@10
 
           - name: macOS GCC 11
             os: macos-latest
             compiler: gcc-10
-            cmake-args: -DWITH_SANITIZER=Undefined
             packages: gcc@10
 
           - name: macOS GCC 12
             os: macos-latest
             compiler: gcc-10
-            cmake-args: -DWITH_SANITIZER=Undefined
             packages: gcc@10
 
           - name: macOS GCC 13
             os: macos-latest
             compiler: gcc-10
-            cmake-args: -DWITH_SANITIZER=Undefined
             packages: gcc@10
 
           - name: macOS GCC 14
             os: macos-latest
             compiler: gcc-10
-            cmake-args: -DWITH_SANITIZER=Undefined
-            packages: gcc@10
-
-          - name: macOS GCC 15
-            os: macos-latest
-            compiler: gcc-10
-            cmake-args: -DWITH_SANITIZER=Undefined
-            packages: gcc@10
-
-          - name: macOS GCC 16
-            os: macos-latest
-            compiler: gcc-10
-            cmake-args: -DWITH_SANITIZER=Undefined
-            packages: gcc@10
-
-          - name: macOS GCC 17
-            os: macos-latest
-            compiler: gcc-10
-            cmake-args: -DWITH_SANITIZER=Undefined
-            packages: gcc@10
-
-          - name: macOS GCC 18
-            os: macos-latest
-            compiler: gcc-10
-            cmake-args: -DWITH_SANITIZER=Undefined
-            packages: gcc@10
-
-          - name: macOS GCC 19
-            os: macos-latest
-            compiler: gcc-10
-            cmake-args: -DWITH_SANITIZER=Undefined
-            packages: gcc@10
-
-          - name: macOS GCC 20
-            os: macos-latest
-            compiler: gcc-10
-            cmake-args: -DWITH_SANITIZER=Undefined
             packages: gcc@10
 
     steps:
@@ -147,15 +96,20 @@ jobs:
       env:
         HOMEBREW_NO_INSTALL_CLEANUP: 1
 
+    - name: GZip Version
+      if: runner.os != 'Windows'
+      run: |
+        gzip --version
+
     - name: Generate project files
       # Shared libaries turned off for qemu ppc* and sparc & reduce code coverage sources
       run: |
         mkdir ${{ matrix.build-dir || '.not-used' }}
         cd ${{ matrix.build-dir || '.' }}
-        cmake ${{ matrix.build-src-dir || '.' }} ${{ matrix.cmake-args }} -DCMAKE_BUILD_TYPE=${{ matrix.build-config || 'Release' }} -DBUILD_SHARED_LIBS=OFF -DWITH_FUZZERS=ON -DWITH_CODE_COVERAGE=ON -DWITH_MAINTAINER_WARNINGS=ON
+        cmake ${{ matrix.build-src-dir || '.' }} ${{ matrix.cmake-args }} -DCMAKE_BUILD_TYPE=${{ matrix.build-config || 'Release' }} -DWITH_OPTIM=OFF -DBUILD_SHARED_LIBS=OFF -DWITH_FUZZERS=ON -DWITH_MAINTAINER_WARNINGS=ON
       env:
         CC: ${{ matrix.compiler }}
-        CFLAGS: ${{ matrix.cflags }}
+        CFLAGS: ${{ matrix.cflags }} -O0
         LDFLAGS: ${{ matrix.ldflags }}
         CI: true
 
@@ -176,6 +130,7 @@ jobs:
         TSAN_OPTIONS: ${{ matrix.tsan-options || 'verbosity=0' }}:abort_on_error=1
         LSAN_OPTIONS: ${{ matrix.lsan-options || 'verbosity=0' }}:abort_on_error=1
         QEMU_RUN: ${{ matrix.qemu-run }}
+        CI: true
 
     - name: Upload build errors
       uses: actions/upload-artifact@v2
@@ -185,9 +140,9 @@ jobs:
         path: |
           ${{ matrix.build-dir || '.' }}/CMakeFiles/CMakeOutput.log
           ${{ matrix.build-dir || '.' }}/CMakeFiles/CMakeError.log
-          ${{ matrix.build-dir || '.' }}/test/**/*.diff
-          ${{ matrix.build-dir || '.' }}/test/**/*.hex
-          ${{ matrix.build-dir || '.' }}/test/**/*.gz
-          ${{ matrix.build-dir || '.' }}/test/**/*.out
-          ${{ matrix.build-dir || '.' }}/test/**/*.out.gz
+          ${{ matrix.build-dir || '.' }}/test/data/**/*.diff
+          ${{ matrix.build-dir || '.' }}/test/data/**/*.hex
+          ${{ matrix.build-dir || '.' }}/test/data/**/*.gz
+          ${{ matrix.build-dir || '.' }}/test/data/**/*.out
+          ${{ matrix.build-dir || '.' }}/test/data/**/*.out.gz
         retention-days: 30
