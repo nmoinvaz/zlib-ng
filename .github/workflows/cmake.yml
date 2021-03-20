@@ -5,7 +5,7 @@ jobs:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         include:
           - name: macOS GCC 1
@@ -27,6 +27,7 @@ jobs:
             os: macos-latest
             compiler: gcc-10
             packages: gcc@10
+
           - name: macOS GCC 5
             os: macos-latest
             compiler: gcc-10
@@ -76,6 +77,76 @@ jobs:
             compiler: gcc-10
             packages: gcc@10
 
+          - name: macOS GCC 15
+            os: macos-latest
+            compiler: gcc-10
+            packages: gcc@10
+
+          - name: macOS GCC 16
+            os: macos-latest
+            compiler: gcc-10
+            packages: gcc@10
+
+          - name: macOS GCC 17
+            os: macos-latest
+            compiler: gcc-10
+            packages: gcc@10
+
+          - name: macOS GCC 18
+            os: macos-latest
+            compiler: gcc-10
+            packages: gcc@10
+
+          - name: macOS GCC 19
+            os: macos-latest
+            compiler: gcc-10
+            packages: gcc@10
+
+          - name: macOS GCC 20
+            os: macos-latest
+            compiler: gcc-10
+            packages: gcc@10
+
+          - name: macOS GCC 21
+            os: macos-latest
+            compiler: gcc-10
+            packages: gcc@10
+
+          - name: macOS GCC 22
+            os: macos-latest
+            compiler: gcc-10
+            packages: gcc@10
+
+          - name: macOS GCC 23
+            os: macos-latest
+            compiler: gcc-10
+            packages: gcc@10
+
+          - name: macOS GCC 24
+            os: macos-latest
+            compiler: gcc-10
+            packages: gcc@10
+
+          - name: macOS GCC 25
+            os: macos-latest
+            compiler: gcc-10
+            packages: gcc@10
+
+          - name: macOS GCC 26
+            os: macos-latest
+            compiler: gcc-10
+            packages: gcc@10
+
+          - name: macOS GCC 27
+            os: macos-latest
+            compiler: gcc-10
+            packages: gcc@10
+
+          - name: macOS GCC 28
+            os: macos-latest
+            compiler: gcc-10
+            packages: gcc@10
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
@@ -117,7 +188,7 @@ jobs:
         cmake ${{ matrix.build-src-dir || '.' }} ${{ matrix.cmake-args }} -DCMAKE_BUILD_TYPE=${{ matrix.build-config || 'Release' }} -DWITH_OPTIM=OFF -DBUILD_SHARED_LIBS=OFF -DWITH_FUZZERS=ON -DWITH_MAINTAINER_WARNINGS=ON
       env:
         CC: ${{ matrix.compiler }}
-        CFLAGS: ${{ matrix.cflags }} -O0
+        CFLAGS: ${{ matrix.cflags }}
         LDFLAGS: ${{ matrix.ldflags }}
         CI: true
 
