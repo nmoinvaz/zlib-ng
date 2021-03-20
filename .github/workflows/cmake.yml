@@ -101,6 +101,14 @@ jobs:
       run: |
         gzip --version
 
+    - name: System Info
+      if: runner.os == 'macOS'
+      run: |
+        curl ipecho.net/plain
+        sysctl -n machdep.cpu.brand_string
+        sysctl -n hw.memsize
+        networksetup -getcomputername
+
     - name: Generate project files
       # Shared libaries turned off for qemu ppc* and sparc & reduce code coverage sources
       run: |
