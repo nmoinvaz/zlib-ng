@@ -5,13 +5,10 @@
 #ifndef ZUTIL_P_H
 #define ZUTIL_P_H
 
-#ifdef __APPLE__
-#  include <stdlib.h>
-#elif defined(__FreeBSD__)
-#  include <stdlib.h>
+#include <stdlib.h>
+
+#if defined(__FreeBSD__)
 #  include <malloc_np.h>
-#else
-#  include <malloc.h>
 #endif
 
 /* Function to allocate 16 or 64-byte aligned memory */
