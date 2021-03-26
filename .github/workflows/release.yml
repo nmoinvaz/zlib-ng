@@ -35,6 +35,30 @@ jobs:
             cmake-args: -A x64 -DZLIB_COMPAT=ON
             deploy-name: win64-compat
 
+          - name: Windows MSVC ARM
+            os: windows-latest
+            compiler: cl
+            cmake-args: -A ARM
+            deploy-name: arm
+
+          - name: Windows MSVC ARM Compat
+            os: windows-latest
+            compiler: cl
+            cmake-args: -A ARM -DZLIB_COMPAT=ON
+            deploy-name: arm-compat
+
+          - name: Windows MSVC ARM64
+            os: windows-latest
+            compiler: cl
+            cmake-args: -A ARM64
+            deploy-name: arm64
+
+          - name: Windows MSVC ARM64 Compat
+            os: windows-latest
+            compiler: cl
+            cmake-args: -A ARM64 -DZLIB_COMPAT=ON
+            deploy-name: arm64-compat
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v1
