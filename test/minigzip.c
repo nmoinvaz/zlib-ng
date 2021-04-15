@@ -72,7 +72,7 @@ void gz_compress      (FILE *in, gzFile out);
 #ifdef USE_MMAP
 int  gz_compress_mmap (FILE *in, gzFile out);
 #endif
-void gz_uncompress    (gzFile in, FILE *out);
+void gz_uncompress    (char *outfile, gzFile in, FILE *out);
 void file_compress    (char *file, char *mode, int keep);
 void file_uncompress  (char *file, int keep);
 int  main             (int argc, char *argv[]);
@@ -159,12 +159,19 @@ int gz_compress_mmap(FILE *in, gzFile out) {
 /* ===========================================================================
  * Uncompress input to output then close both files.
  */
-void gz_uncompress(gzFile in, FILE *out) {
+void gz_uncompress(char *outfile, gzFile in, FILE *out) {
     char *buf = (char *)malloc(BUFLENW);
+    char xoutfile[255];
     int len;
     int err;
 
     if (buf == NULL) error("out of memory");
+
+    snprintf(xoutfile, sizeof(xoutfile), "gz_uncompress-%s.xout", outfile);
+    FILE *xout = fopen(xoutfile, "wb");
+    if (xout == NULL) {
+        exit(1);
+    }
 
     for (;;) {
         len = PREFIX(gzread)(in, buf, BUFLENW);
@@ -173,7 +180,7 @@ void gz_uncompress(gzFile in, FILE *out) {
             error(PREFIX(gzerror)(in, &err));
         }
         if (len == 0) break;
-
+        fwrite(buf, 0, len, xout);
         if ((int)fwrite(buf, 1, (unsigned)len, out) != len) {
             free(buf);
             error("failed fwrite");
@@ -181,8 +188,8 @@ void gz_uncompress(gzFile in, FILE *out) {
     }
     free(buf);
     if (fclose(out)) error("failed fclose");
-
     if (PREFIX(gzclose)(in) != Z_OK) error("failed gzclose");
+    fclose(xout);
 }
 
 
@@ -256,7 +263,7 @@ void file_uncompress(char *file, int keep) {
         exit(1);
     }
 
-    gz_uncompress(in, out);
+    gz_uncompress(outfile, in, out);
 
     if (!keep)
         unlink(infile);
@@ -332,7 +339,7 @@ int main(int argc, char *argv[]) {
         if (uncompr) {
             file = PREFIX(gzdopen)(fileno(stdin), "rb");
             if (file == NULL) error("can't gzdopen stdin");
-            gz_uncompress(file, stdout);
+            gz_uncompress(outmode, file, stdout);
         } else {
             file = PREFIX(gzdopen)(fileno(stdout), outmode);
             if (file == NULL) error("can't gzdopen stdout");
@@ -349,7 +356,7 @@ int main(int argc, char *argv[]) {
                     if (file == NULL)
                         fprintf(stderr, "%s: can't gzopen %s\n", prog, argv[i]);
                     else
-                        gz_uncompress(file, stdout);
+                        gz_uncompress(argv[i], file, stdout);
                 } else {
                     file_uncompress(argv[i], keep);
                 }

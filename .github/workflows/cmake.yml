@@ -160,12 +160,12 @@ jobs:
         repository: zlib-ng/corpora
         path: test/data/corpora
 
-    - name: Install packages (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        brew install ninja ${{ matrix.packages }}
-      env:
-        HOMEBREW_NO_INSTALL_CLEANUP: 1
+    #- name: Install packages (macOS)
+    #  if: runner.os == 'macOS'
+    #  run: |
+    #    brew install ninja ${{ matrix.packages }}
+    #  env:
+    #    HOMEBREW_NO_INSTALL_CLEANUP: 1
 
     - name: GZip Version
       if: runner.os != 'Windows'
@@ -187,7 +187,8 @@ jobs:
         cd ${{ matrix.build-dir || '.' }}
         cmake ${{ matrix.build-src-dir || '.' }} ${{ matrix.cmake-args }} -DCMAKE_BUILD_TYPE=${{ matrix.build-config || 'Release' }} -DWITH_OPTIM=OFF -DBUILD_SHARED_LIBS=OFF -DWITH_FUZZERS=ON -DWITH_MAINTAINER_WARNINGS=ON
       env:
-        CC: ${{ matrix.compiler }}
+        #${{ matrix.compiler }}
+        CC: gcc
         CFLAGS: ${{ matrix.cflags }}
         LDFLAGS: ${{ matrix.ldflags }}
         CI: true
@@ -224,4 +225,5 @@ jobs:
           ${{ matrix.build-dir || '.' }}/test/data/**/*.gz
           ${{ matrix.build-dir || '.' }}/test/data/**/*.out
           ${{ matrix.build-dir || '.' }}/test/data/**/*.out.gz
+          ${{ matrix.build-dir || '.' }}/**/*.xout
         retention-days: 30
