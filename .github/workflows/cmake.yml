@@ -107,46 +107,6 @@ jobs:
             compiler: gcc-10
             packages: gcc@10
 
-          - name: macOS GCC 21
-            os: macos-latest
-            compiler: gcc-10
-            packages: gcc@10
-
-          - name: macOS GCC 22
-            os: macos-latest
-            compiler: gcc-10
-            packages: gcc@10
-
-          - name: macOS GCC 23
-            os: macos-latest
-            compiler: gcc-10
-            packages: gcc@10
-
-          - name: macOS GCC 24
-            os: macos-latest
-            compiler: gcc-10
-            packages: gcc@10
-
-          - name: macOS GCC 25
-            os: macos-latest
-            compiler: gcc-10
-            packages: gcc@10
-
-          - name: macOS GCC 26
-            os: macos-latest
-            compiler: gcc-10
-            packages: gcc@10
-
-          - name: macOS GCC 27
-            os: macos-latest
-            compiler: gcc-10
-            packages: gcc@10
-
-          - name: macOS GCC 28
-            os: macos-latest
-            compiler: gcc-10
-            packages: gcc@10
-
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
@@ -187,8 +147,7 @@ jobs:
         cd ${{ matrix.build-dir || '.' }}
         cmake ${{ matrix.build-src-dir || '.' }} ${{ matrix.cmake-args }} -DCMAKE_BUILD_TYPE=${{ matrix.build-config || 'Release' }} -DWITH_OPTIM=OFF -DBUILD_SHARED_LIBS=OFF -DWITH_FUZZERS=ON -DWITH_MAINTAINER_WARNINGS=ON
       env:
-        #${{ matrix.compiler }}
-        CC: gcc
+        CC: ${{ matrix.compiler }}
         CFLAGS: ${{ matrix.cflags }}
         LDFLAGS: ${{ matrix.ldflags }}
         CI: true
