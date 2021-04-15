@@ -179,10 +179,11 @@ jobs:
         path: |
           ${{ matrix.build-dir || '.' }}/CMakeFiles/CMakeOutput.log
           ${{ matrix.build-dir || '.' }}/CMakeFiles/CMakeError.log
-          ${{ matrix.build-dir || '.' }}/test/data/**/*.diff
-          ${{ matrix.build-dir || '.' }}/test/data/**/*.hex
-          ${{ matrix.build-dir || '.' }}/test/data/**/*.gz
-          ${{ matrix.build-dir || '.' }}/test/data/**/*.out
-          ${{ matrix.build-dir || '.' }}/test/data/**/*.out.gz
+          ${{ matrix.build-dir || '.' }}/test/**/*.diff
+          ${{ matrix.build-dir || '.' }}/test/**/*.hex
+          ${{ matrix.build-dir || '.' }}/test/**/*.gz
+          ${{ matrix.build-dir || '.' }}/test/**/*.out
+          ${{ matrix.build-dir || '.' }}/test/**/*.xout
+          ${{ matrix.build-dir || '.' }}/test/**/*.out.gz
           ${{ matrix.build-dir || '.' }}/**/*.xout
         retention-days: 30
