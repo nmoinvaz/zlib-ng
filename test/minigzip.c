@@ -169,9 +169,6 @@ void gz_uncompress(char *outfile, gzFile in, FILE *out) {
 
     snprintf(xoutfile, sizeof(xoutfile), "gz_uncompress-%s.xout", outfile);
     FILE *xout = fopen(xoutfile, "wb");
-    if (xout == NULL) {
-        exit(1);
-    }
 
     for (;;) {
         len = PREFIX(gzread)(in, buf, BUFLENW);
@@ -180,7 +177,7 @@ void gz_uncompress(char *outfile, gzFile in, FILE *out) {
             error(PREFIX(gzerror)(in, &err));
         }
         if (len == 0) break;
-        fwrite(buf, 0, len, xout);
+        fwrite(buf, 1, len, xout);
         if ((int)fwrite(buf, 1, (unsigned)len, out) != len) {
             free(buf);
             error("failed fwrite");
