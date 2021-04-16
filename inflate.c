@@ -950,19 +950,25 @@ int32_t Z_EXPORT PREFIX(inflate)(PREFIX3(stream) *strm, int32_t flush) {
                 }
                 if (copy > state->length)
                     copy = state->length;
-                if (copy > left)
+                /*if (copy > left)
                     copy = left;
 
-                put = functable.chunkcopy_safe(put, from, copy, put + left);
+                put = functable.chunkcopy_safe(put, from, copy, put + left);*/
             } else {                             /* copy from output */
+                from = put - state->offset;
                 copy = state->length;
-                if (copy > left)
+                /*if (copy > left)
                     copy = left;
 
-                put = functable.chunkmemset_safe(put, state->offset, copy, left);
+                put = functable.chunkmemset_safe(put, state->offset, copy, left);*/
             }
+            if (copy > left)
+                copy = left;
             left -= copy;
             state->length -= copy;
+            do {
+                *put++ = *from++;
+            } while (--copy);
             if (state->length == 0)
                 state->mode = LEN;
             break;
