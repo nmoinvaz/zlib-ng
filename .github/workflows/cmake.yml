@@ -3,107 +3,88 @@ on: [push, pull_request]
 jobs:
   ci-cmake:
     name: ${{ matrix.name }}
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-10.15
     strategy:
       fail-fast: true
       matrix:
         include:
           - name: macOS GCC 1
-            os: macos-latest
             compiler: gcc-10
             packages: gcc@10
 
           - name: macOS GCC 2
-            os: macos-latest
             compiler: gcc-10
             packages: gcc@10
 
           - name: macOS GCC 3
-            os: macos-latest
             compiler: gcc-10
             packages: gcc@10
 
           - name: macOS GCC 4
-            os: macos-latest
             compiler: gcc-10
             packages: gcc@10
 
           - name: macOS GCC 5
-            os: macos-latest
             compiler: gcc-10
             packages: gcc@10
 
           - name: macOS GCC 6
-            os: macos-latest
             compiler: gcc-10
             packages: gcc@10
 
           - name: macOS GCC 7
-            os: macos-latest
             compiler: gcc-10
             packages: gcc@10
 
           - name: macOS GCC 8
-            os: macos-latest
             compiler: gcc-10
             packages: gcc@10
+
           - name: macOS GCC 9
-            os: macos-latest
             compiler: gcc-10
             packages: gcc@10
 
           - name: macOS GCC 10
-            os: macos-latest
             compiler: gcc-10
             packages: gcc@10
 
           - name: macOS GCC 11
-            os: macos-latest
             compiler: gcc-10
             packages: gcc@10
 
           - name: macOS GCC 12
-            os: macos-latest
             compiler: gcc-10
             packages: gcc@10
 
           - name: macOS GCC 13
-            os: macos-latest
             compiler: gcc-10
             packages: gcc@10
 
           - name: macOS GCC 14
-            os: macos-latest
             compiler: gcc-10
             packages: gcc@10
 
           - name: macOS GCC 15
-            os: macos-latest
             compiler: gcc-10
             packages: gcc@10
 
           - name: macOS GCC 16
-            os: macos-latest
             compiler: gcc-10
             packages: gcc@10
 
           - name: macOS GCC 17
-            os: macos-latest
             compiler: gcc-10
             packages: gcc@10
 
           - name: macOS GCC 18
-            os: macos-latest
             compiler: gcc-10
             packages: gcc@10
 
           - name: macOS GCC 19
-            os: macos-latest
             compiler: gcc-10
             packages: gcc@10
 
           - name: macOS GCC 20
-            os: macos-latest
             compiler: gcc-10
             packages: gcc@10
 
