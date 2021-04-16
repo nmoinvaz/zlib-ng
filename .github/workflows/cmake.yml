@@ -145,7 +145,7 @@ jobs:
       run: |
         mkdir ${{ matrix.build-dir || '.not-used' }}
         cd ${{ matrix.build-dir || '.' }}
-        cmake ${{ matrix.build-src-dir || '.' }} ${{ matrix.cmake-args }} -DCMAKE_BUILD_TYPE=${{ matrix.build-config || 'Release' }} -DWITH_OPTIM=OFF -DBUILD_SHARED_LIBS=OFF -DWITH_FUZZERS=OFF -DWITH_MAINTAINER_WARNINGS=ON
+        cmake ${{ matrix.build-src-dir || '.' }} ${{ matrix.cmake-args }} -DCMAKE_BUILD_TYPE=${{ matrix.build-config || 'Release' }} -DWITH_OPTIM=OFF -DBUILD_SHARED_LIBS=OFF -DWITH_FUZZERS=OFF -DWITH_MAINTAINER_WARNINGS=ON -DUNALIGNED_OK=OFF
       env:
         CC: ${{ matrix.compiler }}
         CFLAGS: ${{ matrix.cflags }}
