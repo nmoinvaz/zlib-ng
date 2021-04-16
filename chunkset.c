@@ -6,6 +6,7 @@
 #include "zutil.h"
 
 // We need sizeof(chunk_t) to be 8, no matter what.
+#pragma pack(1)
 #if defined(UNALIGNED64_OK)
 typedef uint64_t chunk_t;
 #elif defined(UNALIGNED_OK)
@@ -13,6 +14,7 @@ typedef struct chunk_t { uint32_t u32[2]; } chunk_t;
 #else
 typedef struct chunk_t { uint8_t u8[8]; } chunk_t;
 #endif
+#pragma pop()
 
 #define HAVE_CHUNKMEMSET_1
 #define HAVE_CHUNKMEMSET_4
