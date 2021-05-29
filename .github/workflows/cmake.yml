@@ -20,8 +20,8 @@ jobs:
           - name: Ubuntu Clang
             os: ubuntu-latest
             compiler: clang
-            packages: llvm-6.0
-            gcov-exec: llvm-cov gcov
+            packages: llvm-11-tools
+            gcov-exec: llvm-cov-11 gcov
             codecov: ubuntu_clang
 
           - name: Ubuntu Clang Inflate Strict
@@ -29,7 +29,7 @@ jobs:
             compiler: clang
             cmake-args: -DWITH_INFLATE_STRICT=ON
             packages: clang-tools-11
-            gcov-exec: llvm-cov-11.0 gcov
+            gcov-exec: llvm-cov-11 gcov
             codecov: ubuntu_clang_inflate_strict
 
           - name: Ubuntu Clang Inflate Allow Invalid Dist
