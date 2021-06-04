@@ -76,14 +76,16 @@ Z_INTERNAL uint8_t* CHUNKCOPY_SAFE(uint8_t *out, uint8_t const *from, unsigned l
    least 258 bytes of output space available (258 being the maximum length
    output from a single token; see inflate_fast()'s assumptions below). */
 Z_INTERNAL uint8_t* CHUNKUNROLL(uint8_t *out, unsigned *dist, unsigned *len) {
-    unsigned char const *from = out - *dist;
-    chunk_t chunk;
-    while (*dist < *len && *dist < sizeof(chunk_t)) {
+    if (*dist < *len && *dist < sizeof(chunk_t)) {
+        uint8_t const *from = out - *dist;
+        chunk_t chunk;
         loadchunk(from, &chunk);
-        storechunk(out, &chunk);
-        out += *dist;
-        *len -= *dist;
-        *dist += *dist;
+        do {
+            storechunk(out, &chunk);
+            out += *dist;
+            *len -= *dist;
+            *dist += *dist;
+        } while (*dist < *len && *dist < sizeof(chunk_t));
     }
     return out;
 }
