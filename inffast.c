@@ -265,10 +265,7 @@ void Z_INTERNAL zng_inflate_fast(PREFIX3(stream) *strm, unsigned long start) {
                        so unroll and roundoff operations can write beyond `out+len` so long
                        as they stay within 258 bytes of `out`.
                     */
-                    if (dist >= len || dist >= state->chunksize)
-                        out = functable.chunkcopy(out, out - dist, len);
-                    else
-                        out = functable.chunkmemset(out, dist, len);
+                    out = functable.chunkmemset_safe(out, dist, len, safe);
                 }
             } else if ((op & 64) == 0) {          /* 2nd level distance code */
                 here = dcode + here->val + BITS(op);
