@@ -157,7 +157,6 @@ int32_t Z_EXPORT PREFIX(inflateInit2_)(PREFIX3(stream) *strm, int32_t windowBits
     state->strm = strm;
     state->window = NULL;
     state->mode = HEAD;     /* to pass state test in inflateReset2() */
-    state->chunksize = functable.chunksize();
     ret = PREFIX(inflateReset2)(strm, windowBits);
     if (ret != Z_OK) {
         ZFREE_STATE(strm, state);
@@ -206,10 +205,11 @@ int Z_INTERNAL inflate_ensure_window(struct inflate_state *state) {
     /* if it hasn't been done already, allocate space for the window */
     if (state->window == NULL) {
         unsigned wsize = 1U << state->wbits;
-        state->window = (unsigned char *) ZALLOC_WINDOW(state->strm, wsize + state->chunksize, sizeof(unsigned char));
+        uint32_t chunksize = functable.chunksize();
+        state->window = (unsigned char *) ZALLOC_WINDOW(state->strm, wsize + chunksize, sizeof(unsigned char));
         if (state->window == Z_NULL)
             return 1;
-        memset(state->window + wsize, 0, state->chunksize);
+        memset(state->window + wsize, 0, chunksize);
     }
 
     /* if window not in use yet, initialize */
