@@ -261,10 +261,7 @@ void Z_INTERNAL zng_inflate_fast(PREFIX3(stream) *strm, unsigned long start) {
                     }
                 } else {
                     /* Whole reference is in range of current output. */
-                    if (dist >= len || dist >= state->chunksize)
-                        out = functable.chunkcopy_safe(out, out - dist, len, safe);
-                    else
-                        out = functable.chunkmemset_safe(out, dist, len, safe - out + 1);
+                    out = functable.chunkmemset_safe(out, dist, len, safe - out + 1);
                 }
             } else if ((op & 64) == 0) {          /* 2nd level distance code */
                 here = dcode + here->val + BITS(op);

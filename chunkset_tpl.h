@@ -113,6 +113,9 @@ static inline uint8_t* CSUFFIX(chunkmemset_static)(uint8_t *out, unsigned dist, 
     chunk_t chunk;
     unsigned sz = sizeof(chunk);
     if (len < sz) {
+        if (dist >= len || dist >= sz)
+            return CSUFFIX(chunkcopy_partial)(out, from, len);
+
         do {
             *out++ = *from++;
             --len;
