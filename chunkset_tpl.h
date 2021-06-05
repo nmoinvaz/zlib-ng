@@ -36,46 +36,30 @@ Z_INTERNAL uint32_t CSUFFIX(chunksize)(void) {
     return sizeof(chunk_t);
 }
 
-/* Behave like memcpy, but assume that it's OK to overwrite at least
-   chunk_t bytes of output even if the length is shorter than this,
-   that the length is non-zero, and that `from` lags `out` by at least
-   sizeof chunk_t bytes (or that they don't overlap at all or simply that
-   the distance is less than the length of the copy).
-
-   Aside from better memory bus utilisation, this means that short copies
-   (chunk_t bytes or fewer) will fall straight through the loop
-   without iteration, which will hopefully make the branch prediction more
-   reliable. */
-static inline uint8_t* CSUFFIX(chunkcopy_static)(uint8_t *out, uint8_t const *from, unsigned len) {
+/* Copy memory in chunks when possible and avoid writing beyond legal output */
+static inline uint8_t* CSUFFIX(chunkcopy_static)(uint8_t *out, uint8_t const *from, unsigned len, uint8_t *safe) {
     chunk_t chunk;
-    int32_t align = (--len % sizeof(chunk_t)) + 1;
-    loadchunk(from, &chunk);
-    storechunk(out, &chunk);
-    out += align;
-    from += align;
-    len /= sizeof(chunk_t);
-    while (len > 0) {
+    unsigned align = MIN(len, (unsigned)(safe - out) + 1) % sizeof(chunk_t);
+
+    if (align != 0) {
+        out = CSUFFIX(chunkcopy_partial)(out, from, align);
+        len -= align;
+        if (len == 0)
+            return out;
+        from += align;
+    }
+    do {
         loadchunk(from, &chunk);
         storechunk(out, &chunk);
         out += sizeof(chunk_t);
         from += sizeof(chunk_t);
-        --len;
+        len -= sizeof(chunk_t);
     }
+    while (len > 0);
     return out;
 }
-Z_INTERNAL uint8_t* CSUFFIX(chunkcopy)(uint8_t *out, uint8_t const *from, unsigned len) {
-    return CSUFFIX(chunkcopy_static)(out, from, len);
-}
-
-/* Behave like chunkcopy, but avoid writing beyond of legal output. */
-static inline uint8_t* CSUFFIX(chunkcopy_safe_static)(uint8_t *out, uint8_t const *from, unsigned len, uint8_t *safe) {
-    len = MIN(len, (unsigned)(safe - out) + 1);
-    if (len < (ptrdiff_t)sizeof(chunk_t))
-        return CSUFFIX(chunkcopy_partial)(out, from, len);
-    return CSUFFIX(chunkcopy_static)(out, from, len);
-}
-Z_INTERNAL uint8_t* CSUFFIX(chunkcopy_safe)(uint8_t *out, uint8_t const *from, unsigned len, uint8_t *safe) {
-    return CSUFFIX(chunkcopy_safe_static)(out, from, len, safe);
+Z_INTERNAL uint8_t* CSUFFIX(chunkcopy)(uint8_t *out, uint8_t const *from, unsigned len, uint8_t *safe) {
+    return CSUFFIX(chunkcopy_static)(out, from, len, safe);
 }
 
 /* Perform short copies until distance can be rewritten as being at least
@@ -104,14 +88,22 @@ Z_INTERNAL uint8_t* CSUFFIX(chunkunroll)(uint8_t *out, unsigned *dist, unsigned 
 
 /* Copy DIST bytes from OUT - DIST into OUT + DIST * k, for 0 <= k < LEN/DIST.
    Return OUT + LEN. */
-static inline uint8_t* CSUFFIX(chunkmemset_static)(uint8_t *out, unsigned dist, unsigned len) {
+Z_INTERNAL uint8_t* CSUFFIX(chunkmemset)(uint8_t *out, unsigned dist, unsigned len, unsigned left) {
     /* Debug performance related issues when len < sizeof(uint64_t):
        Assert(len >= sizeof(uint64_t), "chunkmemset should be called on larger chunks"); */
     Assert(dist > 0, "cannot have a distance 0");
-
     unsigned char *from = out - dist;
     chunk_t chunk;
     unsigned sz = sizeof(chunk);
+
+    if (left < 3 * sz) {
+        while (len > 0) {
+            *out++ = *from++;
+            --len;
+        }
+        return out;
+    }
+    len = MIN(len, left);
     if (len < sz) {
         if (dist >= len || dist >= sz)
             return CSUFFIX(chunkcopy_partial)(out, from, len);
@@ -148,16 +140,17 @@ static inline uint8_t* CSUFFIX(chunkmemset_static)(uint8_t *out, unsigned dist, 
     } else if (dist < sz) {
         unsigned char *end = out + len - 1;
         while (len > dist) {
-            out = CSUFFIX(chunkcopy_safe_static)(out, from, dist, end);
+            out = CSUFFIX(chunkcopy_static)(out, from, dist, end);
             len -= dist;
         }
         if (len > 0) {
-            out = CSUFFIX(chunkcopy_safe_static)(out, from, len, end);
+            out = CSUFFIX(chunkcopy_static)(out, from, len, end);
         }
         return out;
     } else {
+        unsigned char *end = out + len - 1;
         out = CSUFFIX(chunkunroll_static)(out, &dist, &len);
-        return CSUFFIX(chunkcopy_static)(out, out - dist, len);
+        return CSUFFIX(chunkcopy_static)(out, out - dist, len, end);
     }
 
     unsigned rem = len % sz;
@@ -175,19 +168,4 @@ static inline uint8_t* CSUFFIX(chunkmemset_static)(uint8_t *out, unsigned dist, 
     }
 
     return out;
-}
-Z_INTERNAL uint8_t* CSUFFIX(chunkmemset)(uint8_t *out, unsigned dist, unsigned len) {
-    return CSUFFIX(chunkmemset_static)(out, dist, len);
-}
-
-Z_INTERNAL uint8_t* CSUFFIX(chunkmemset_safe)(uint8_t *out, unsigned dist, unsigned len, unsigned left) {
-    if (left < (unsigned)(3 * sizeof(chunk_t))) {
-        unsigned char *from = out - dist;
-        while (len > 0) {
-            *out++ = *from++;
-            --len;
-        }
-        return out;
-    }
-    return CSUFFIX(chunkmemset_static)(out, dist, len);
 }
