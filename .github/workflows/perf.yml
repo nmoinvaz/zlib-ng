@@ -1,0 +1,81 @@
+name: CI Perf
+on: [push]
+jobs:
+  ci-perf:
+    name: Windows
+    runs-on: [self-hosted, Windows, X64]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Checkout zlib-ng
+      uses: actions/checkout@v2
+      with:
+        repository: zlib-ng/zlib-ng
+        path: develop
+
+    - name: Checkout deflatebench
+      uses: actions/checkout@v2
+      with:
+        repository: nmoinvaz/deflatebench
+        path: deflatebench
+
+    - name: Checkout silesia
+      uses: actions/checkout@v2
+      with:
+        repository: nmoinvaz/silesia
+        path: silesia
+
+    - name: Create corpora
+      run: |
+        tar --exclude=".*" -cvf silesia.tar silesia
+
+    - name: Generate project files (develop)
+      run: |
+        cd develop
+        cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
+      env:
+        CI: true
+
+    - name: Generate project files (push)
+      run: |
+        mkdir push
+        cd push
+        cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
+      env:
+        CI: true
+
+    - name: Compile source code (develop)
+      run: |
+        cd develop
+        cmake --build . --config Release
+
+    - name: Compile source code (push)
+      run: |
+        cd push
+        cmake --build . --config Release
+
+    - name: Run performance test (develop)
+      run: |
+        cd deflatebench
+        cp ../silesia.tar ./silesia.tar
+        python3 deflatebench.py --testtool=../develop/Release/minigzip.exe --runs=70 --trimworst=40 --skipverify > ../develop.txt 2>&1
+        cat ../develop.txt
+
+    - name: Run performance test (push)
+      run: |
+        cd deflatebench
+        cp ../silesia.tar ./silesia.tar
+        python3 deflatebench.py --testtool=../push/Release/minigzip.exe --runs=70 --trimworst=40 --skipverify > ../push.txt 2>&1
+        cat ../push.txt
+
+    - name: Upload performance reports
+      uses: actions/upload-artifact@v2
+      if: ${{ success() }}
+      with:
+        name: perf-reports
+        path: |
+          develop.txt
+          push.txt
+        retention-days: 30
