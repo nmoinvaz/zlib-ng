@@ -100,6 +100,10 @@ struct inflate_state {
     uint32_t whave;             /* valid bytes in the window */
     uint32_t wnext;             /* window write index */
     unsigned char *window;      /* allocated sliding window, if needed */
+#if defined(__x86_64__) || defined(_M_X64) || defined(__i386) || defined(_M_IX86)
+    /* Only used if X86_PCLMULQDQ_CRC is defined */
+    unsigned crc0[4 * 5];
+#endif
         /* bit accumulator */
     uint32_t hold;              /* input bit accumulator */
     unsigned bits;              /* number of bits in "in" */
