@@ -69,6 +69,9 @@ set(PIGZ_HDRS
 
 add_executable(${PROJECT_NAME} ${PIGZ_SRCS} ${PIGZ_HDRS})
 add_definitions(-DNOZOPFLI)
+if(WIN32)
+    target_include_directories(${PROJECT_NAME} PRIVATE win)
+endif()
 
 # Find and link against pthreads or pthreads4w
 if(WITH_THREADS)
@@ -79,7 +82,7 @@ if(WITH_THREADS)
 
             add_subdirectory(${PTHREADS4W_ROOT} ${PTHREADS4W_ROOT} EXCLUDE_FROM_ALL)
             target_link_libraries(${PROJECT_NAME} pthreadVC3)
-            target_include_directories(${PROJECT_NAME} PRIVATE win ${PTHREADS4W_ROOT})
+            target_include_directories(${PROJECT_NAME} PRIVATE ${PTHREADS4W_ROOT})
         else()
             message(WARNING "Missing pthreads4w root directory")
             set(WITH_THREADS OFF)
