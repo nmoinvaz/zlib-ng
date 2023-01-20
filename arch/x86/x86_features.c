@@ -16,6 +16,10 @@
 #  include <cpuid.h>
 #endif
 
+#ifdef __GNUC__
+#  include <xsaveintrin.h>
+#endif
+
 #include <string.h>
 
 Z_INTERNAL int x86_cpu_has_avx2;
