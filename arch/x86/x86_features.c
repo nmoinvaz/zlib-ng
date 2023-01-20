@@ -16,7 +16,7 @@
 #  include <cpuid.h>
 #endif
 
-#ifdef __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
 #  include <xsaveintrin.h>
 #endif
 
