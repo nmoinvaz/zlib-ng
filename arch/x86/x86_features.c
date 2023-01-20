@@ -64,7 +64,7 @@ static inline void cpuidex(int info, int subinfo, unsigned* eax, unsigned* ebx, 
 }
 
 static inline uint64_t xgetbv(unsigned int xcr) {
-#ifdef _WIN32
+#ifdef _MSC_VER
     return _xgetbv(xcr);
 #else
     uint32_t eax, edx;
