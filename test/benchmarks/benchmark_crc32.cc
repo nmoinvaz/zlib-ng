@@ -66,4 +66,8 @@ BENCHMARK_CRC32(vx, crc32_s390_vx, test_cpu_features.s390.has_vx);
 #elif defined(X86_PCLMULQDQ_CRC)
 /* CRC32 fold does a memory copy while hashing */
 BENCHMARK_CRC32(pclmulqdq, crc32_pclmulqdq, test_cpu_features.x86.has_pclmulqdq);
+#  if defined(X86_VPCLMULQDQ_CRC)
+BENCHMARK_CRC32(vpclmulqdq, crc32_vpclmulqdq, test_cpu_features.x86.has_pclmulqdq && test_cpu_features.x86.has_avx512 && test_cpu_features.x86.has_vpclmulqdq);
+BENCHMARK_CRC32(vpclmulqdq_ternlog, crc32_vpclmulqdq_ternlog, test_cpu_features.x86.has_pclmulqdq && test_cpu_features.x86.has_avx512 && test_cpu_features.x86.has_vpclmulqdq);
+#  endif
 #endif

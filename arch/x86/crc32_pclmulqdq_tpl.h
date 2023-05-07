@@ -258,12 +258,16 @@ Z_INTERNAL uint32_t CRC32_FOLD_RESET(crc32_fold *crc) {
 #  define XOR_INITIAL512(where)  ONCE(where = _mm512_xor_si512(where, zmm_initial))
 #endif
 
-#ifdef X86_VPCLMULQDQ
+#ifdef X86_VPCLMULQDQ_TERNLOG
+#  include "crc32_fold_vpclmulqdq_ternlog_tpl.h"
+#elif defined(X86_VPCLMULQDQ)
 #  include "crc32_fold_vpclmulqdq_tpl.h"
 #endif
 #include "crc32_fold_pclmulqdq_tpl.h"
 #define COPY
-#ifdef X86_VPCLMULQDQ
+#ifdef X86_VPCLMULQDQ_TERNLOG
+#  include "crc32_fold_vpclmulqdq_ternlog_tpl.h"
+#elif defined(X86_VPCLMULQDQ)
 #  include "crc32_fold_vpclmulqdq_tpl.h"
 #endif
 #include "crc32_fold_pclmulqdq_tpl.h"

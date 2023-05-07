@@ -90,6 +90,7 @@ extern void     crc32_fold_vpclmulqdq_copy(crc32_fold *crc, uint8_t *dst, const 
 extern void     crc32_fold_vpclmulqdq(crc32_fold *crc, const uint8_t *src, size_t len, uint32_t init_crc);
 extern uint32_t crc32_fold_vpclmulqdq_final(crc32_fold *crc);
 extern uint32_t crc32_vpclmulqdq(uint32_t crc32, const uint8_t *buf, size_t len);
+extern uint32_t crc32_vpclmulqdq_ternlog(uint32_t crc32, const uint8_t *buf, size_t len);
 #endif
 
 /* memory chunking */
