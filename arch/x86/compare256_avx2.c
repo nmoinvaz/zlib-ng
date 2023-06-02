@@ -49,10 +49,23 @@ Z_INTERNAL uint32_t compare256_avx2(const uint8_t *src0, const uint8_t *src1) {
     return compare256_avx2_static(src0, src1);
 }
 
+static inline int32_t zng_memcmp_avx2(const uint8_t* src0, const uint8_t* src1) {
+    __m256i ymm_src0, ymm_src1, ymm_cmp;
+    ymm_src0 = _mm256_loadu_si256((__m256i*)src0);
+    ymm_src1 = _mm256_loadu_si256((__m256i*)src1);
+    ymm_cmp = _mm256_cmpeq_epi8(ymm_src0, ymm_src1);
+    unsigned mask = (unsigned)_mm256_movemask_epi8(ymm_cmp);
+    return (mask != 0xFFFFFFFF) ? 1 : 0;
+}
+
+#define zng_memcmp_32 zng_memcmp_avx2
+
 #define LONGEST_MATCH       longest_match_avx2
 #define COMPARE256          compare256_avx2_static
 
 #include "match_tpl.h"
+
+#undef zng_memcmp_32
 
 #define LONGEST_MATCH_SLOW
 #define LONGEST_MATCH       longest_match_slow_avx2

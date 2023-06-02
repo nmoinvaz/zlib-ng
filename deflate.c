@@ -106,7 +106,8 @@ const char PREFIX(deflate_copyright)[] = " deflate 1.2.13 Copyright 1995-2022 Je
 /* ===========================================================================
  *  Function prototypes.
  */
-static int deflateStateCheck      (PREFIX3(stream) *strm);
+static int deflateStateCheck(PREFIX3(stream) *strm);
+
 Z_INTERNAL block_state deflate_stored(deflate_state *s, int flush);
 Z_INTERNAL block_state deflate_fast  (deflate_state *s, int flush);
 Z_INTERNAL block_state deflate_quick (deflate_state *s, int flush);
@@ -116,9 +117,11 @@ Z_INTERNAL block_state deflate_medium(deflate_state *s, int flush);
 Z_INTERNAL block_state deflate_slow  (deflate_state *s, int flush);
 Z_INTERNAL block_state deflate_rle   (deflate_state *s, int flush);
 Z_INTERNAL block_state deflate_huff  (deflate_state *s, int flush);
-static void lm_set_level         (deflate_state *s, int level);
-static void lm_init              (deflate_state *s);
-Z_INTERNAL unsigned read_buf  (PREFIX3(stream) *strm, unsigned char *buf, unsigned size);
+
+static void lm_set_level(deflate_state *s, int level);
+static void lm_init     (deflate_state *s);
+
+Z_INTERNAL unsigned read_buf(PREFIX3(stream) *strm, unsigned char *buf, unsigned size);
 
 extern uint32_t update_hash_roll        (deflate_state *const s, uint32_t h, uint32_t val);
 extern void     insert_string_roll      (deflate_state *const s, uint32_t str, uint32_t count);

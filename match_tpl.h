@@ -46,9 +46,9 @@ Z_INTERNAL uint32_t LONGEST_MATCH(deflate_state *const s, Pos cur_match) {
     uint32_t lookahead = s->lookahead;
     Pos match_offset = 0;
 #ifdef UNALIGNED_OK
-    uint8_t scan_start[8];
+    uint8_t scan_start[32];
 #endif
-    uint8_t scan_end[8];
+    uint8_t scan_end[32];
 
 #define GOTO_NEXT_CHAIN \
     if (--chain_length && (cur_match = prev[cur_match & wmask]) > limit) \
@@ -71,10 +71,17 @@ Z_INTERNAL uint32_t LONGEST_MATCH(deflate_state *const s, Pos cur_match) {
         if (best_len >= sizeof(uint64_t))
             offset -= 4;
 #endif
+#ifdef zng_memcmp_32
+        if (best_len >= 32)
+            offset -= 24;
+#endif
     }
 #endif
 
-#ifdef UNALIGNED64_OK
+#ifdef zng_memcmp_32
+    memcpy(scan_start, scan, 32);
+    memcpy(scan_end, scan + offset, 32);
+#elif defined(UNALIGNED64_OK)
     memcpy(scan_start, scan, sizeof(uint64_t));
     memcpy(scan_end, scan+offset, sizeof(uint64_t));
 #elif defined(UNALIGNED_OK)
@@ -151,6 +158,15 @@ Z_INTERNAL uint32_t LONGEST_MATCH(deflate_state *const s, Pos cur_match) {
                     break;
                 GOTO_NEXT_CHAIN;
             }
+#  ifdef zng_memcmp_32
+        } else if (best_len >= 32) {
+            for (;;) {
+                if (zng_memcmp_32(mbase_end + cur_match, scan_end) == 0 &&
+                    zng_memcmp_32(mbase_start + cur_match, scan_start) == 0)
+                    break;
+                GOTO_NEXT_CHAIN;
+            }
+#  endif
 #  ifdef UNALIGNED64_OK
         } else if (best_len >= sizeof(uint64_t)) {
             for (;;) {
@@ -198,10 +214,16 @@ Z_INTERNAL uint32_t LONGEST_MATCH(deflate_state *const s, Pos cur_match) {
                 if (best_len >= sizeof(uint64_t))
                     offset -= 4;
 #endif
+#ifdef zng_memcmp_32
+                if (best_len >= 32)
+                    offset -= 24;
+#endif
             }
 #endif
 
-#ifdef UNALIGNED64_OK
+#ifdef zng_memcmp_32
+            memcpy(scan_end, scan + offset, 32);
+#elif defined(UNALIGNED64_OK)
             memcpy(scan_end, scan+offset, sizeof(uint64_t));
 #elif defined(UNALIGNED_OK)
             memcpy(scan_end, scan+offset, sizeof(uint32_t));
