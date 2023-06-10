@@ -303,6 +303,14 @@ jobs:
              # Limit parallel test jobs to prevent wine errors
             parallels-jobs: 1
 
+          - name: Ubuntu Clang musl
+            os: ubuntu-latest
+            compiler: musl-clang
+            cxx-compiler: musl-clang
+            packages: clang-11 llvm-11 llvm-11-tools musl
+            gcov-exec: llvm-cov-11 gcov
+            codecov: ubuntu_clang
+
           - name: Ubuntu 20.04 Clang
             os: ubuntu-20.04
             compiler: clang-6.0
