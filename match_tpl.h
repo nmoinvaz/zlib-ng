@@ -283,7 +283,3 @@ break_matching:
     return s->lookahead;
 #endif
 }
-
-#undef LONGEST_MATCH_SLOW
-#undef LONGEST_MATCH
-#undef COMPARE256

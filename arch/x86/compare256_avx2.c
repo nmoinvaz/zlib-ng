@@ -54,10 +54,24 @@ Z_INTERNAL uint32_t compare256_avx2(const uint8_t *src0, const uint8_t *src1) {
 
 #include "match_tpl.h"
 
+#undef LONGEST_MATCH_SLOW
 #define LONGEST_MATCH_SLOW
+#undef LONGEST_MATCH
 #define LONGEST_MATCH       longest_match_slow_avx2
+#undef COMPARE256
 #define COMPARE256          compare256_avx2_static
 
 #include "match_tpl.h"
+#include "cpu_features.h"
+
+#ifdef X86_SSE42
+#define UPDATE_HASH         update_hash_sse42
+#define INSERT_STRING       insert_string_sse42
+#define QUICK_INSERT_STRING quick_insert_string_sse42
+#endif
+
+#define DEFLATE_FAST        deflate_fast_avx2
+
+#include "deflate_fast_tpl.h"
 
 #endif

@@ -50,8 +50,11 @@ Z_INTERNAL uint32_t compare256_c(const uint8_t *src0, const uint8_t *src1) {
 
 #include "match_tpl.h"
 
+#undef LONGEST_MATCH_SLOW
 #define LONGEST_MATCH_SLOW
+#undef LONGEST_MATCH
 #define LONGEST_MATCH       longest_match_slow_c
+#undef COMPARE256
 #define COMPARE256          compare256_c_static
 
 #include "match_tpl.h"
@@ -86,13 +89,18 @@ Z_INTERNAL uint32_t compare256_unaligned_16(const uint8_t *src0, const uint8_t *
     return compare256_unaligned_16_static(src0, src1);
 }
 
+#undef LONGEST_MATCH
 #define LONGEST_MATCH       longest_match_unaligned_16
+#undef COMPARE256
 #define COMPARE256          compare256_unaligned_16_static
 
 #include "match_tpl.h"
 
+#undef LONGEST_MATCH_SLOW
 #define LONGEST_MATCH_SLOW
+#undef LONGEST_MATCH
 #define LONGEST_MATCH       longest_match_slow_unaligned_16
+#undef COMPARE256
 #define COMPARE256          compare256_unaligned_16_static
 
 #include "match_tpl.h"
@@ -124,13 +132,18 @@ Z_INTERNAL uint32_t compare256_unaligned_32(const uint8_t *src0, const uint8_t *
     return compare256_unaligned_32_static(src0, src1);
 }
 
+#undef LONGEST_MATCH
 #define LONGEST_MATCH       longest_match_unaligned_32
+#undef COMPARE256
 #define COMPARE256          compare256_unaligned_32_static
 
 #include "match_tpl.h"
 
+#undef LONGEST_MATCH_SLOW
 #define LONGEST_MATCH_SLOW
+#undef LONGEST_MATCH
 #define LONGEST_MATCH       longest_match_slow_unaligned_32
+#undef COMPARE256
 #define COMPARE256          compare256_unaligned_32_static
 
 #include "match_tpl.h"
@@ -164,17 +177,32 @@ Z_INTERNAL uint32_t compare256_unaligned_64(const uint8_t *src0, const uint8_t *
     return compare256_unaligned_64_static(src0, src1);
 }
 
+#undef LONGEST_MATCH
 #define LONGEST_MATCH       longest_match_unaligned_64
+#undef COMPARE256
 #define COMPARE256          compare256_unaligned_64_static
 
 #include "match_tpl.h"
 
+#undef LONGEST_MATCH_SLOW
 #define LONGEST_MATCH_SLOW
+#undef LONGEST_MATCH
 #define LONGEST_MATCH       longest_match_slow_unaligned_64
+#undef COMPARE256
 #define COMPARE256          compare256_unaligned_64_static
 
 #include "match_tpl.h"
 
 #endif
+
+#include "cpu_features.h"
+
+#define UPDATE_HASH         update_hash_c
+#define INSERT_STRING       insert_string_c
+#define QUICK_INSERT_STRING quick_insert_string_c
+
+#define DEFLATE_FAST        deflate_fast_c
+
+#include "deflate_fast_tpl.h"
 
 #endif

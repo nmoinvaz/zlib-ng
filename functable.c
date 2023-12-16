@@ -27,6 +27,7 @@ static void init_functable(void) {
     ft.crc32_fold_copy = &crc32_fold_copy_c;
     ft.crc32_fold_final = &crc32_fold_final_c;
     ft.crc32_fold_reset = &crc32_fold_reset_c;
+    ft.deflate_fast = &deflate_fast_c;
     ft.inflate_fast = &inflate_fast_c;
     ft.insert_string = &insert_string_c;
     ft.quick_insert_string = &quick_insert_string_c;
@@ -109,6 +110,7 @@ static void init_functable(void) {
         ft.adler32_fold_copy = &adler32_fold_copy_avx2;
         ft.chunkmemset_safe = &chunkmemset_safe_avx2;
         ft.chunksize = &chunksize_avx2;
+        ft.deflate_fast = &deflate_fast_avx2;
         ft.inflate_fast = &inflate_fast_avx2;
         ft.slide_hash = &slide_hash_avx2;
 #  ifdef HAVE_BUILTIN_CTZ
@@ -244,6 +246,7 @@ static void init_functable(void) {
     functable.crc32_fold_copy = ft.crc32_fold_copy;
     functable.crc32_fold_final = ft.crc32_fold_final;
     functable.crc32_fold_reset = ft.crc32_fold_reset;
+    functable.deflate_fast = ft.deflate_fast;
     functable.inflate_fast = ft.inflate_fast;
     functable.insert_string = ft.insert_string;
     functable.longest_match = ft.longest_match;
@@ -304,6 +307,11 @@ static uint32_t crc32_fold_reset_stub(crc32_fold* crc) {
     return functable.crc32_fold_reset(crc);
 }
 
+ block_state deflate_fast_stub(deflate_state *s, int flush) {
+    init_functable();
+    return functable.deflate_fast(s, flush);
+}
+
 static void inflate_fast_stub(PREFIX3(stream) *strm, uint32_t start) {
     init_functable();
     functable.inflate_fast(strm, start);
@@ -351,6 +359,7 @@ Z_INTERNAL Z_TLS struct functable_s functable = {
     crc32_fold_copy_stub,
     crc32_fold_final_stub,
     crc32_fold_reset_stub,
+    deflate_fast_stub,
     inflate_fast_stub,
     insert_string_stub,
     longest_match_stub,

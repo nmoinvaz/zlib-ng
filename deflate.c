@@ -108,7 +108,7 @@ const char PREFIX(deflate_copyright)[] = " deflate 1.2.13 Copyright 1995-2022 Je
  */
 static int deflateStateCheck      (PREFIX3(stream) *strm);
 Z_INTERNAL block_state deflate_stored(deflate_state *s, int flush);
-Z_INTERNAL block_state deflate_fast  (deflate_state *s, int flush);
+Z_INTERNAL block_state deflate_fast_stub  (deflate_state *s, int flush);
 Z_INTERNAL block_state deflate_quick (deflate_state *s, int flush);
 #ifndef NO_MEDIUM_STRATEGY
 Z_INTERNAL block_state deflate_medium(deflate_state *s, int flush);
@@ -146,15 +146,15 @@ static const config configuration_table[10] = {
 /* 0 */ {0,    0,  0,    0, deflate_stored},  /* store only */
 
 #ifdef NO_QUICK_STRATEGY
-/* 1 */ {4,    4,  8,    4, deflate_fast}, /* max speed, no lazy matches */
-/* 2 */ {4,    5, 16,    8, deflate_fast},
+/* 1 */ {4,    4,  8,    4, deflate_fast_stub}, /* max speed, no lazy matches */
+/* 2 */ {4,    5, 16,    8, deflate_fast_stub},
 #else
 /* 1 */ {0,    0,  0,    0, deflate_quick},
-/* 2 */ {4,    4,  8,    4, deflate_fast}, /* max speed, no lazy matches */
+/* 2 */ {4,    4,  8,    4, deflate_fast_stub}, /* max speed, no lazy matches */
 #endif
 
 #ifdef NO_MEDIUM_STRATEGY
-/* 3 */ {4,    6, 32,   32, deflate_fast},
+/* 3 */ {4,    6, 32,   32, deflate_fast_stub},
 /* 4 */ {4,    4, 16,   16, deflate_slow},  /* lazy matches */
 /* 5 */ {8,   16, 32,   32, deflate_slow},
 /* 6 */ {8,   16, 128, 128, deflate_slow},

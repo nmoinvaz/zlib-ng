@@ -135,6 +135,14 @@ typedef struct z_stream_s z_stream;
 typedef struct zng_stream_s zng_stream;
 #endif
 
+#ifdef DEFLATE_H_
+/* deflate fast loop */
+extern block_state deflate_fast_c(deflate_state *s, int flush);
+#ifdef X86_AVX2
+extern block_state deflate_fast_avx2(deflate_state *s, int flush);
+#endif
+#endif
+
 /* inflate fast loop */
 extern void inflate_fast_c(PREFIX3(stream) *strm, uint32_t start);
 #ifdef X86_SSE2
