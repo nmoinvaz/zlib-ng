@@ -10,13 +10,15 @@
 #include "deflate_p.h"
 #include "functable.h"
 #include "cpu_features.h"
-
+static uint32_t adler32_stub(uint32_t adler, const uint8_t* buf, size_t len);
 static void init_functable(void) {
     struct functable_s ft;
     struct cpu_features cf;
 
     cpu_check_features(&cf);
-
+    if (functable.adler32 != adler32_stub) {
+        return;
+    }
     // Generic code
     ft.adler32 = &adler32_c;
     ft.adler32_fold_copy = &adler32_fold_copy_c;
