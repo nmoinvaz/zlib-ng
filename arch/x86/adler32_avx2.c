@@ -14,7 +14,7 @@
 #include "../../adler32_fold.h"
 #include "../../adler32_p.h"
 #include "adler32_avx2_p.h"
-#include "x86_intrins.h"
+#include "x86_intrins.h" 
 
 #ifdef X86_SSE42
 extern uint32_t adler32_fold_copy_sse42(uint32_t adler, uint8_t *dst, const uint8_t *src, size_t len);
