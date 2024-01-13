@@ -668,6 +668,7 @@ jobs:
       uses: actions/upload-artifact@v3
       if: matrix.codecov
       with:
+        name: ${{ matrix.name }} (coverage)
         path: ${{ matrix.codecov }}.xml
         retention-days: 1
 
