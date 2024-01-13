@@ -697,6 +697,8 @@ jobs:
     - name: Download all reports
       uses: actions/download-artifact@v4
       with:
+        pattern: '*(coverage)'
+        path: coverage
         merge-multiple: true
 
     - name: Display structure of downloaded files
