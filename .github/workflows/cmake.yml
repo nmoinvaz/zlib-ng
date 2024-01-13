@@ -9,7 +9,7 @@ concurrency:
 jobs:
   cmake:
     name: ${{ matrix.name }}
-    runs-on: ${{ github.repository == 'zlib-ng/zlib-ng' && matrix.os }}
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -21,7 +21,7 @@ jobs:
             cxx-compiler: g++
 
           - name: Ubuntu GCC S390X DFLTCC ASAN
-            os: z15
+            os: ${{ (github.repository == 'zlib-ng/zlib-ng' && 'z15') || 'ubuntu-latest' }}
             compiler: gcc
             cxx-compiler: g++
             cmake-args: -DWITH_DFLTCC_DEFLATE=ON -DWITH_DFLTCC_INFLATE=ON -DWITH_SANITIZER=Address
@@ -32,7 +32,7 @@ jobs:
             parallels-jobs: 4
 
           - name: Ubuntu GCC S390X DFLTCC Compat UBSAN
-            os: z15
+            os: ${{ (github.repository == 'zlib-ng/zlib-ng' && 'z15') || 'ubuntu-latest' }}
             compiler: gcc
             cxx-compiler: g++
             cmake-args: -DZLIB_COMPAT=ON -DWITH_DFLTCC_DEFLATE=ON -DWITH_DFLTCC_INFLATE=ON -DWITH_SANITIZER=Undefined
@@ -42,7 +42,7 @@ jobs:
             parallels-jobs: 4
 
           - name: Ubuntu Clang S390X DFLTCC MSAN
-            os: z15
+            os: ${{ (github.repository == 'zlib-ng/zlib-ng' && 'z15') || 'ubuntu-latest' }}
             compiler: clang-11
             cxx-compiler: clang++-11
             cmake-args: -GNinja -DWITH_DFLTCC_DEFLATE=ON -DWITH_DFLTCC_INFLATE=ON -DWITH_SANITIZER=Memory
