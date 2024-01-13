@@ -657,20 +657,19 @@ jobs:
       if: matrix.codecov
       shell: bash
       run: |
-        mkdir coverage
         python3 -u -m pip install --user gcovr==5.0
         python3 -m gcovr -j 3 --verbose \
           --exclude-unreachable-branches \
           --gcov-executable "${{ matrix.gcov-exec || 'gcov' }}" \
           --root ${{ matrix.build-src-dir || '.' }} \
-          --xml --output coverage/${{ matrix.codecov }}.xml
+          --xml --output ${{ matrix.codecov }}.xml
 
     - name: Upload coverage report artifact
       uses: actions/upload-artifact@v4
       if: matrix.codecov
       with:
         name: ${{ matrix.name }} (coverage)
-        path: coverage/*.xml
+        path: ${{ matrix.codecov }}.xml
         retention-days: 1
 
     - name: Upload build errors
@@ -698,8 +697,6 @@ jobs:
     - name: Download all reports
       uses: actions/download-artifact@v4
       with:
-        pattern: '*(coverage)'
-        path: coverage
         merge-multiple: true
 
     - name: Display structure of downloaded files
