@@ -666,9 +666,8 @@ jobs:
 
     - name: Upload coverage report artifact
       uses: actions/upload-artifact@v3
-      if: success()
+      if: matrix.codecov
       with:
-        name: 
         path: ${{ matrix.codecov }}.xml
         retention-days: 2
 
@@ -697,7 +696,7 @@ jobs:
 
     - name: Upload reports
       uses: codecov/codecov-action@v3
-      if: (env.CODECOV_TOKEN != '' || github.repository == 'zlib-ng/zlib-ng')
+      #if: (env.CODECOV_TOKEN != '' || github.repository == 'zlib-ng/zlib-ng')
       with:
         token: ${{ secrets.CODECOV_TOKEN || 'e4fdf847-f541-4ab1-9d50-3d27e5913906' }}
         verbose: true
