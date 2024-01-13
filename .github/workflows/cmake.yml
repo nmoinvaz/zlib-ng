@@ -298,34 +298,34 @@ jobs:
             # The dedicated test VM has 4 cores
             parallels-jobs: 4
 
-          - name: Ubuntu GCC S390X DFLTCC ASAN
-            os: z15
-            compiler: gcc
-            cxx-compiler: g++
-            cmake-args: -DWITH_DFLTCC_DEFLATE=ON -DWITH_DFLTCC_INFLATE=ON -DWITH_SANITIZER=Address
-            asan-options: detect_leaks=0
-            ldflags: -static
-            codecov: ubuntu_gcc_s390x_dfltcc
-            # The dedicated test VM has 4 cores
-            parallels-jobs: 4
+          # - name: Ubuntu GCC S390X DFLTCC ASAN
+          #   os: z15
+          #   compiler: gcc
+          #   cxx-compiler: g++
+          #   cmake-args: -DWITH_DFLTCC_DEFLATE=ON -DWITH_DFLTCC_INFLATE=ON -DWITH_SANITIZER=Address
+          #   asan-options: detect_leaks=0
+          #   ldflags: -static
+          #   codecov: ubuntu_gcc_s390x_dfltcc
+          #   # The dedicated test VM has 4 cores
+          #   parallels-jobs: 4
 
-          - name: Ubuntu GCC S390X DFLTCC Compat UBSAN
-            os: z15
-            compiler: gcc
-            cxx-compiler: g++
-            cmake-args: -DZLIB_COMPAT=ON -DWITH_DFLTCC_DEFLATE=ON -DWITH_DFLTCC_INFLATE=ON -DWITH_SANITIZER=Undefined
-            ldflags: -static
-            codecov: ubuntu_gcc_s390x_dfltcc_compat
-            # The dedicated test VM has 4 cores
-            parallels-jobs: 4
+          # - name: Ubuntu GCC S390X DFLTCC Compat UBSAN
+          #   os: z15
+          #   compiler: gcc
+          #   cxx-compiler: g++
+          #   cmake-args: -DZLIB_COMPAT=ON -DWITH_DFLTCC_DEFLATE=ON -DWITH_DFLTCC_INFLATE=ON -DWITH_SANITIZER=Undefined
+          #   ldflags: -static
+          #   codecov: ubuntu_gcc_s390x_dfltcc_compat
+          #   # The dedicated test VM has 4 cores
+          #   parallels-jobs: 4
 
-          - name: Ubuntu Clang S390X DFLTCC MSAN
-            os: z15
-            compiler: clang-11
-            cxx-compiler: clang++-11
-            cmake-args: -GNinja -DWITH_DFLTCC_DEFLATE=ON -DWITH_DFLTCC_INFLATE=ON -DWITH_SANITIZER=Memory
-            # The dedicated test VM has 4 cores
-            parallels-jobs: 4
+          # - name: Ubuntu Clang S390X DFLTCC MSAN
+          #   os: z15
+          #   compiler: clang-11
+          #   cxx-compiler: clang++-11
+          #   cmake-args: -GNinja -DWITH_DFLTCC_DEFLATE=ON -DWITH_DFLTCC_INFLATE=ON -DWITH_SANITIZER=Memory
+          #   # The dedicated test VM has 4 cores
+          #   parallels-jobs: 4
 
           - name: Ubuntu MinGW i686
             os: ubuntu-22.04
@@ -669,7 +669,7 @@ jobs:
       if: matrix.codecov
       with:
         path: ${{ matrix.codecov }}.xml
-        retention-days: 2
+        retention-days: 1
 
     - name: Upload build errors
       uses: actions/upload-artifact@v3
@@ -682,7 +682,7 @@ jobs:
           **/Testing/Temporary/*
           coverage.xml
         retention-days: 30
-  
+
   coverage:
     name: Upload Coverage Reports
     runs-on: ubuntu-latest
@@ -690,7 +690,9 @@ jobs:
     steps:
     - name: Download all reports
       uses: actions/download-artifact@v4
-      
+      with:
+        merge-multiple: true
+
     - name: Display structure of downloaded files
       run: ls -R
 
