@@ -25,8 +25,8 @@ jobs:
             compiler: gcc
             cxx-compiler: g++
             cmake-args: >-
-              -DWITH_DFLTCC_DEFLATE=ON -DWITH_DFLTCC_INFLATE=ON -DWITH_SANITIZER=Address
               ${{ github.repository == 'zlib-ng/zlib-ng' && '-DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-s390x.cmake' }}
+              -DWITH_DFLTCC_DEFLATE=ON -DWITH_DFLTCC_INFLATE=ON -DWITH_SANITIZER=Address
             packages: qemu qemu-user gcc-s390x-linux-gnu g++-s390x-linux-gnu libc-dev-s390x-cross
             asan-options: detect_leaks=0
             ldflags: -static
@@ -39,8 +39,8 @@ jobs:
             compiler: gcc
             cxx-compiler: g++
             cmake-args: >-
-              -DZLIB_COMPAT=ON -DWITH_DFLTCC_DEFLATE=ON -DWITH_DFLTCC_INFLATE=ON -DWITH_SANITIZER=Undefined
               ${{ github.repository == 'zlib-ng/zlib-ng' && '-DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-s390x.cmake' }}
+              -DZLIB_COMPAT=ON -DWITH_DFLTCC_DEFLATE=ON -DWITH_DFLTCC_INFLATE=ON -DWITH_SANITIZER=Undefined
             packages: qemu qemu-user gcc-s390x-linux-gnu g++-s390x-linux-gnu libc-dev-s390x-cross
             ldflags: -static
             codecov: ubuntu_gcc_s390x_dfltcc_compat
@@ -52,7 +52,9 @@ jobs:
             compiler: clang-11
             cxx-compiler: clang++-11
             cmake-args: >-
+              ${{ github.repository == 'zlib-ng/zlib-ng' && '-DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-s390x.cmake' }}
               -GNinja -DWITH_DFLTCC_DEFLATE=ON -DWITH_DFLTCC_INFLATE=ON -DWITH_SANITIZER=Memory
+            llvm-cmake-args: >-
               ${{ github.repository == 'zlib-ng/zlib-ng' && '-DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-s390x.cmake' }}
             packages: qemu qemu-user gcc-s390x-linux-gnu g++-s390x-linux-gnu libc-dev-s390x-cross
             ldflags: ${{ github.repository == 'zlib-ng/zlib-ng' && '-static' }}
@@ -128,7 +130,7 @@ jobs:
       if: contains(matrix.name, 'MSAN')
       run: |
         git clone --depth=1 https://github.com/llvm/llvm-project --single-branch --branch llvmorg-11.1.0
-        cmake -S llvm-project/llvm -B llvm-project/build -G Ninja \
+        cmake -S llvm-project/llvm -B llvm-project/build -G Ninja ${{ matrix.llvm-cmake-args }} \
           -DCMAKE_BUILD_TYPE=Release \
           -DLLVM_ENABLE_PROJECTS="libcxx;libcxxabi" \
           -DLLVM_USE_SANITIZER=MemoryWithOrigins \
