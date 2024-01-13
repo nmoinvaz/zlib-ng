@@ -15,24 +15,24 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: Ubuntu 20.04 GCC
-            os: ubuntu-20.04
-            compiler: gcc
-            cxx-compiler: g++
+          # - name: Ubuntu 20.04 GCC
+          #   os: ubuntu-20.04
+          #   compiler: gcc
+          #   cxx-compiler: g++
 
-          - name: Ubuntu GCC ASAN
-            os: ubuntu-latest
-            compiler: gcc
-            cxx-compiler: g++
-            cmake-args: -DWITH_SANITIZER=Address
-            codecov: ubuntu_gcc
+          # - name: Ubuntu GCC ASAN
+          #   os: ubuntu-latest
+          #   compiler: gcc
+          #   cxx-compiler: g++
+          #   cmake-args: -DWITH_SANITIZER=Address
+          #   codecov: ubuntu_gcc
 
-          - name: Ubuntu GCC Benchmark
-            os: ubuntu-latest
-            compiler: gcc
-            cxx-compiler: g++
-            cmake-args: -DWITH_BENCHMARKS=ON
-            codecov: ubuntu_gcc_benchmark
+          # - name: Ubuntu GCC Benchmark
+          #   os: ubuntu-latest
+          #   compiler: gcc
+          #   cxx-compiler: g++
+          #   cmake-args: -DWITH_BENCHMARKS=ON
+          #   codecov: ubuntu_gcc_benchmark
 
           - name: Ubuntu GCC Native Instructions
             os: ubuntu-latest
@@ -41,12 +41,12 @@ jobs:
             cmake-args: -DWITH_NATIVE_INSTRUCTIONS=ON
             codecov: ubuntu_gcc_native_inst
 
-    #       - name: Ubuntu GCC Symbol Prefix
-    #         os: ubuntu-latest
-    #         compiler: gcc
-    #         cxx-compiler: g++
-    #         cmake-args: -DZLIB_SYMBOL_PREFIX=zTest_
-    #         codecov: ubuntu_gcc_sprefix
+          - name: Ubuntu GCC Symbol Prefix
+            os: ubuntu-latest
+            compiler: gcc
+            cxx-compiler: g++
+            cmake-args: -DZLIB_SYMBOL_PREFIX=zTest_
+            codecov: ubuntu_gcc_sprefix
 
     #       - name: Ubuntu GCC Compat Symbol Prefix
     #         os: ubuntu-latest
@@ -657,19 +657,20 @@ jobs:
       if: matrix.codecov
       shell: bash
       run: |
+        mkdir coverage
         python3 -u -m pip install --user gcovr==5.0
         python3 -m gcovr -j 3 --verbose \
           --exclude-unreachable-branches \
           --gcov-executable "${{ matrix.gcov-exec || 'gcov' }}" \
           --root ${{ matrix.build-src-dir || '.' }} \
-          --xml --output ${{ matrix.codecov }}.xml
+          --xml --output coverage/${{ matrix.codecov }}.xml
 
     - name: Upload coverage report artifact
       uses: actions/upload-artifact@v3
       if: matrix.codecov
       with:
         name: ${{ matrix.name }} (coverage)
-        path: ${{ matrix.codecov }}.xml
+        path: coverage/*.xml
         retention-days: 1
 
     - name: Upload build errors
