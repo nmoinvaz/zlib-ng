@@ -74,7 +74,7 @@ int  main             (int argc, char *argv[]);
 /* ===========================================================================
  * Display error message and exit
  */
-void error(const char *msg) {
+static void error(const char *msg) {
     fprintf(stderr, "%s: %s\n", prog, msg);
     exit(1);
 }
@@ -83,7 +83,7 @@ void error(const char *msg) {
  * Display last error message of gzFile, close it and exit
  */
 
-void gz_fatal(gzFile file) {
+static void gz_fatal(gzFile file) {
     int err;
     fprintf(stderr, "%s: %s\n", prog, PREFIX(gzerror)(file, &err));
     PREFIX(gzclose)(file);
@@ -94,7 +94,7 @@ void gz_fatal(gzFile file) {
  * Compress input to output then close both files.
  */
 
-void gz_compress(FILE *in, gzFile out) {
+static void gz_compress(FILE *in, gzFile out) {
     char *buf;
     int len;
 
@@ -131,7 +131,7 @@ void gz_compress(FILE *in, gzFile out) {
 /* Try compressing the input file at once using mmap. Return Z_OK if
  * success, Z_ERRNO otherwise.
  */
-int gz_compress_mmap(FILE *in, gzFile out) {
+static int gz_compress_mmap(FILE *in, gzFile out) {
     int len;
     int ifd = fileno(in);
     char *buf;      /* mmap'ed buffer for the entire input file */
@@ -162,7 +162,7 @@ int gz_compress_mmap(FILE *in, gzFile out) {
 /* ===========================================================================
  * Uncompress input to output then close both files.
  */
-void gz_uncompress(gzFile in, FILE *out) {
+static void gz_uncompress(gzFile in, FILE *out) {
     char *buf = (char *)malloc(BUFLENW);
     int len;
 
@@ -192,7 +192,7 @@ void gz_uncompress(gzFile in, FILE *out) {
  * Compress the given file: create a corresponding .gz file and remove the
  * original.
  */
-void file_compress(char *file, char *mode, int keep) {
+static void file_compress(char *file, char *mode, int keep) {
     char outfile[MAX_NAME_LEN];
     FILE *in;
     gzFile out;
@@ -224,7 +224,7 @@ void file_compress(char *file, char *mode, int keep) {
 /* ===========================================================================
  * Uncompress the given file and remove the original.
  */
-void file_uncompress(char *file, int keep) {
+static void file_uncompress(char *file, int keep) {
     char buf[MAX_NAME_LEN];
     char *infile, *outfile;
     FILE *out;
@@ -264,7 +264,7 @@ void file_uncompress(char *file, int keep) {
         unlink(infile);
 }
 
-void show_help(void) {
+static void show_help(void) {
     printf("Usage: minigzip [-c] [-d] [-k] [-f|-h|-R|-F|-T] [-A] [-0 to -9] [files...]\n\n"
            "  -c : write to standard output\n"
            "  -d : decompress\n"
