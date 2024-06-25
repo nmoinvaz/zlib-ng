@@ -21,15 +21,15 @@ typedef unsigned char uch; /* Included for compatibility with external code only
 typedef uint16_t ush;      /* Included for compatibility with external code only */
 typedef unsigned long ulg;
 
-extern z_const char * const PREFIX(z_errmsg)[10]; /* indexed by 2-zlib_error */
+extern z_const char *const PREFIX(z_errmsg)[10]; /* indexed by 2-zlib_error */
 /* (size given to avoid silly warnings with Visual C++) */
 
-#define ERR_MSG(err) PREFIX(z_errmsg)[(err) < -6 || (err) > 2 ? 9 : 2 - (err)]
+#define ERR_MSG(err)          PREFIX(z_errmsg)[(err) < -6 || (err) > 2 ? 9 : 2 - (err)]
 
 #define ERR_RETURN(strm, err) return (strm->msg = ERR_MSG(err), (err))
 /* To be used only when the state is known to be valid */
 
-        /* common constants */
+/* common constants */
 
 #ifndef DEF_WBITS
 #  define DEF_WBITS MAX_WBITS
@@ -44,7 +44,7 @@ extern z_const char * const PREFIX(z_errmsg)[10]; /* indexed by 2-zlib_error */
 #if MAX_MEM_LEVEL >= 8
 #  define DEF_MEM_LEVEL 8
 #else
-#  define DEF_MEM_LEVEL  MAX_MEM_LEVEL
+#  define DEF_MEM_LEVEL MAX_MEM_LEVEL
 #endif
 /* default memLevel */
 
@@ -53,36 +53,35 @@ extern z_const char * const PREFIX(z_errmsg)[10]; /* indexed by 2-zlib_error */
 #define DYN_TREES    2
 /* The three kinds of block type */
 
-#define STD_MIN_MATCH  3
-#define STD_MAX_MATCH  258
+#define STD_MIN_MATCH 3
+#define STD_MAX_MATCH 258
 /* The minimum and maximum match lengths mandated by the deflate standard */
 
-#define WANT_MIN_MATCH  4
+#define WANT_MIN_MATCH 4
 /* The minimum wanted match length, affects deflate_quick, deflate_fast, deflate_medium and deflate_slow  */
 
-#define PRESET_DICT 0x20 /* preset dictionary flag in zlib header */
+#define PRESET_DICT            0x20 /* preset dictionary flag in zlib header */
 
-#define ADLER32_INITIAL_VALUE 1 /* initial adler-32 hash value */
-#define CRC32_INITIAL_VALUE   0 /* initial crc-32 hash value */
+#define ADLER32_INITIAL_VALUE  1 /* initial adler-32 hash value */
+#define CRC32_INITIAL_VALUE    0 /* initial crc-32 hash value */
 
-#define ZLIB_WRAPLEN 6      /* zlib format overhead */
-#define GZIP_WRAPLEN 18     /* gzip format overhead */
+#define ZLIB_WRAPLEN           6  /* zlib format overhead */
+#define GZIP_WRAPLEN           18 /* gzip format overhead */
 
-#define DEFLATE_HEADER_BITS 3
-#define DEFLATE_EOBS_BITS   15
-#define DEFLATE_PAD_BITS    6
+#define DEFLATE_HEADER_BITS    3
+#define DEFLATE_EOBS_BITS      15
+#define DEFLATE_PAD_BITS       6
 #define DEFLATE_BLOCK_OVERHEAD ((DEFLATE_HEADER_BITS + DEFLATE_EOBS_BITS + DEFLATE_PAD_BITS) >> 3)
 /* deflate block overhead: 3 bits for block start + 15 bits for block end + padding to nearest byte */
 
 #define DEFLATE_QUICK_LIT_MAX_BITS 9
-#define DEFLATE_QUICK_OVERHEAD(x) ((x * (DEFLATE_QUICK_LIT_MAX_BITS - 8) + 7) >> 3)
+#define DEFLATE_QUICK_OVERHEAD(x)  ((x * (DEFLATE_QUICK_LIT_MAX_BITS - 8) + 7) >> 3)
 /* deflate_quick worst-case overhead: 9 bits per literal, round up to next byte (+7) */
 
-
-        /* target dependencies */
+/* target dependencies */
 
 #ifdef AMIGA
-#  define OS_CODE  1
+#  define OS_CODE 1
 #endif
 
 #ifdef __370__
@@ -96,15 +95,15 @@ extern z_const char * const PREFIX(z_errmsg)[10]; /* indexed by 2-zlib_error */
 #endif
 
 #if defined(ATARI) || defined(atarist)
-#  define OS_CODE  5
+#  define OS_CODE 5
 #endif
 
 #ifdef OS2
-#  define OS_CODE  6
+#  define OS_CODE 6
 #endif
 
 #if defined(MACOS)
-#  define OS_CODE  7
+#  define OS_CODE 7
 #endif
 
 #ifdef __acorn
@@ -112,29 +111,30 @@ extern z_const char * const PREFIX(z_errmsg)[10]; /* indexed by 2-zlib_error */
 #endif
 
 #if defined(_WIN32) && !defined(__CYGWIN__)
-#  define OS_CODE  10
+#  define OS_CODE 10
 #endif
 
 #ifdef __APPLE__
 #  define OS_CODE 19
 #endif
 
-        /* common defaults */
+/* common defaults */
 
 #ifndef OS_CODE
-#  define OS_CODE  3  /* assume Unix */
+#  define OS_CODE 3 /* assume Unix */
 #endif
 
-         /* macros */
+/* macros */
 
-#define CHECK_VER_STSIZE(_ver,_stsize) ((_ver) == NULL || (_ver)[0] != PREFIX2(VERSION)[0] || (_stsize) != (int32_t)sizeof(PREFIX3(stream)))
+#define CHECK_VER_STSIZE(_ver, _stsize) \
+    ((_ver) == NULL || (_ver)[0] != PREFIX2(VERSION)[0] || (_stsize) != (int32_t)sizeof(PREFIX3(stream)))
 
-         /* memory allocation functions */
+/* memory allocation functions */
 
 void Z_INTERNAL *PREFIX(zcalloc)(void *opaque, unsigned items, unsigned size);
-void Z_INTERNAL  PREFIX(zcfree)(void *opaque, void *ptr);
+void Z_INTERNAL PREFIX(zcfree)(void *opaque, void *ptr);
 
 typedef void *zng_calloc_func(void *opaque, unsigned items, unsigned size);
-typedef void  zng_cfree_func(void *opaque, void *ptr);
+typedef void zng_cfree_func(void *opaque, void *ptr);
 
 #endif /* ZUTIL_H_ */

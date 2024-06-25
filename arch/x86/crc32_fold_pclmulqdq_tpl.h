@@ -26,7 +26,7 @@ Z_INTERNAL void CRC32_FOLD(crc32_fold *crc, const uint8_t *src, size_t len, uint
     __m128i xmm_t0, xmm_t1, xmm_t2, xmm_t3;
     __m128i xmm_crc0, xmm_crc1, xmm_crc2, xmm_crc3;
     __m128i xmm_crc_part = _mm_setzero_si128();
-    char ALIGNED_(16) partial_buf[16] = { 0 };
+    char ALIGNED_(16) partial_buf[16] = {0};
 #ifndef COPY
     __m128i xmm_initial = _mm_cvtsi32_si128(init_crc);
     int32_t first = init_crc != 0;
@@ -63,19 +63,19 @@ Z_INTERNAL void CRC32_FOLD(crc32_fold *crc, const uint8_t *src, size_t len, uint
         if (algn_diff < 4 && init_crc != 0) {
             xmm_t0 = xmm_crc_part;
             if (len >= 32) {
-                xmm_crc_part = _mm_loadu_si128((__m128i*)src + 1);
+                xmm_crc_part = _mm_loadu_si128((__m128i *)src + 1);
                 fold_1(&xmm_crc0, &xmm_crc1, &xmm_crc2, &xmm_crc3);
                 xmm_crc3 = _mm_xor_si128(xmm_crc3, xmm_t0);
             } else {
                 memcpy(partial_buf, src + 16, len - 16);
-                xmm_crc_part = _mm_load_si128((__m128i*)partial_buf);
+                xmm_crc_part = _mm_load_si128((__m128i *)partial_buf);
                 fold_1(&xmm_crc0, &xmm_crc1, &xmm_crc2, &xmm_crc3);
                 xmm_crc3 = _mm_xor_si128(xmm_crc3, xmm_t0);
                 src += 16;
                 len -= 16;
-#ifdef COPY
+#  ifdef COPY
                 dst -= algn_diff;
-#endif
+#  endif
                 goto partial;
             }
 
@@ -92,14 +92,13 @@ Z_INTERNAL void CRC32_FOLD(crc32_fold *crc, const uint8_t *src, size_t len, uint
 
 #ifdef X86_VPCLMULQDQ
     if (len >= 256) {
-#ifdef COPY
+#  ifdef COPY
         size_t n = fold_16_vpclmulqdq_copy(&xmm_crc0, &xmm_crc1, &xmm_crc2, &xmm_crc3, dst, src, len);
         dst += n;
-#else
-        size_t n = fold_16_vpclmulqdq(&xmm_crc0, &xmm_crc1, &xmm_crc2, &xmm_crc3, src, len,
-            xmm_initial, first);
+#  else
+        size_t n = fold_16_vpclmulqdq(&xmm_crc0, &xmm_crc1, &xmm_crc2, &xmm_crc3, src, len, xmm_initial, first);
         first = 0;
-#endif
+#  endif
         len -= n;
         src += n;
     }

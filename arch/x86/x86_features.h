@@ -12,7 +12,7 @@ struct x86_cpu_features {
     int has_avx512dq;
     int has_avx512bw;
     int has_avx512vl;
-    int has_avx512_common; // Enabled when AVX512(F,DQ,BW,VL) are all enabled.
+    int has_avx512_common;  // Enabled when AVX512(F,DQ,BW,VL) are all enabled.
     int has_avx512vnni;
     int has_sse2;
     int has_ssse3;

@@ -8,11 +8,12 @@
 
 #include "zbuild.h"
 #include "zutil.h"
-#include "crc32.h"
+
 #include "deflate.h"
-#include "fallback_builtins.h"
 
 #include "arch/generic/generic_functions.h"
+#include "crc32.h"
+#include "fallback_builtins.h"
 
 #if defined(X86_FEATURES)
 #  include "arch/x86/x86_functions.h"

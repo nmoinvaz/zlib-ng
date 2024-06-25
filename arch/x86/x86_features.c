@@ -8,6 +8,7 @@
  */
 
 #include "zbuild.h"
+
 #include "x86_features.h"
 
 #ifdef _MSC_VER
@@ -29,7 +30,7 @@
 static inline void cpuid(int info, unsigned* eax, unsigned* ebx, unsigned* ecx, unsigned* edx) {
 #ifdef _MSC_VER
     unsigned int registers[4];
-    __cpuid((int *)registers, info);
+    __cpuid((int*)registers, info);
 
     *eax = registers[0];
     *ebx = registers[1];
@@ -44,7 +45,7 @@ static inline void cpuid(int info, unsigned* eax, unsigned* ebx, unsigned* ecx, 
 static inline void cpuidex(int info, int subinfo, unsigned* eax, unsigned* ebx, unsigned* ecx, unsigned* edx) {
 #ifdef _MSC_VER
     unsigned int registers[4];
-    __cpuidex((int *)registers, info, subinfo);
+    __cpuidex((int*)registers, info, subinfo);
 
     *eax = registers[0];
     *ebx = registers[1];
@@ -61,12 +62,12 @@ static inline uint64_t xgetbv(unsigned int xcr) {
     return _xgetbv(xcr);
 #else
     uint32_t eax, edx;
-    __asm__ ( ".byte 0x0f, 0x01, 0xd0" : "=a"(eax), "=d"(edx) : "c"(xcr));
+    __asm__(".byte 0x0f, 0x01, 0xd0" : "=a"(eax), "=d"(edx) : "c"(xcr));
     return (uint64_t)(edx) << 32 | eax;
 #endif
 }
 
-void Z_INTERNAL x86_check_features(struct x86_cpu_features *features) {
+void Z_INTERNAL x86_check_features(struct x86_cpu_features* features) {
     unsigned eax, ebx, ecx, edx;
     unsigned maxbasic;
 
@@ -89,7 +90,8 @@ void Z_INTERNAL x86_check_features(struct x86_cpu_features *features) {
         cpuidex(7, 0, &eax, &ebx, &ecx, &edx);
 
         // check BMI1 bit
-        // Reference: https://software.intel.com/sites/default/files/article/405250/how-to-detect-new-instruction-support-in-the-4th-generation-intel-core-processor-family.pdf
+        // Reference:
+        // https://software.intel.com/sites/default/files/article/405250/how-to-detect-new-instruction-support-in-the-4th-generation-intel-core-processor-family.pdf
         features->has_vpclmulqdq = ecx & 0x400;
 
         // check AVX2 bit if the OS supports saving YMM registers
@@ -107,8 +109,8 @@ void Z_INTERNAL x86_check_features(struct x86_cpu_features *features) {
                 features->has_avx512bw = ebx & 0x40000000;
                 features->has_avx512vl = ebx & 0x80000000;
             }
-            features->has_avx512_common = features->has_avx512f && features->has_avx512dq && features->has_avx512bw \
-              && features->has_avx512vl;
+            features->has_avx512_common =
+                features->has_avx512f && features->has_avx512dq && features->has_avx512bw && features->has_avx512vl;
             features->has_avx512vnni = ecx & 0x800;
         }
     }

@@ -5,7 +5,9 @@
  */
 
 #include "zbuild.h"
+
 #include "deflate.h"
+
 #include "deflate_p.h"
 #include "functable.h"
 
@@ -17,8 +19,8 @@
  * matches. It is used only for the fast compression options.
  */
 Z_INTERNAL block_state deflate_fast(deflate_state *s, int flush) {
-    Pos hash_head;        /* head of the hash chain */
-    int bflush = 0;       /* set if current block must be flushed */
+    Pos hash_head;  /* head of the hash chain */
+    int bflush = 0; /* set if current block must be flushed */
     int64_t dist;
     uint32_t match_len = 0;
 

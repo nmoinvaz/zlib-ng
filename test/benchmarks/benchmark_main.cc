@@ -3,17 +3,17 @@
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 
-#include <stdio.h>
-
 #include <benchmark/benchmark.h>
+#include <stdio.h>
 
 #ifndef BUILD_ALT
 extern "C" {
 #  include "zbuild.h"
+
 #  include "../test_cpu_features.h"
 
 #  ifndef DISABLE_RUNTIME_CPU_DETECTION
-    struct cpu_features test_cpu_features;
+struct cpu_features test_cpu_features;
 #  endif
 }
 #endif

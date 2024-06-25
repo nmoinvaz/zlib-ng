@@ -1,20 +1,21 @@
-#include <stdio.h>
+#include "zbuild.h"
+
 #include <assert.h>
 #include <inttypes.h>
-
-#include "zbuild.h"
+#include <stdio.h>
 #ifdef ZLIB_COMPAT
 #  include "zlib.h"
 #else
 #  include "zlib-ng.h"
 #endif
 
-#define CHECK_ERR(err, msg) { \
-    if (err != Z_OK) { \
-        fprintf(stderr, "%s error: %d\n", msg, err); \
-        exit(1); \
-    } \
-}
+#define CHECK_ERR(err, msg)                              \
+    {                                                    \
+        if (err != Z_OK) {                               \
+            fprintf(stderr, "%s error: %d\n", msg, err); \
+            exit(1);                                     \
+        }                                                \
+    }
 
 static const uint8_t *data;
 static size_t dataLen;

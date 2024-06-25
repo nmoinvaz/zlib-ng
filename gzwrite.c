@@ -4,9 +4,11 @@
  */
 
 #include "zbuild.h"
+
 #include "zutil_p.h"
-#include <stdarg.h>
+
 #include "gzguts.h"
+#include <stdarg.h>
 
 /* Local functions */
 static int gz_init(gz_state *);
@@ -194,8 +196,7 @@ static size_t gz_write(gz_state *state, void const *buf, size_t len) {
 
             if (state->strm.avail_in == 0)
                 state->strm.next_in = state->in;
-            have = (unsigned)((state->strm.next_in + state->strm.avail_in) -
-                              state->in);
+            have = (unsigned)((state->strm.next_in + state->strm.avail_in) - state->in);
             copy = state->size - have;
             if (copy > len)
                 copy = (unsigned)len;
@@ -213,7 +214,7 @@ static size_t gz_write(gz_state *state, void const *buf, size_t len) {
             return 0;
 
         /* directly compress user buffer to file */
-        state->strm.next_in = (z_const unsigned char *) buf;
+        state->strm.next_in = (z_const unsigned char *)buf;
         do {
             unsigned n = (unsigned)-1;
             if (n > len)
@@ -288,7 +289,7 @@ int Z_EXPORT PREFIX(gzputc)(gzFile file, int c) {
     unsigned have;
     unsigned char buf[1];
     gz_state *state;
-    PREFIX3(stream) *strm;
+    PREFIX3(stream) * strm;
 
     /* get internal structure */
     if (file == NULL)
@@ -358,7 +359,7 @@ int Z_EXPORTVA PREFIX(gzvprintf)(gzFile file, const char *format, va_list va) {
     unsigned left;
     char *next;
     gz_state *state;
-    PREFIX3(stream) *strm;
+    PREFIX3(stream) * strm;
 
     /* get internal structure */
     if (file == NULL)
@@ -451,7 +452,7 @@ int Z_EXPORT PREFIX(gzflush)(gzFile file, int flush) {
 /* -- see zlib.h -- */
 int Z_EXPORT PREFIX(gzsetparams)(gzFile file, int level, int strategy) {
     gz_state *state;
-    PREFIX3(stream) *strm;
+    PREFIX3(stream) * strm;
 
     /* get internal structure */
     if (file == NULL)

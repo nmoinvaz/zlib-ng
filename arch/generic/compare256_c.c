@@ -4,8 +4,10 @@
  */
 
 #include "zbuild.h"
-#include "zutil_p.h"
+
 #include "deflate.h"
+#include "zutil_p.h"
+
 #include "fallback_builtins.h"
 
 /* ALIGNED, byte comparison */
@@ -46,14 +48,14 @@ Z_INTERNAL uint32_t compare256_c(const uint8_t *src0, const uint8_t *src1) {
     return compare256_c_static(src0, src1);
 }
 
-#define LONGEST_MATCH       longest_match_c
-#define COMPARE256          compare256_c_static
+#define LONGEST_MATCH longest_match_c
+#define COMPARE256    compare256_c_static
 
 #include "match_tpl.h"
 
 #define LONGEST_MATCH_SLOW
-#define LONGEST_MATCH       longest_match_slow_c
-#define COMPARE256          compare256_c_static
+#define LONGEST_MATCH longest_match_slow_c
+#define COMPARE256    compare256_c_static
 
 #include "match_tpl.h"
 
@@ -87,18 +89,18 @@ Z_INTERNAL uint32_t compare256_unaligned_16(const uint8_t *src0, const uint8_t *
     return compare256_unaligned_16_static(src0, src1);
 }
 
-#define LONGEST_MATCH       longest_match_unaligned_16
-#define COMPARE256          compare256_unaligned_16_static
+#  define LONGEST_MATCH longest_match_unaligned_16
+#  define COMPARE256    compare256_unaligned_16_static
 
-#include "match_tpl.h"
+#  include "match_tpl.h"
 
-#define LONGEST_MATCH_SLOW
-#define LONGEST_MATCH       longest_match_slow_unaligned_16
-#define COMPARE256          compare256_unaligned_16_static
+#  define LONGEST_MATCH_SLOW
+#  define LONGEST_MATCH longest_match_slow_unaligned_16
+#  define COMPARE256    compare256_unaligned_16_static
 
-#include "match_tpl.h"
+#  include "match_tpl.h"
 
-#ifdef HAVE_BUILTIN_CTZ
+#  ifdef HAVE_BUILTIN_CTZ
 /* 32-bit unaligned integer comparison */
 static inline uint32_t compare256_unaligned_32_static(const uint8_t *src0, const uint8_t *src1) {
     uint32_t len = 0;
@@ -125,20 +127,20 @@ Z_INTERNAL uint32_t compare256_unaligned_32(const uint8_t *src0, const uint8_t *
     return compare256_unaligned_32_static(src0, src1);
 }
 
-#define LONGEST_MATCH       longest_match_unaligned_32
-#define COMPARE256          compare256_unaligned_32_static
+#    define LONGEST_MATCH longest_match_unaligned_32
+#    define COMPARE256    compare256_unaligned_32_static
 
-#include "match_tpl.h"
+#    include "match_tpl.h"
 
-#define LONGEST_MATCH_SLOW
-#define LONGEST_MATCH       longest_match_slow_unaligned_32
-#define COMPARE256          compare256_unaligned_32_static
+#    define LONGEST_MATCH_SLOW
+#    define LONGEST_MATCH longest_match_slow_unaligned_32
+#    define COMPARE256    compare256_unaligned_32_static
 
-#include "match_tpl.h"
+#    include "match_tpl.h"
 
-#endif
+#  endif
 
-#if defined(UNALIGNED64_OK) && defined(HAVE_BUILTIN_CTZLL)
+#  if defined(UNALIGNED64_OK) && defined(HAVE_BUILTIN_CTZLL)
 /* UNALIGNED64_OK, 64-bit integer comparison */
 static inline uint32_t compare256_unaligned_64_static(const uint8_t *src0, const uint8_t *src1) {
     uint32_t len = 0;
@@ -165,17 +167,17 @@ Z_INTERNAL uint32_t compare256_unaligned_64(const uint8_t *src0, const uint8_t *
     return compare256_unaligned_64_static(src0, src1);
 }
 
-#define LONGEST_MATCH       longest_match_unaligned_64
-#define COMPARE256          compare256_unaligned_64_static
+#    define LONGEST_MATCH longest_match_unaligned_64
+#    define COMPARE256    compare256_unaligned_64_static
 
-#include "match_tpl.h"
+#    include "match_tpl.h"
 
-#define LONGEST_MATCH_SLOW
-#define LONGEST_MATCH       longest_match_slow_unaligned_64
-#define COMPARE256          compare256_unaligned_64_static
+#    define LONGEST_MATCH_SLOW
+#    define LONGEST_MATCH longest_match_slow_unaligned_64
+#    define COMPARE256    compare256_unaligned_64_static
 
-#include "match_tpl.h"
+#    include "match_tpl.h"
 
-#endif
+#  endif
 
 #endif

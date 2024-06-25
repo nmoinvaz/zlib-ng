@@ -8,7 +8,6 @@
 #endif
 
 #include "test_shared.h"
-
 #include <gtest/gtest.h>
 
 TEST(inflate, copy_back_and_forth) {

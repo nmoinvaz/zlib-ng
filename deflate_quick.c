@@ -18,37 +18,40 @@
  */
 
 #include "zbuild.h"
-#include "zutil_p.h"
+
 #include "deflate.h"
+#include "zutil_p.h"
+
 #include "deflate_p.h"
 #include "functable.h"
 #include "trees_emit.h"
 
-extern const ct_data static_ltree[L_CODES+2];
+extern const ct_data static_ltree[L_CODES + 2];
 extern const ct_data static_dtree[D_CODES];
 
-#define QUICK_START_BLOCK(s, last) { \
-    zng_tr_emit_tree(s, STATIC_TREES, last); \
-    s->block_open = 1 + (int)last; \
-    s->block_start = (int)s->strstart; \
-}
+#define QUICK_START_BLOCK(s, last)               \
+    {                                            \
+        zng_tr_emit_tree(s, STATIC_TREES, last); \
+        s->block_open = 1 + (int)last;           \
+        s->block_start = (int)s->strstart;       \
+    }
 
-#define QUICK_END_BLOCK(s, last) { \
-    if (s->block_open) { \
-        zng_tr_emit_end_block(s, static_ltree, last); \
-        s->block_open = 0; \
-        s->block_start = (int)s->strstart; \
-        PREFIX(flush_pending)(s->strm); \
-        if (s->strm->avail_out == 0) \
-            return (last) ? finish_started : need_more; \
-    } \
-}
+#define QUICK_END_BLOCK(s, last)                            \
+    {                                                       \
+        if (s->block_open) {                                \
+            zng_tr_emit_end_block(s, static_ltree, last);   \
+            s->block_open = 0;                              \
+            s->block_start = (int)s->strstart;              \
+            PREFIX(flush_pending)(s->strm);                 \
+            if (s->strm->avail_out == 0)                    \
+                return (last) ? finish_started : need_more; \
+        }                                                   \
+    }
 
 Z_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
     Pos hash_head;
     int64_t dist;
     unsigned match_len, last;
-
 
     last = (flush == Z_FINISH) ? 1 : 0;
     if (UNLIKELY(last && s->block_open != 2)) {
@@ -66,7 +69,8 @@ Z_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
         if (UNLIKELY(s->pending + ((BIT_BUF_SIZE + 7) >> 3) >= s->pending_buf_size)) {
             PREFIX(flush_pending)(s->strm);
             if (s->strm->avail_out == 0) {
-                return (last && s->strm->avail_in == 0 && s->bi_valid == 0 && s->block_open == 0) ? finish_started : need_more;
+                return (last && s->strm->avail_in == 0 && s->bi_valid == 0 && s->block_open == 0) ? finish_started
+                                                                                                  : need_more;
             }
         }
 
@@ -94,7 +98,7 @@ Z_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
                 const uint8_t *match_start = s->window + hash_head;
 
                 if (zng_memcmp_2(str_start, match_start) == 0) {
-                    match_len = FUNCTABLE_CALL(compare256)(str_start+2, match_start+2) + 2;
+                    match_len = FUNCTABLE_CALL(compare256)(str_start + 2, match_start + 2) + 2;
 
                     if (match_len >= WANT_MIN_MATCH) {
                         if (UNLIKELY(match_len > s->lookahead))

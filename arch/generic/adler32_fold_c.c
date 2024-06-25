@@ -4,8 +4,8 @@
  */
 
 #include "zbuild.h"
-#include "functable.h"
 
+#include "functable.h"
 #include <limits.h>
 
 Z_INTERNAL uint32_t adler32_fold_copy_c(uint32_t adler, uint8_t *dst, const uint8_t *src, size_t len) {

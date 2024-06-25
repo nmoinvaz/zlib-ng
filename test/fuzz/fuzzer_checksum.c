@@ -1,7 +1,7 @@
-#include <stdio.h>
-#include <assert.h>
-
 #include "zbuild.h"
+
+#include <assert.h>
+#include <stdio.h>
 #ifdef ZLIB_COMPAT
 #  include "zlib.h"
 #else

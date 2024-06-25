@@ -8,16 +8,20 @@
 
 #ifdef X86_AVX512
 
-#include "zbuild.h"
-#include "adler32_p.h"
-#include "arch_functions.h"
-#include <immintrin.h>
-#include "x86_intrins.h"
-#include "adler32_avx512_p.h"
+#  include "zbuild.h"
 
-static inline uint32_t adler32_fold_copy_impl(uint32_t adler, uint8_t *dst, const uint8_t *src, size_t len, const int COPY) {
-    if (src == NULL) return 1L;
-    if (len == 0) return adler;
+#  include "adler32_avx512_p.h"
+#  include "adler32_p.h"
+#  include "arch_functions.h"
+#  include "x86_intrins.h"
+#  include <immintrin.h>
+
+static inline uint32_t adler32_fold_copy_impl(uint32_t adler, uint8_t *dst, const uint8_t *src, size_t len,
+                                              const int COPY) {
+    if (src == NULL)
+        return 1L;
+    if (len == 0)
+        return adler;
 
     uint32_t adler0, adler1;
     adler1 = (adler >> 16) & 0xffff;
@@ -37,10 +41,10 @@ rem_peel:
 
     __m512i vbuf, vs1_0, vs3;
 
-    const __m512i dot2v = _mm512_set_epi8(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
-                                          20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37,
-                                          38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55,
-                                          56, 57, 58, 59, 60, 61, 62, 63, 64);
+    const __m512i dot2v =
+        _mm512_set_epi8(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
+                        27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50,
+                        51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64);
     const __m512i dot3v = _mm512_set1_epi16(1);
     const __m512i zero = _mm512_setzero_si512();
     size_t k;
@@ -105,4 +109,3 @@ Z_INTERNAL uint32_t adler32_avx512(uint32_t adler, const uint8_t *src, size_t le
 }
 
 #endif
-

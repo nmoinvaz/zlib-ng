@@ -13,8 +13,8 @@
  */
 
 #include "zbuild.h"
-#include "arch_functions.h"
 
+#include "arch_functions.h"
 #include <vecintrin.h>
 
 typedef unsigned char uv16qi __attribute__((vector_size(16)));
@@ -47,12 +47,12 @@ static uint32_t crc32_le_vgfm_16(uint32_t crc, const uint8_t *buf, size_t len) {
      *      P(x)  = 0x04C11DB7
      *      P'(x) = 0xEDB88320
      */
-    const uv16qi perm_le2be = {15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0};  /* BE->LE mask */
-    const uv2di r2r1 = {0x1C6E41596, 0x154442BD4};                                     /* R2, R1 */
-    const uv2di r4r3 = {0x0CCAA009E, 0x1751997D0};                                     /* R4, R3 */
-    const uv2di r5 = {0, 0x163CD6124};                                                 /* R5 */
-    const uv2di ru_poly = {0, 0x1F7011641};                                            /* u' */
-    const uv2di crc_poly = {0, 0x1DB710641};                                           /* P'(x) << 1 */
+    const uv16qi perm_le2be = {15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0}; /* BE->LE mask */
+    const uv2di r2r1 = {0x1C6E41596, 0x154442BD4};                                    /* R2, R1 */
+    const uv2di r4r3 = {0x0CCAA009E, 0x1751997D0};                                    /* R4, R3 */
+    const uv2di r5 = {0, 0x163CD6124};                                                /* R5 */
+    const uv2di ru_poly = {0, 0x1F7011641};                                           /* u' */
+    const uv2di crc_poly = {0, 0x1DB710641};                                          /* P'(x) << 1 */
 
     /*
      * Load the initial CRC value.
@@ -157,7 +157,7 @@ static uint32_t crc32_le_vgfm_16(uint32_t crc, const uint8_t *buf, size_t len) {
      */
     v9 = vec_insert((unsigned char)0x20, v9, 7);
     v2 = vec_srb(v1, (uv2di)v9);
-    v1 = vec_unpackl((uv4si)v1);  /* Split rightmost doubleword */
+    v1 = vec_unpackl((uv4si)v1); /* Split rightmost doubleword */
     v1 = (uv2di)vec_gfmsum_accum_128(r5, v1, (uv16qi)v2);
 
     /*
@@ -194,8 +194,8 @@ static uint32_t crc32_le_vgfm_16(uint32_t crc, const uint8_t *buf, size_t len) {
     return ((uv4si)v2)[2];
 }
 
-#define VX_MIN_LEN 64
-#define VX_ALIGNMENT 16L
+#define VX_MIN_LEN    64
+#define VX_ALIGNMENT  16L
 #define VX_ALIGN_MASK (VX_ALIGNMENT - 1)
 
 uint32_t Z_INTERNAL crc32_s390_vx(uint32_t crc, const unsigned char *buf, size_t len) {

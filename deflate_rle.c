@@ -5,8 +5,10 @@
  */
 
 #include "zbuild.h"
-#include "compare256_rle.h"
+
 #include "deflate.h"
+
+#include "compare256_rle.h"
 #include "deflate_p.h"
 #include "functable.h"
 
@@ -28,8 +30,8 @@
  * deflate switches away from Z_RLE.)
  */
 Z_INTERNAL block_state deflate_rle(deflate_state *s, int flush) {
-    int bflush = 0;                 /* set if current block must be flushed */
-    unsigned char *scan;            /* scan goes up to strend for length of run */
+    int bflush = 0;      /* set if current block must be flushed */
+    unsigned char *scan; /* scan goes up to strend for length of run */
     uint32_t match_len = 0;
 
     for (;;) {
@@ -49,11 +51,11 @@ Z_INTERNAL block_state deflate_rle(deflate_state *s, int flush) {
         if (s->lookahead >= STD_MIN_MATCH && s->strstart > 0) {
             scan = s->window + s->strstart - 1;
             if (scan[0] == scan[1] && scan[1] == scan[2]) {
-                match_len = compare256_rle(scan, scan+3)+2;
+                match_len = compare256_rle(scan, scan + 3) + 2;
                 match_len = MIN(match_len, s->lookahead);
                 match_len = MIN(match_len, STD_MAX_MATCH);
             }
-            Assert(scan+match_len <= s->window + s->window_size - 1, "wild scan");
+            Assert(scan + match_len <= s->window + s->window_size - 1, "wild scan");
         }
 
         /* Emit match if have run of STD_MIN_MATCH or longer, else emit literal */

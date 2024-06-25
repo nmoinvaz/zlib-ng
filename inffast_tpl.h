@@ -4,12 +4,15 @@
  */
 
 #include "zbuild.h"
-#include "zendian.h"
 #include "zutil.h"
+
 #include "inftrees.h"
+
 #include "inflate.h"
-#include "inflate_p.h"
+
 #include "functable.h"
+#include "inflate_p.h"
+#include "zendian.h"
 
 /*
    Decode literal, length, and distance codes and write out the resulting
@@ -50,22 +53,22 @@
       requires strm->avail_out >= 258 for each loop to avoid checking for
       output space.
  */
-void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start) {
+void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) * strm, uint32_t start) {
     /* start: inflate()'s starting value for strm->avail_out */
     struct inflate_state *state;
-    z_const unsigned char *in;  /* local strm->next_in */
-    const unsigned char *last;  /* have enough input while in < last */
-    unsigned char *out;         /* local strm->next_out */
-    unsigned char *beg;         /* inflate()'s initial strm->next_out */
-    unsigned char *end;         /* while out < end, enough space available */
-    unsigned char *safe;        /* can use chunkcopy provided out < safe */
+    z_const unsigned char *in; /* local strm->next_in */
+    const unsigned char *last; /* have enough input while in < last */
+    unsigned char *out;        /* local strm->next_out */
+    unsigned char *beg;        /* inflate()'s initial strm->next_out */
+    unsigned char *end;        /* while out < end, enough space available */
+    unsigned char *safe;       /* can use chunkcopy provided out < safe */
 #ifdef INFLATE_STRICT
-    unsigned dmax;              /* maximum distance from zlib header */
+    unsigned dmax; /* maximum distance from zlib header */
 #endif
-    unsigned wsize;             /* window size or zero if not using window */
-    unsigned whave;             /* valid bytes in the window */
-    unsigned wnext;             /* window write index */
-    unsigned char *window;      /* allocated sliding window, if wsize != 0 */
+    unsigned wsize;        /* window size or zero if not using window */
+    unsigned whave;        /* valid bytes in the window */
+    unsigned wnext;        /* window write index */
+    unsigned char *window; /* allocated sliding window, if wsize != 0 */
 
     /* hold is a local copy of strm->hold. By default, hold satisfies the same
        invariants that strm->hold does, namely that (hold >> bits) == 0. This
@@ -104,19 +107,19 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start) {
        with (1<<bits)-1 to drop those excess bits so that, on function exit, we
        keep the invariant that (state->hold >> state->bits) == 0.
     */
-    uint64_t hold;              /* local strm->hold */
-    unsigned bits;              /* local strm->bits */
-    code const *lcode;          /* local strm->lencode */
-    code const *dcode;          /* local strm->distcode */
-    unsigned lmask;             /* mask for first level of length codes */
-    unsigned dmask;             /* mask for first level of distance codes */
-    const code *here;           /* retrieved table entry */
-    unsigned op;                /* code bits, operation, extra bits, or */
-                                /*  window position, window bytes to copy */
-    unsigned len;               /* match length, unused bytes */
-    unsigned dist;              /* match distance */
-    unsigned char *from;        /* where to copy match from */
-    unsigned extra_safe;        /* copy chunks safely in all cases */
+    uint64_t hold;       /* local strm->hold */
+    unsigned bits;       /* local strm->bits */
+    code const *lcode;   /* local strm->lencode */
+    code const *dcode;   /* local strm->distcode */
+    unsigned lmask;      /* mask for first level of length codes */
+    unsigned dmask;      /* mask for first level of distance codes */
+    const code *here;    /* retrieved table entry */
+    unsigned op;         /* code bits, operation, extra bits, or */
+                         /*  window position, window bytes to copy */
+    unsigned len;        /* match length, unused bytes */
+    unsigned dist;       /* match distance */
+    unsigned char *from; /* where to copy match from */
+    unsigned extra_safe; /* copy chunks safely in all cases */
 
     /* copy state to local variables */
     state = (struct inflate_state *)strm->state;
@@ -145,11 +148,12 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start) {
        window is overwritten then future matches with far distances will fail to copy correctly. */
     extra_safe = (wsize != 0 && out >= window && out + INFLATE_FAST_MIN_LEFT <= window + wsize);
 
-#define REFILL() do { \
+#define REFILL()                        \
+    do {                                \
         hold |= load_64_bits(in, bits); \
-        in += 7; \
-        in -= ((bits >> 3) & 7); \
-        bits |= 56; \
+        in += 7;                        \
+        in -= ((bits >> 3) & 7);        \
+        bits |= 56;                     \
     } while (0)
 
     /* decode literals and length/distances until end-of-block or not enough
@@ -167,17 +171,18 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start) {
                 here = lcode + (hold & lmask);
             }
         }
-      dolen:
+    dolen:
         DROPBITS(here->bits);
         op = here->op;
-        if (op == 0) {                          /* literal */
-            Tracevv((stderr, here->val >= 0x20 && here->val < 0x7f ?
-                    "inflate:         literal '%c'\n" :
-                    "inflate:         literal 0x%02x\n", here->val));
+        if (op == 0) { /* literal */
+            Tracevv((stderr,
+                     here->val >= 0x20 && here->val < 0x7f ? "inflate:         literal '%c'\n"
+                                                           : "inflate:         literal 0x%02x\n",
+                     here->val));
             *out++ = (unsigned char)(here->val);
-        } else if (op & 16) {                     /* length base */
+        } else if (op & 16) { /* length base */
             len = here->val;
-            op &= MAX_BITS;                       /* number of extra bits */
+            op &= MAX_BITS; /* number of extra bits */
             len += BITS(op);
             DROPBITS(op);
             Tracevv((stderr, "inflate:         length %u\n", len));
@@ -185,12 +190,12 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start) {
             if (bits < MAX_BITS + MAX_DIST_EXTRA_BITS) {
                 REFILL();
             }
-          dodist:
+        dodist:
             DROPBITS(here->bits);
             op = here->op;
-            if (op & 16) {                      /* distance base */
+            if (op & 16) { /* distance base */
                 dist = here->val;
-                op &= MAX_BITS;                 /* number of extra bits */
+                op &= MAX_BITS; /* number of extra bits */
                 dist += BITS(op);
 #ifdef INFLATE_STRICT
                 if (dist > dmax) {
@@ -200,9 +205,9 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start) {
 #endif
                 DROPBITS(op);
                 Tracevv((stderr, "inflate:         distance %u\n", dist));
-                op = (unsigned)(out - beg);     /* max distance in output */
-                if (dist > op) {                /* see if copy from window */
-                    op = dist - op;             /* distance back in window */
+                op = (unsigned)(out - beg); /* max distance in output */
+                if (dist > op) {            /* see if copy from window */
+                    op = dist - op;         /* distance back in window */
                     if (op > whave) {
                         if (state->sane) {
                             SET_BAD("invalid distance too far back");
@@ -229,24 +234,24 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start) {
 #endif
                     }
                     from = window;
-                    if (wnext == 0) {           /* very common case */
+                    if (wnext == 0) { /* very common case */
                         from += wsize - op;
-                    } else if (wnext >= op) {   /* contiguous in window */
+                    } else if (wnext >= op) { /* contiguous in window */
                         from += wnext - op;
-                    } else {                    /* wrap around window */
+                    } else { /* wrap around window */
                         op -= wnext;
                         from += wsize - op;
-                        if (op < len) {         /* some from end of window */
+                        if (op < len) { /* some from end of window */
                             len -= op;
                             out = chunkcopy_safe(out, from, op, safe);
-                            from = window;      /* more from start of window */
+                            from = window; /* more from start of window */
                             op = wnext;
                             /* This (rare) case can create a situation where
                                the first chunkcopy below must be checked.
                              */
                         }
                     }
-                    if (op < len) {             /* still need some from output */
+                    if (op < len) { /* still need some from output */
                         len -= op;
                         out = chunkcopy_safe(out, from, op, safe);
                         out = CHUNKUNROLL(out, &dist, &len);
@@ -271,17 +276,17 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start) {
                     else
                         out = CHUNKMEMSET(out, dist, len);
                 }
-            } else if ((op & 64) == 0) {          /* 2nd level distance code */
+            } else if ((op & 64) == 0) { /* 2nd level distance code */
                 here = dcode + here->val + BITS(op);
                 goto dodist;
             } else {
                 SET_BAD("invalid distance code");
                 break;
             }
-        } else if ((op & 64) == 0) {              /* 2nd level length code */
+        } else if ((op & 64) == 0) { /* 2nd level length code */
             here = lcode + here->val + BITS(op);
             goto dolen;
-        } else if (op & 32) {                     /* end-of-block */
+        } else if (op & 32) { /* end-of-block */
             Tracevv((stderr, "inflate:         end of block\n"));
             state->mode = TYPE;
             break;
@@ -300,10 +305,10 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start) {
     /* update state and return */
     strm->next_in = in;
     strm->next_out = out;
-    strm->avail_in = (unsigned)(in < last ? (INFLATE_FAST_MIN_HAVE - 1) + (last - in)
-                                          : (INFLATE_FAST_MIN_HAVE - 1) - (in - last));
-    strm->avail_out = (unsigned)(out < end ? (INFLATE_FAST_MIN_LEFT - 1) + (end - out)
-                                           : (INFLATE_FAST_MIN_LEFT - 1) - (out - end));
+    strm->avail_in =
+        (unsigned)(in < last ? (INFLATE_FAST_MIN_HAVE - 1) + (last - in) : (INFLATE_FAST_MIN_HAVE - 1) - (in - last));
+    strm->avail_out =
+        (unsigned)(out < end ? (INFLATE_FAST_MIN_LEFT - 1) + (end - out) : (INFLATE_FAST_MIN_LEFT - 1) - (out - end));
 
     Assert(bits <= 32, "Remaining bits greater than 32");
     state->hold = (uint32_t)hold;

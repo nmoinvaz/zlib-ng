@@ -6,12 +6,13 @@
  */
 
 #ifdef PPC_VMX
-#include <altivec.h>
-#include "zbuild.h"
-#include "zendian.h"
-#include "adler32_p.h"
+#  include "zbuild.h"
 
-#define vmx_zero()  (vec_splat_u32(0))
+#  include "adler32_p.h"
+#  include "zendian.h"
+#  include <altivec.h>
+
+#  define vmx_zero() (vec_splat_u32(0))
 
 static inline void vmx_handle_head_or_tail(uint32_t *pair, const uint8_t *buf, size_t len) {
     unsigned int i;
@@ -32,14 +33,14 @@ static void vmx_accum32(uint32_t *s, const uint8_t *buf, size_t len) {
      * than doing 2 indexed insertions into zero initialized vectors from unaligned memory. */
     const vector unsigned char s0_perm = {0, 1, 2, 3, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8};
     const vector unsigned char shift_vec = vec_sl(vec_splat_u8(8), vec_splat_u8(2));
-    vector unsigned int  adacc, s2acc;
+    vector unsigned int adacc, s2acc;
     vector unsigned int pair_vec = vec_ld(0, s);
     adacc = vec_perm(pair_vec, pair_vec, s0_perm);
-#if BYTE_ORDER == LITTLE_ENDIAN
+#  if BYTE_ORDER == LITTLE_ENDIAN
     s2acc = vec_sro(pair_vec, shift_vec);
-#else
+#  else
     s2acc = vec_slo(pair_vec, shift_vec);
-#endif
+#  endif
 
     vector unsigned int zero = vmx_zero();
     vector unsigned int s3acc = zero;
@@ -101,7 +102,6 @@ static void vmx_accum32(uint32_t *s, const uint8_t *buf, size_t len) {
         }
     }
 
-
     /* Sum up independent second sums */
     s2acc = vec_add(s2acc, s2acc_0);
     s2acc_2 = vec_add(s2acc_1, s2acc_2);
@@ -115,7 +115,7 @@ static void vmx_accum32(uint32_t *s, const uint8_t *buf, size_t len) {
     s2acc = vec_add(s2acc, vec_sld(s2acc, s2acc, 4));
 
     vec_ste(adacc, 0, s);
-    vec_ste(s2acc, 0, s+1);
+    vec_ste(s2acc, 0, s + 1);
 }
 
 Z_INTERNAL uint32_t adler32_vmx(uint32_t adler, const uint8_t *buf, size_t len) {
@@ -148,9 +148,9 @@ Z_INTERNAL uint32_t adler32_vmx(uint32_t adler, const uint8_t *buf, size_t len) 
     // Align buffer
     unsigned int al = 0;
     if ((uintptr_t)buf & 0xf) {
-        al = 16-((uintptr_t)buf & 0xf);
+        al = 16 - ((uintptr_t)buf & 0xf);
         if (al > len) {
-            al=len;
+            al = len;
         }
         vmx_handle_head_or_tail(pair, buf, al);
 
@@ -160,7 +160,7 @@ Z_INTERNAL uint32_t adler32_vmx(uint32_t adler, const uint8_t *buf, size_t len) 
         n -= al;
     }
     for (i = al; i < len; i += n) {
-        int remaining = (int)(len-i);
+        int remaining = (int)(len - i);
         n = MIN(remaining, (i == al) ? n : NMAX);
 
         if (n < 16)

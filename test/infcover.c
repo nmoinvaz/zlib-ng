@@ -16,7 +16,9 @@
    and so we can call inflate_trees() (see cover5()) */
 #include "zbuild.h"
 #include "zutil.h"
+
 #include "inftrees.h"
+
 #include "inflate.h"
 
 /* -- memory tracking routines -- */
@@ -54,17 +56,17 @@
 
 /* these items are strung together in a linked list, one for each allocation */
 struct mem_item {
-    void *ptr;                  /* pointer to allocated memory */
-    size_t size;                /* requested size of allocation */
-    struct mem_item *next;      /* pointer to next item in list, or NULL */
+    void *ptr;             /* pointer to allocated memory */
+    size_t size;           /* requested size of allocation */
+    struct mem_item *next; /* pointer to next item in list, or NULL */
 };
 
 /* this structure is at the root of the linked list, and tracks statistics */
 struct mem_zone {
-    struct mem_item *first;     /* pointer to first item in list, or NULL */
-    size_t total, highwater;    /* total allocations, and largest total */
-    size_t limit;               /* memory allocation limit, or 0 if no limit */
-    int notlifo, rogue;         /* counts of non-LIFO frees and rogue frees */
+    struct mem_item *first;  /* pointer to first item in list, or NULL */
+    size_t total, highwater; /* total allocations, and largest total */
+    size_t limit;            /* memory allocation limit, or 0 if no limit */
+    int notlifo, rogue;      /* counts of non-LIFO frees and rogue frees */
 };
 
 /* memory allocation routine to pass to zlib */
@@ -123,17 +125,16 @@ static void mem_free(void *mem, void *ptr) {
     next = zone->first;
     if (next) {
         if (next->ptr == ptr)
-            zone->first = next->next;   /* first one is it, remove from list */
+            zone->first = next->next; /* first one is it, remove from list */
         else {
-            do {                        /* search the linked list */
+            do { /* search the linked list */
                 item = next;
                 next = item->next;
             } while (next != NULL && next->ptr != ptr);
-            if (next) {                 /* if found, remove from linked list */
+            if (next) { /* if found, remove from linked list */
                 item->next = next->next;
-                zone->notlifo++;        /* not a LIFO free */
+                zone->notlifo++; /* not a LIFO free */
             }
-
         }
     }
 
@@ -153,7 +154,7 @@ static void mem_free(void *mem, void *ptr) {
 
 /* set up a controlled memory allocation space for monitoring, set the stream
    parameters to the controlled routines, with opaque pointing to the space */
-static void mem_setup(PREFIX3(stream) *strm) {
+static void mem_setup(PREFIX3(stream) * strm) {
     struct mem_zone *zone;
 
     zone = malloc(sizeof(struct mem_zone));
@@ -170,28 +171,28 @@ static void mem_setup(PREFIX3(stream) *strm) {
 }
 
 /* set a limit on the total memory allocation, or 0 to remove the limit */
-static void mem_limit(PREFIX3(stream) *strm, size_t limit) {
+static void mem_limit(PREFIX3(stream) * strm, size_t limit) {
     struct mem_zone *zone = strm->opaque;
 
     zone->limit = limit;
 }
 
 /* show the current total requested allocations in bytes */
-static void mem_used(PREFIX3(stream) *strm, char *prefix) {
+static void mem_used(PREFIX3(stream) * strm, char *prefix) {
     struct mem_zone *zone = strm->opaque;
 
     fprintf(stderr, "%s: %" PRIu64 " allocated\n", prefix, (uint64_t)zone->total);
 }
 
 /* show the high water allocation in bytes */
-static void mem_high(PREFIX3(stream) *strm, char *prefix) {
+static void mem_high(PREFIX3(stream) * strm, char *prefix) {
     struct mem_zone *zone = strm->opaque;
 
     fprintf(stderr, "%s: %" PRIu64 " high water mark\n", prefix, (uint64_t)zone->highwater);
 }
 
 /* release the memory allocation zone -- if there are any surprises, notify */
-static void mem_done(PREFIX3(stream) *strm, char *prefix) {
+static void mem_done(PREFIX3(stream) * strm, char *prefix) {
     int count = 0;
     struct mem_item *item, *next;
     struct mem_zone *zone = strm->opaque;
@@ -211,13 +212,11 @@ static void mem_done(PREFIX3(stream) *strm, char *prefix) {
 
     /* issue alerts about anything unexpected */
     if (count || zone->total)
-        fprintf(stderr, "** %s: %" PRIu64 " bytes in %d blocks not freed\n",
-                prefix, (uint64_t)zone->total, count);
+        fprintf(stderr, "** %s: %" PRIu64 " bytes in %d blocks not freed\n", prefix, (uint64_t)zone->total, count);
     if (zone->notlifo)
         fprintf(stderr, "** %s: %d frees not LIFO\n", prefix, zone->notlifo);
     if (zone->rogue)
-        fprintf(stderr, "** %s: %d frees not recognized\n",
-                prefix, zone->rogue);
+        fprintf(stderr, "** %s: %d frees not recognized\n", prefix, zone->rogue);
 
     /* free the zone and delete from the stream */
     free(zone);
@@ -241,7 +240,7 @@ static unsigned char *h2b(const char *hex, unsigned *len) {
     size_t inlen;
 
     inlen = (strlen(hex) + 1) >> 1;
-    assert(inlen != 0);     /* tell static analyzer we won't call malloc(0) */
+    assert(inlen != 0); /* tell static analyzer we won't call malloc(0) */
     in = malloc(inlen);
     if (in == NULL)
         return NULL;
@@ -254,16 +253,16 @@ static unsigned char *h2b(const char *hex, unsigned *len) {
             val = (val << 4) + *hex - 'A' + 10;
         else if (*hex >= 'a' && *hex <= 'f')
             val = (val << 4) + *hex - 'a' + 10;
-        else if (val != 1 && val < 32)  /* one digit followed by delimiter */
-            val += 240;                 /* make it look like two digits */
-        if (val > 255) {                /* have two digits */
-            in[next++] = val & 0xff;    /* save the decoded byte */
-            val = 1;                    /* start over */
+        else if (val != 1 && val < 32) /* one digit followed by delimiter */
+            val += 240;                /* make it look like two digits */
+        if (val > 255) {               /* have two digits */
+            in[next++] = val & 0xff;   /* save the decoded byte */
+            val = 1;                   /* start over */
         }
-    } while (*hex++);       /* go through the loop with the terminating null */
+    } while (*hex++); /* go through the loop with the terminating null */
     if (len != NULL)
         *len = next;
-    assert(next != 0);      /* tell static analyzer we won't call realloc(in, 0) */
+    assert(next != 0); /* tell static analyzer we won't call realloc(in, 0) */
     re = realloc(in, next);
     return re == NULL ? in : re;
 }
@@ -292,7 +291,8 @@ static void inf(char *hex, char *what, unsigned step, int win, unsigned len, int
         mem_done(&strm, what);
         return;
     }
-    out = malloc(len);                          assert(out != NULL);
+    out = malloc(len);
+    assert(out != NULL);
     if (win == 47) {
         head.extra = out;
         head.extra_max = len;
@@ -301,9 +301,10 @@ static void inf(char *hex, char *what, unsigned step, int win, unsigned len, int
         head.comment = out;
         head.comm_max = len;
         ret = PREFIX(inflateGetHeader)(&strm, &head);
-                                                assert(ret == Z_OK);
+        assert(ret == Z_OK);
     }
-    in = h2b(hex, &have);                       assert(in != NULL);
+    in = h2b(hex, &have);
+    assert(in != NULL);
     if (step == 0 || step > have)
         step = have;
     strm.avail_in = step;
@@ -313,31 +314,34 @@ static void inf(char *hex, char *what, unsigned step, int win, unsigned len, int
         strm.avail_out = len;
         strm.next_out = out;
         ret = PREFIX(inflate)(&strm, Z_NO_FLUSH);
-                                                assert(err == 9 || ret == err);
+        assert(err == 9 || ret == err);
         if (ret != Z_OK && ret != Z_BUF_ERROR && ret != Z_NEED_DICT)
             break;
         if (ret == Z_NEED_DICT) {
             ret = PREFIX(inflateSetDictionary)(&strm, in, 1);
-                                                assert(ret == Z_DATA_ERROR);
+            assert(ret == Z_DATA_ERROR);
             mem_limit(&strm, 0);
             ((struct inflate_state *)strm.state)->mode = DICT;
             ret = PREFIX(inflateSetDictionary)(&strm, out, 0);
-                                                assert(ret == Z_OK);
+            assert(ret == Z_OK);
             ret = PREFIX(inflate)(&strm, Z_NO_FLUSH);
-                                                assert(ret == Z_BUF_ERROR);
+            assert(ret == Z_BUF_ERROR);
         }
         ret = PREFIX(inflateCopy)(&copy, &strm);
-                                                assert(ret == Z_OK);
-        ret = PREFIX(inflateEnd)(&copy);        assert(ret == Z_OK);
-        err = 9;                        /* don't care next time around */
+        assert(ret == Z_OK);
+        ret = PREFIX(inflateEnd)(&copy);
+        assert(ret == Z_OK);
+        err = 9; /* don't care next time around */
         have += strm.avail_in;
         strm.avail_in = step > have ? have : step;
         have -= strm.avail_in;
     } while (strm.avail_in);
     free(in);
     free(out);
-    ret = PREFIX(inflateReset2)(&strm, -8);     assert(ret == Z_OK);
-    ret = PREFIX(inflateEnd)(&strm);            assert(ret == Z_OK);
+    ret = PREFIX(inflateReset2)(&strm, -8);
+    assert(ret == Z_OK);
+    ret = PREFIX(inflateEnd)(&strm);
+    assert(ret == Z_OK);
     mem_done(&strm, what);
     Z_UNUSED(err);
 }
@@ -350,13 +354,17 @@ static void cover_support(void) {
     mem_setup(&strm);
     strm.avail_in = 0;
     strm.next_in = NULL;
-    ret = PREFIX(inflateInit)(&strm);           assert(ret == Z_OK);
+    ret = PREFIX(inflateInit)(&strm);
+    assert(ret == Z_OK);
     mem_used(&strm, "inflate init");
-    ret = PREFIX(inflatePrime)(&strm, 5, 31);   assert(ret == Z_OK);
-    ret = PREFIX(inflatePrime)(&strm, -1, 0);   assert(ret == Z_OK);
+    ret = PREFIX(inflatePrime)(&strm, 5, 31);
+    assert(ret == Z_OK);
+    ret = PREFIX(inflatePrime)(&strm, -1, 0);
+    assert(ret == Z_OK);
     ret = PREFIX(inflateSetDictionary)(&strm, NULL, 0);
-                                                assert(ret == Z_STREAM_ERROR);
-    ret = PREFIX(inflateEnd)(&strm);            assert(ret == Z_OK);
+    assert(ret == Z_STREAM_ERROR);
+    ret = PREFIX(inflateEnd)(&strm);
+    assert(ret == Z_OK);
     mem_done(&strm, "prime");
 
     inf("63 0", "force window allocation", 0, -15, 1, Z_OK);
@@ -370,14 +378,16 @@ static void cover_support(void) {
     strm.avail_in = 0;
     strm.next_in = NULL;
     ret = PREFIX(inflateInit_)(&strm, &PREFIX2(VERSION)[1], (int)sizeof(PREFIX3(stream)));
-                                                assert(ret == Z_VERSION_ERROR);
+    assert(ret == Z_VERSION_ERROR);
     mem_done(&strm, "wrong version");
 #endif
 
     strm.avail_in = 0;
     strm.next_in = NULL;
-    ret = PREFIX(inflateInit)(&strm);           assert(ret == Z_OK);
-    ret = PREFIX(inflateEnd)(&strm);            assert(ret == Z_OK);
+    ret = PREFIX(inflateInit)(&strm);
+    assert(ret == Z_OK);
+    ret = PREFIX(inflateEnd)(&strm);
+    assert(ret == Z_OK);
     fputs("inflate built-in memory routines\n", stderr);
     Z_UNUSED(ret);
 }
@@ -388,9 +398,12 @@ static void cover_wrap(void) {
     PREFIX3(stream) strm, copy;
     unsigned char dict[257];
 
-    ret = PREFIX(inflate)(NULL, 0);             assert(ret == Z_STREAM_ERROR);
-    ret = PREFIX(inflateEnd)(NULL);             assert(ret == Z_STREAM_ERROR);
-    ret = PREFIX(inflateCopy)(NULL, NULL);      assert(ret == Z_STREAM_ERROR);
+    ret = PREFIX(inflate)(NULL, 0);
+    assert(ret == Z_STREAM_ERROR);
+    ret = PREFIX(inflateEnd)(NULL);
+    assert(ret == Z_STREAM_ERROR);
+    ret = PREFIX(inflateCopy)(NULL, NULL);
+    assert(ret == Z_STREAM_ERROR);
     fputs("inflate bad parameters\n", stderr);
 
     inf("1f 8b 0 0", "bad gzip method", 0, 31, 0, Z_DATA_ERROR);
@@ -399,10 +412,8 @@ static void cover_wrap(void) {
     inf("8 99", "set window size from header", 0, 0, 0, Z_OK);
     inf("78 9c", "bad zlib window size", 0, 8, 0, Z_DATA_ERROR);
     inf("78 9c 63 0 0 0 1 0 1", "check adler32", 0, 15, 1, Z_STREAM_END);
-    inf("1f 8b 8 1e 0 0 0 0 0 0 1 0 0 0 0 0 0", "bad header crc", 0, 47, 1,
-        Z_DATA_ERROR);
-    inf("1f 8b 8 2 0 0 0 0 0 0 1d 26 3 0 0 0 0 0 0 0 0 0", "check gzip length",
-        0, 47, 0, Z_STREAM_END);
+    inf("1f 8b 8 1e 0 0 0 0 0 0 1 0 0 0 0 0 0", "bad header crc", 0, 47, 1, Z_DATA_ERROR);
+    inf("1f 8b 8 2 0 0 0 0 0 0 1d 26 3 0 0 0 0 0 0 0 0 0", "check gzip length", 0, 47, 0, Z_STREAM_END);
     inf("78 90", "bad zlib header check", 0, 47, 0, Z_DATA_ERROR);
     inf("8 b8 0 0 0 1", "need dictionary", 0, 8, 0, Z_NEED_DICT);
     inf("78 9c 63 0", "compute adler32", 0, 15, 1, Z_OK);
@@ -417,18 +428,23 @@ static void cover_wrap(void) {
     strm.next_out = (void *)&ret;
     memset(dict, 0, 257);
     ret = PREFIX(inflateSetDictionary)(&strm, dict, 257);
-                                                assert(ret == Z_OK);
+    assert(ret == Z_OK);
     mem_limit(&strm, (sizeof(struct inflate_state) << 1) + 256);
-    ret = PREFIX(inflatePrime)(&strm, 16, 0);   assert(ret == Z_OK);
+    ret = PREFIX(inflatePrime)(&strm, 16, 0);
+    assert(ret == Z_OK);
     strm.avail_in = 2;
     strm.next_in = (void *)"\x80";
-    ret = PREFIX(inflateSync)(&strm);           assert(ret == Z_DATA_ERROR);
-    ret = PREFIX(inflate)(&strm, Z_NO_FLUSH);   assert(ret == Z_STREAM_ERROR);
+    ret = PREFIX(inflateSync)(&strm);
+    assert(ret == Z_DATA_ERROR);
+    ret = PREFIX(inflate)(&strm, Z_NO_FLUSH);
+    assert(ret == Z_STREAM_ERROR);
     strm.avail_in = 4;
     strm.next_in = (void *)"\0\0\xff\xff";
-    ret = PREFIX(inflateSync)(&strm);           assert(ret == Z_OK);
+    ret = PREFIX(inflateSync)(&strm);
+    assert(ret == Z_OK);
     (void)PREFIX(inflateSyncPoint)(&strm);
-    ret = PREFIX(inflateCopy)(&copy, &strm);    assert(ret == Z_MEM_ERROR);
+    ret = PREFIX(inflateCopy)(&copy, &strm);
+    assert(ret == Z_MEM_ERROR);
     mem_limit(&strm, 0);
     ret = PREFIX(inflateUndermine)(&strm, 1);
 #ifdef INFLATE_ALLOW_INVALID_DISTANCE_TOOFAR_ARRR
@@ -437,7 +453,8 @@ static void cover_wrap(void) {
     assert(ret == Z_DATA_ERROR);
 #endif
     (void)PREFIX(inflateMark)(&strm);
-    ret = PREFIX(inflateEnd)(&strm);            assert(ret == Z_OK);
+    ret = PREFIX(inflateEnd)(&strm);
+    assert(ret == Z_OK);
     mem_done(&strm, "miscellaneous, force memory errors");
 }
 
@@ -449,18 +466,18 @@ static unsigned pull(void *desc, z_const unsigned char **buf) {
 
     if (desc == NULL) {
         next = 0;
-        return 0;   /* no input (already provided at next_in) */
+        return 0; /* no input (already provided at next_in) */
     }
     state = (void *)((PREFIX3(stream) *)desc)->state;
     if (state != NULL)
-        state->mode = SYNC;     /* force an otherwise impossible situation */
+        state->mode = SYNC; /* force an otherwise impossible situation */
     return next < sizeof(dat) ? (*buf = dat + next++, 1) : 0;
 }
 
 static int push(void *desc, unsigned char *buf, unsigned len) {
     buf += len;
     Z_UNUSED(buf);
-    return desc != NULL;        /* force error if desc not null */
+    return desc != NULL; /* force error if desc not null */
 }
 
 /* cover inflateBack() up to common deflate data cases and after those */
@@ -471,37 +488,40 @@ static void cover_back(void) {
 
 #ifdef ZLIB_COMPAT
     ret = PREFIX(inflateBackInit_)(NULL, 0, win, 0, 0);
-                                                assert(ret == Z_VERSION_ERROR);
+    assert(ret == Z_VERSION_ERROR);
 #endif
 
     ret = PREFIX(inflateBackInit)(NULL, 0, win);
-                                                assert(ret == Z_STREAM_ERROR);
+    assert(ret == Z_STREAM_ERROR);
     ret = PREFIX(inflateBack)(NULL, NULL, NULL, NULL, NULL);
-                                                assert(ret == Z_STREAM_ERROR);
-    ret = PREFIX(inflateBackEnd)(NULL);         assert(ret == Z_STREAM_ERROR);
+    assert(ret == Z_STREAM_ERROR);
+    ret = PREFIX(inflateBackEnd)(NULL);
+    assert(ret == Z_STREAM_ERROR);
     fputs("inflateBack bad parameters\n", stderr);
 
     mem_setup(&strm);
     ret = PREFIX(inflateBackInit)(&strm, 15, win);
-                                                assert(ret == Z_OK);
+    assert(ret == Z_OK);
     strm.avail_in = 2;
     strm.next_in = (void *)"\x03";
     ret = PREFIX(inflateBack)(&strm, pull, NULL, push, NULL);
-                                                assert(ret == Z_STREAM_END);
-        /* force output error */
+    assert(ret == Z_STREAM_END);
+    /* force output error */
     strm.avail_in = 3;
     strm.next_in = (void *)"\x63\x00";
     ret = PREFIX(inflateBack)(&strm, pull, NULL, push, &strm);
-                                                assert(ret == Z_BUF_ERROR);
-        /* force mode error by mucking with state */
+    assert(ret == Z_BUF_ERROR);
+    /* force mode error by mucking with state */
     ret = PREFIX(inflateBack)(&strm, pull, &strm, push, NULL);
-                                                assert(ret == Z_STREAM_ERROR);
-    ret = PREFIX(inflateBackEnd)(&strm);        assert(ret == Z_OK);
+    assert(ret == Z_STREAM_ERROR);
+    ret = PREFIX(inflateBackEnd)(&strm);
+    assert(ret == Z_OK);
     mem_done(&strm, "inflateBack bad state");
 
     ret = PREFIX(inflateBackInit)(&strm, 15, win);
-                                                assert(ret == Z_OK);
-    ret = PREFIX(inflateBackEnd)(&strm);        assert(ret == Z_OK);
+    assert(ret == Z_OK);
+    ret = PREFIX(inflateBackEnd)(&strm);
+    assert(ret == Z_OK);
     fputs("inflateBack built-in memory routines\n", stderr);
     Z_UNUSED(ret);
 }
@@ -590,8 +610,7 @@ static void cover_inflate(void) {
     try("4 0 24 49 0", "invalid bit length repeat", 1);
     try("4 0 24 e9 ff ff", "invalid bit length repeat", 1);
     try("4 0 24 e9 ff 6d", "invalid code -- missing end-of-block", 1);
-    try("4 80 49 92 24 49 92 24 71 ff ff 93 11 0",
-        "invalid literal/lengths set", 1);
+    try("4 80 49 92 24 49 92 24 71 ff ff 93 11 0", "invalid literal/lengths set", 1);
     try("4 80 49 92 24 49 92 24 f b4 ff ff c3 84", "invalid distances set", 1);
     try("4 c0 81 8 0 0 0 0 20 7f eb b 0 0", "invalid literal/length code", 1);
     try("2 7e ff ff", "invalid distance code", 1);
@@ -603,18 +622,15 @@ static void cover_inflate(void) {
 
     /* also trailer mismatch just in inflate() */
     try("1f 8b 8 0 0 0 0 0 0 0 3 0 0 0 0 1", "incorrect data check", -1);
-    try("1f 8b 8 0 0 0 0 0 0 0 3 0 0 0 0 0 0 0 0 1",
-        "incorrect length check", -1);
+    try("1f 8b 8 0 0 0 0 0 0 0 3 0 0 0 0 0 0 0 0 1", "incorrect length check", -1);
     try("5 c0 21 d 0 0 0 80 b0 fe 6d 2f 91 6c", "pull 17", 0);
-    try("5 e0 81 91 24 cb b2 2c 49 e2 f 2e 8b 9a 47 56 9f fb fe ec d2 ff 1f",
-        "long code", 0);
+    try("5 e0 81 91 24 cb b2 2c 49 e2 f 2e 8b 9a 47 56 9f fb fe ec d2 ff 1f", "long code", 0);
     try("ed c0 1 1 0 0 0 40 20 ff 57 1b 42 2c 4f", "length extra", 0);
-    try("ed cf c1 b1 2c 47 10 c4 30 fa 6f 35 1d 1 82 59 3d fb be 2e 2a fc f c",
-        "long distance and extra", 0);
+    try("ed cf c1 b1 2c 47 10 c4 30 fa 6f 35 1d 1 82 59 3d fb be 2e 2a fc f c", "long distance and extra", 0);
     try("ed c0 81 0 0 0 0 80 a0 fd a9 17 a9 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "
-        "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 6", "window end", 0);
-    inf("2 8 20 80 0 3 0", "inflate_fast TYPE return", 0, -15, 258,
-        Z_STREAM_END);
+        "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 6",
+        "window end", 0);
+    inf("2 8 20 80 0 3 0", "inflate_fast TYPE return", 0, -15, 258, Z_STREAM_END);
     inf("63 18 5 40 c 0", "window wrap", 3, -8, 300, Z_OK);
 }
 
@@ -633,11 +649,11 @@ static void cover_trees(void) {
     next = table;
     bits = 15;
     ret = zng_inflate_table(DISTS, lens, 16, &next, &bits, work);
-                                                assert(ret == 1);
+    assert(ret == 1);
     next = table;
     bits = 1;
     ret = zng_inflate_table(DISTS, lens, 16, &next, &bits, work);
-                                                assert(ret == 1);
+    assert(ret == 1);
     fputs("inflate_table not enough errors\n", stderr);
     Z_UNUSED(ret);
 }
@@ -645,25 +661,24 @@ static void cover_trees(void) {
 /* cover remaining inffast.c decoding and window copying */
 static void cover_fast(void) {
     inf("e5 e0 81 ad 6d cb b2 2c c9 01 1e 59 63 ae 7d ee fb 4d fd b5 35 41 68"
-        " ff 7f 0f 0 0 0", "fast length extra bits", 0, -8, 258, Z_DATA_ERROR);
+        " ff 7f 0f 0 0 0",
+        "fast length extra bits", 0, -8, 258, Z_DATA_ERROR);
     inf("25 fd 81 b5 6d 59 b6 6a 49 ea af 35 6 34 eb 8c b9 f6 b9 1e ef 67 49"
-        " 50 fe ff ff 3f 0 0", "fast distance extra bits", 0, -8, 258,
-        Z_DATA_ERROR);
-    inf("3 7e 0 0 0 0 0", "fast invalid distance code", 0, -8, 258,
-        Z_DATA_ERROR);
-    inf("1b 7 0 0 0 0 0", "fast invalid literal/length code", 0, -8, 258,
-        Z_DATA_ERROR);
-    inf("d c7 1 ae eb 38 c 4 41 a0 87 72 de df fb 1f b8 36 b1 38 5d ff ff 0",
-        "fast 2nd level codes and too far back", 0, -8, 258, Z_DATA_ERROR);
+        " 50 fe ff ff 3f 0 0",
+        "fast distance extra bits", 0, -8, 258, Z_DATA_ERROR);
+    inf("3 7e 0 0 0 0 0", "fast invalid distance code", 0, -8, 258, Z_DATA_ERROR);
+    inf("1b 7 0 0 0 0 0", "fast invalid literal/length code", 0, -8, 258, Z_DATA_ERROR);
+    inf("d c7 1 ae eb 38 c 4 41 a0 87 72 de df fb 1f b8 36 b1 38 5d ff ff 0", "fast 2nd level codes and too far back",
+        0, -8, 258, Z_DATA_ERROR);
     inf("63 18 5 8c 10 8 0 0 0 0", "very common case", 0, -8, 259, Z_OK);
-    inf("63 60 60 18 c9 0 8 18 18 18 26 c0 28 0 29 0 0 0",
-        "contiguous and wrap around window", 6, -8, 259, Z_OK);
-    inf("63 0 3 0 0 0 0 0", "copy direct from output", 0, -8, 259,
-        Z_STREAM_END);
+    inf("63 60 60 18 c9 0 8 18 18 18 26 c0 28 0 29 0 0 0", "contiguous and wrap around window", 6, -8, 259, Z_OK);
+    inf("63 0 3 0 0 0 0 0", "copy direct from output", 0, -8, 259, Z_STREAM_END);
 }
 
 static void cover_cve_2022_37434(void) {
-    inf("1f 8b 08 04 61 62 63 64 61 62 52 51 1f 8b 08 04 61 62 63 64 61 62 52 51 1f 8b 08 04 61 62 63 64 61 62 52 51 1f 8b 08 04 61 62 63 64 61 62 52 51", "wtf", 13, 47, 12, Z_OK);
+    inf("1f 8b 08 04 61 62 63 64 61 62 52 51 1f 8b 08 04 61 62 63 64 61 62 52 51 1f 8b 08 04 61 62 63 64 61 62 52 51 "
+        "1f 8b 08 04 61 62 63 64 61 62 52 51",
+        "wtf", 13, 47, 12, Z_OK);
 }
 
 int main(void) {

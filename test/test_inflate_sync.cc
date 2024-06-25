@@ -7,14 +7,12 @@
 #  include "zlib-ng.h"
 #endif
 
-#include <stdio.h>
+#include "test_shared.h"
+#include <gtest/gtest.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "test_shared.h"
-
-#include <gtest/gtest.h>
 
 TEST(inflate, sync) {
     PREFIX3(stream) c_stream, d_stream;
@@ -28,7 +26,7 @@ TEST(inflate, sync) {
     err = PREFIX(deflateInit)(&c_stream, Z_DEFAULT_COMPRESSION);
     EXPECT_EQ(err, Z_OK);
 
-    c_stream.next_in  = (z_const unsigned char *)hello;
+    c_stream.next_in = (z_const unsigned char *)hello;
     c_stream.next_out = compr;
     c_stream.avail_in = 3;
     c_stream.avail_out = (uint32_t)compr_len;
@@ -38,7 +36,7 @@ TEST(inflate, sync) {
 
     /* force an error in first compressed block */
     compr[3]++;
-    c_stream.avail_in = hello_len-3;
+    c_stream.avail_in = hello_len - 3;
 
     err = PREFIX(deflate)(&c_stream, Z_FINISH);
     EXPECT_EQ(err, Z_STREAM_END);
@@ -63,7 +61,7 @@ TEST(inflate, sync) {
     EXPECT_EQ(err, Z_OK);
 
     /* read all compressed data, but skip damaged part */
-    d_stream.avail_in = (uint32_t)compr_len-2;
+    d_stream.avail_in = (uint32_t)compr_len - 2;
     err = PREFIX(inflateSync)(&d_stream);
     EXPECT_EQ(err, Z_OK);
 

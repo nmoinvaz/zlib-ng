@@ -14,10 +14,13 @@
 */
 
 #include "zbuild.h"
+
 #include "deflate.h"
-#include "trees_emit.h"
+
 #include "dfltcc_deflate.h"
+
 #include "dfltcc_detail.h"
+#include "trees_emit.h"
 
 void Z_INTERNAL PREFIX(dfltcc_reset_deflate_state)(PREFIX3(streamp) strm) {
     deflate_state *state = (deflate_state *)strm->state;
@@ -33,7 +36,7 @@ void Z_INTERNAL PREFIX(dfltcc_reset_deflate_state)(PREFIX3(streamp) strm) {
 }
 
 static inline int dfltcc_can_deflate_with_params(PREFIX3(streamp) strm, int level, uInt window_bits, int strategy,
-                                       int reproducible) {
+                                                 int reproducible) {
     deflate_state *state = (deflate_state *)strm->state;
     arch_deflate_state *dfltcc_state = &state->arch;
 
@@ -49,8 +52,7 @@ static inline int dfltcc_can_deflate_with_params(PREFIX3(streamp) strm, int leve
 
     /* Unsupported hardware */
     if (!is_bit_set(dfltcc_state->common.af.fns, DFLTCC_GDHT) ||
-            !is_bit_set(dfltcc_state->common.af.fns, DFLTCC_CMPR) ||
-            !is_bit_set(dfltcc_state->common.af.fmts, DFLTCC_FMT0))
+        !is_bit_set(dfltcc_state->common.af.fns, DFLTCC_CMPR) || !is_bit_set(dfltcc_state->common.af.fmts, DFLTCC_FMT0))
         return 0;
 
     return 1;
@@ -77,9 +79,8 @@ static inline dfltcc_cc dfltcc_cmpr(PREFIX3(streamp) strm) {
     size_t avail_out = strm->avail_out;
     dfltcc_cc cc;
 
-    cc = dfltcc(DFLTCC_CMPR | HBT_CIRCULAR,
-                param, &strm->next_out, &avail_out,
-                &strm->next_in, &avail_in, state->window);
+    cc = dfltcc(DFLTCC_CMPR | HBT_CIRCULAR, param, &strm->next_out, &avail_out, &strm->next_in, &avail_in,
+                state->window);
     strm->total_in += (strm->avail_in - avail_in);
     strm->total_out += (strm->avail_out - avail_out);
     strm->avail_in = avail_in;
@@ -90,7 +91,8 @@ static inline dfltcc_cc dfltcc_cmpr(PREFIX3(streamp) strm) {
 static inline void send_eobs(PREFIX3(streamp) strm, const struct dfltcc_param_v0 *param) {
     deflate_state *state = (deflate_state *)strm->state;
 
-    send_bits(state, PREFIX(bi_reverse)(param->eobs >> (15 - param->eobl), param->eobl), param->eobl, state->bi_buf, state->bi_valid);
+    send_bits(state, PREFIX(bi_reverse)(param->eobs >> (15 - param->eobl), param->eobl), param->eobl, state->bi_buf,
+              state->bi_valid);
     PREFIX(flush_pending)(strm);
     if (state->pending != 0) {
         /* The remaining data is located in pending_out[0:pending]. If someone
@@ -157,9 +159,8 @@ again:
      * more than DFLTCC_DHT_MIN_SAMPLE_SIZE bytes. Open a new block with a new
      * DHT in order to adapt to a possibly changed input data distribution.
      */
-    if (param->bcf && no_flush &&
-            strm->total_in > dfltcc_state->block_threshold &&
-            strm->avail_in >= dfltcc_state->dht_threshold) {
+    if (param->bcf && no_flush && strm->total_in > dfltcc_state->block_threshold &&
+        strm->avail_in >= dfltcc_state->dht_threshold) {
         if (param->cf) {
             /* We need to flush the DFLTCC buffer before writing the
              * End-of-block Symbol. Mask the input data and proceed as usual.
@@ -360,18 +361,19 @@ int Z_INTERNAL PREFIX(dfltcc_can_set_reproducible)(PREFIX3(streamp) strm, int re
 /*
    Preloading history.
 */
-int Z_INTERNAL PREFIX(dfltcc_deflate_set_dictionary)(PREFIX3(streamp) strm,
-                                                const unsigned char *dictionary, uInt dict_length) {
+int Z_INTERNAL PREFIX(dfltcc_deflate_set_dictionary)(PREFIX3(streamp) strm, const unsigned char *dictionary,
+                                                     uInt dict_length) {
     deflate_state *state = (deflate_state *)strm->state;
     struct dfltcc_param_v0 *param = &state->arch.common.param;
 
     append_history(param, state->window, dictionary, dict_length);
-    state->strstart = 1; /* Add FDICT to zlib header */
+    state->strstart = 1;                  /* Add FDICT to zlib header */
     state->block_start = state->strstart; /* Make deflate_stored happy */
     return Z_OK;
 }
 
-int Z_INTERNAL PREFIX(dfltcc_deflate_get_dictionary)(PREFIX3(streamp) strm, unsigned char *dictionary, uInt *dict_length) {
+int Z_INTERNAL PREFIX(dfltcc_deflate_get_dictionary)(PREFIX3(streamp) strm, unsigned char *dictionary,
+                                                     uInt *dict_length) {
     deflate_state *state = (deflate_state *)strm->state;
     struct dfltcc_param_v0 *param = &state->arch.common.param;
 

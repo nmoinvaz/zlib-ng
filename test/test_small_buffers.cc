@@ -7,14 +7,12 @@
 #  include "zlib-ng.h"
 #endif
 
-#include <stdio.h>
+#include "test_shared.h"
+#include <gtest/gtest.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "test_shared.h"
-
-#include <gtest/gtest.h>
 
 TEST(deflate, small_buffers) {
     PREFIX3(stream) c_stream, d_stream;
@@ -28,7 +26,7 @@ TEST(deflate, small_buffers) {
     err = PREFIX(deflateInit)(&c_stream, Z_DEFAULT_COMPRESSION);
     EXPECT_EQ(err, Z_OK);
 
-    c_stream.next_in  = (z_const unsigned char *)hello;
+    c_stream.next_in = (z_const unsigned char *)hello;
     c_stream.next_out = compr;
 
     while (c_stream.total_in != hello_len && c_stream.total_out < compr_len) {
@@ -40,16 +38,17 @@ TEST(deflate, small_buffers) {
     for (;;) {
         c_stream.avail_out = 1;
         err = PREFIX(deflate)(&c_stream, Z_FINISH);
-        if (err == Z_STREAM_END) break;
+        if (err == Z_STREAM_END)
+            break;
         EXPECT_EQ(err, Z_OK);
     }
 
     err = PREFIX(deflateEnd)(&c_stream);
     EXPECT_EQ(err, Z_OK);
 
-    strcpy((char*)uncompr, "garbage");
+    strcpy((char *)uncompr, "garbage");
 
-    d_stream.next_in  = compr;
+    d_stream.next_in = compr;
     d_stream.next_out = uncompr;
 
     err = PREFIX(inflateInit)(&d_stream);
@@ -58,12 +57,13 @@ TEST(deflate, small_buffers) {
     while (d_stream.total_out < uncompr_len && d_stream.total_in < compr_len) {
         d_stream.avail_in = d_stream.avail_out = 1; /* force small buffers */
         err = PREFIX(inflate)(&d_stream, Z_NO_FLUSH);
-        if (err == Z_STREAM_END) break;
+        if (err == Z_STREAM_END)
+            break;
         EXPECT_EQ(err, Z_OK);
     }
 
     err = PREFIX(inflateEnd)(&d_stream);
     EXPECT_EQ(err, Z_OK);
 
-    EXPECT_STREQ((char*)uncompr, hello);
+    EXPECT_STREQ((char *)uncompr, hello);
 }

@@ -6,7 +6,7 @@
 
 #ifdef POWER8_VSX
 
-#define SLIDE_PPC slide_hash_power8
-#include "slide_ppc_tpl.h"
+#  define SLIDE_PPC slide_hash_power8
+#  include "slide_ppc_tpl.h"
 
 #endif /* POWER8_VSX */

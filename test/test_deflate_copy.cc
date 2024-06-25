@@ -7,16 +7,14 @@
 #  include "zlib-ng.h"
 #endif
 
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-
 #include "deflate.h"
 
 #include "test_shared.h"
-
 #include <gtest/gtest.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 TEST(deflate, copy) {
     PREFIX3(stream) c_stream, c_stream_copy;
@@ -43,7 +41,8 @@ TEST(deflate, copy) {
     for (;;) {
         c_stream.avail_out = 1;
         err = PREFIX(deflate)(&c_stream, Z_FINISH);
-        if (err == Z_STREAM_END) break;
+        if (err == Z_STREAM_END)
+            break;
         EXPECT_EQ(err, Z_OK);
     }
 

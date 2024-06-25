@@ -8,24 +8,27 @@
  */
 
 #include "zbuild.h"
-#include "functable.h"
+
 #include "crc32_braid_tbl.h"
+#include "functable.h"
 
 /* ========================================================================= */
 
-const uint32_t * Z_EXPORT PREFIX(get_crc_table)(void) {
+const uint32_t *Z_EXPORT PREFIX(get_crc_table)(void) {
     return (const uint32_t *)crc_table;
 }
 
 #ifdef ZLIB_COMPAT
 unsigned long Z_EXPORT PREFIX(crc32_z)(unsigned long crc, const unsigned char *buf, size_t len) {
-    if (buf == NULL) return 0;
+    if (buf == NULL)
+        return 0;
 
     return (unsigned long)FUNCTABLE_CALL(crc32)((uint32_t)crc, buf, len);
 }
 #else
 uint32_t Z_EXPORT PREFIX(crc32_z)(uint32_t crc, const unsigned char *buf, size_t len) {
-    if (buf == NULL) return 0;
+    if (buf == NULL)
+        return 0;
 
     return FUNCTABLE_CALL(crc32)(crc, buf, len);
 }

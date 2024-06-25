@@ -7,14 +7,12 @@
 #  include "zlib-ng.h"
 #endif
 
-#include <stdio.h>
+#include "test_shared.h"
+#include <gtest/gtest.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "test_shared.h"
-
-#include <gtest/gtest.h>
 
 TEST(compress, basic) {
     uint8_t compr[128], uncompr[128];
@@ -24,7 +22,7 @@ TEST(compress, basic) {
     err = PREFIX(compress)(compr, &compr_len, (const unsigned char *)hello, hello_len);
     EXPECT_EQ(err, Z_OK);
 
-    strcpy((char*)uncompr, "garbage");
+    strcpy((char *)uncompr, "garbage");
 
     err = PREFIX(uncompress)(uncompr, &uncompr_len, compr, compr_len);
     EXPECT_EQ(err, Z_OK);

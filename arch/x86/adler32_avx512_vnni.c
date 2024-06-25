@@ -9,17 +9,20 @@
 
 #ifdef X86_AVX512VNNI
 
-#include "zbuild.h"
-#include "adler32_p.h"
-#include "arch_functions.h"
-#include <immintrin.h>
-#include "x86_intrins.h"
-#include "adler32_avx512_p.h"
-#include "adler32_avx2_p.h"
+#  include "zbuild.h"
+
+#  include "adler32_avx2_p.h"
+#  include "adler32_avx512_p.h"
+#  include "adler32_p.h"
+#  include "arch_functions.h"
+#  include "x86_intrins.h"
+#  include <immintrin.h>
 
 Z_INTERNAL uint32_t adler32_avx512_vnni(uint32_t adler, const uint8_t *src, size_t len) {
-    if (src == NULL) return 1L;
-    if (len == 0) return adler;
+    if (src == NULL)
+        return 1L;
+    if (len == 0)
+        return adler;
 
     uint32_t adler0, adler1;
     adler1 = (adler >> 16) & 0xffff;
@@ -32,10 +35,10 @@ rem_peel:
     if (len < 64)
         return adler32_avx2(adler, src, len);
 
-    const __m512i dot2v = _mm512_set_epi8(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
-                                          20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37,
-                                          38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55,
-                                          56, 57, 58, 59, 60, 61, 62, 63, 64);
+    const __m512i dot2v =
+        _mm512_set_epi8(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
+                        27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50,
+                        51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64);
 
     const __m512i zero = _mm512_setzero_si512();
     __m512i vs1, vs2;
@@ -54,7 +57,7 @@ rem_peel:
 
         /* Remainder peeling */
         if (k % 128) {
-            vbuf1 = _mm512_loadu_si512((__m512i*)src);
+            vbuf1 = _mm512_loadu_si512((__m512i *)src);
 
             src += 64;
             k -= 64;
@@ -72,8 +75,8 @@ rem_peel:
                vs1 = adler + sum(c[i])
                vs2 = sum2 + 64 vs1 + sum( (64-i+1) c[i] )
             */
-            vbuf0 = _mm512_loadu_si512((__m512i*)src);
-            vbuf1 = _mm512_loadu_si512((__m512i*)(src + 64));
+            vbuf0 = _mm512_loadu_si512((__m512i *)src);
+            vbuf1 = _mm512_loadu_si512((__m512i *)(src + 64));
             src += 128;
             k -= 128;
 
@@ -110,8 +113,10 @@ rem_peel:
 }
 
 Z_INTERNAL uint32_t adler32_fold_copy_avx512_vnni(uint32_t adler, uint8_t *dst, const uint8_t *src, size_t len) {
-    if (src == NULL) return 1L;
-    if (len == 0) return adler;
+    if (src == NULL)
+        return 1L;
+    if (len == 0)
+        return adler;
 
     uint32_t adler0, adler1;
     adler1 = (adler >> 16) & 0xffff;
@@ -127,8 +132,8 @@ rem_peel_copy:
         return adler32_ssse3(adler, src, len);
     }
 
-    const __m256i dot2v = _mm256_set_epi8(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
-                                          20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32);
+    const __m256i dot2v = _mm256_set_epi8(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
+                                          23, 24, 25, 26, 27, 28, 29, 30, 31, 32);
 
     const __m256i zero = _mm256_setzero_si256();
     __m256i vs1, vs2;
@@ -147,8 +152,8 @@ rem_peel_copy:
 
         /* Remainder peeling */
         if (k % 64) {
-            vbuf1 = _mm256_loadu_si256((__m256i*)src);
-            _mm256_storeu_si256((__m256i*)dst, vbuf1);
+            vbuf1 = _mm256_loadu_si256((__m256i *)src);
+            _mm256_storeu_si256((__m256i *)dst, vbuf1);
             dst += 32;
 
             src += 32;
@@ -167,10 +172,10 @@ rem_peel_copy:
                vs1 = adler + sum(c[i])
                vs2 = sum2 + 64 vs1 + sum( (64-i+1) c[i] )
             */
-            vbuf0 = _mm256_loadu_si256((__m256i*)src);
-            vbuf1 = _mm256_loadu_si256((__m256i*)(src + 32));
-            _mm256_storeu_si256((__m256i*)dst, vbuf0);
-            _mm256_storeu_si256((__m256i*)(dst + 32), vbuf1);
+            vbuf0 = _mm256_loadu_si256((__m256i *)src);
+            vbuf1 = _mm256_loadu_si256((__m256i *)(src + 32));
+            _mm256_storeu_si256((__m256i *)dst, vbuf0);
+            _mm256_storeu_si256((__m256i *)(dst + 32), vbuf1);
             dst += 64;
             src += 64;
             k -= 64;

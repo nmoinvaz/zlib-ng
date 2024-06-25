@@ -9,7 +9,6 @@
 uint32_t crc32_s390_vx(uint32_t crc, const uint8_t *buf, size_t len);
 #endif
 
-
 #ifdef DISABLE_RUNTIME_CPU_DETECTION
 #  if defined(S390_CRC32_VX) && defined(__zarch__) && __ARCH__ >= 11 && defined(__VX__)
 #    undef native_crc32

@@ -49,7 +49,7 @@ static int write_all(unsigned char *buf, size_t size) {
     return 0;
 }
 
-static int compress_chunk(PREFIX3(stream) *strm, int level, int size, int last) {
+static int compress_chunk(PREFIX3(stream) * strm, int level, int size, int last) {
     int ret = 1;
     int err = 0;
     unsigned long compsize;
@@ -109,10 +109,10 @@ done:
     return ret;
 }
 
-void show_help(void)
-{
-    printf("Usage: switchlevels [-w bits] level1 size1 [level2 size2 ...]\n\n"
-           "  -w : window bits (8 to 15 for gzip, -8 to -15 for zlib)\n\n");
+void show_help(void) {
+    printf(
+        "Usage: switchlevels [-w bits] level1 size1 [level2 size2 ...]\n\n"
+        "  -w : window bits (8 to 15 for gzip, -8 to -15 for zlib)\n\n");
 }
 
 int main(int argc, char **argv) {
@@ -123,7 +123,6 @@ int main(int argc, char **argv) {
     int level_arg = 1;
     int window_bits = MAX_WBITS + 16;
     PREFIX3(stream) strm;
-
 
     if ((argc == 1) || (argc == 2 && strcmp(argv[1], "--help") == 0)) {
         show_help();
@@ -136,7 +135,7 @@ int main(int argc, char **argv) {
     memset(&strm, 0, sizeof(strm));
 
     for (int i = 1; i < argc - 1; i++) {
-        if (strcmp(argv[i], "-w") == 0 && i+1 < argc) {
+        if (strcmp(argv[i], "-w") == 0 && i + 1 < argc) {
             window_bits = atoi(argv[++i]);
         } else {
             level_arg = i;

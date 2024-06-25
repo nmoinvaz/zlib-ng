@@ -7,10 +7,12 @@
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 #ifndef NO_MEDIUM_STRATEGY
-#include "zbuild.h"
-#include "deflate.h"
-#include "deflate_p.h"
-#include "functable.h"
+#  include "zbuild.h"
+
+#  include "deflate.h"
+
+#  include "deflate_p.h"
+#  include "functable.h"
 
 struct match {
     uint16_t match_start;
@@ -96,7 +98,7 @@ static void fizzle_matches(deflate_state *s, struct match *current, struct match
         return;
 
     match = s->window - current->match_length + 1 + next->match_start;
-    orig  = s->window - current->match_length + 1 + next->strstart;
+    orig = s->window - current->match_length + 1 + next->strstart;
 
     /* quick exit check.. if this fails then don't bother with anything else */
     if (LIKELY(*match != *orig))
@@ -145,7 +147,7 @@ static void fizzle_matches(deflate_state *s, struct match *current, struct match
 Z_INTERNAL block_state deflate_medium(deflate_state *s, int flush) {
     /* Align the first struct to start on a new cacheline, this allows us to fit both structs in one cacheline */
     ALIGNED_(16) struct match current_match;
-                 struct match next_match;
+    struct match next_match;
 
     /* For levels below 5, don't check the next position for a better match */
     int early_exit = s->level < 5;
@@ -154,8 +156,8 @@ Z_INTERNAL block_state deflate_medium(deflate_state *s, int flush) {
     memset(&next_match, 0, sizeof(struct match));
 
     for (;;) {
-        Pos hash_head = 0;    /* head of the hash chain */
-        int bflush = 0;       /* set if current block must be flushed */
+        Pos hash_head = 0; /* head of the hash chain */
+        int bflush = 0;    /* set if current block must be flushed */
         int64_t dist;
 
         /* Make sure that we always have enough lookahead, except
@@ -218,7 +220,9 @@ Z_INTERNAL block_state deflate_medium(deflate_state *s, int flush) {
         insert_match(s, current_match);
 
         /* now, look ahead one */
-        if (LIKELY(!early_exit && s->lookahead > MIN_LOOKAHEAD && (uint32_t)(current_match.strstart + current_match.match_length) < (s->window_size - MIN_LOOKAHEAD))) {
+        if (LIKELY(!early_exit && s->lookahead > MIN_LOOKAHEAD &&
+                   (uint32_t)(current_match.strstart + current_match.match_length) <
+                       (s->window_size - MIN_LOOKAHEAD))) {
             s->strstart = current_match.strstart + current_match.match_length;
             hash_head = quick_insert_string(s, s->strstart);
 

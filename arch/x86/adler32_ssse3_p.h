@@ -8,8 +8,8 @@
 
 #ifdef X86_SSSE3
 
-#include <immintrin.h>
-#include <stdint.h>
+#  include <immintrin.h>
+#  include <stdint.h>
 
 static inline uint32_t partial_hsum(__m128i x) {
     __m128i second_int = _mm_srli_si128(x, 8);

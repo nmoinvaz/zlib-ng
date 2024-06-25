@@ -29,7 +29,7 @@
    Z_STREAM_ERROR if the level parameter is invalid.
 */
 int Z_EXPORT PREFIX(compress2)(unsigned char *dest, z_uintmax_t *destLen, const unsigned char *source,
-                        z_uintmax_t sourceLen, int level) {
+                               z_uintmax_t sourceLen, int level) {
     PREFIX3(stream) stream;
     int err;
     const unsigned int max = (unsigned int)-1;
@@ -70,7 +70,8 @@ int Z_EXPORT PREFIX(compress2)(unsigned char *dest, z_uintmax_t *destLen, const 
 
 /* ===========================================================================
  */
-int Z_EXPORT PREFIX(compress)(unsigned char *dest, z_uintmax_t *destLen, const unsigned char *source, z_uintmax_t sourceLen) {
+int Z_EXPORT PREFIX(compress)(unsigned char *dest, z_uintmax_t *destLen, const unsigned char *source,
+                              z_uintmax_t sourceLen) {
     return PREFIX(compress2)(dest, destLen, source, sourceLen, Z_DEFAULT_COMPRESSION);
 }
 
@@ -86,12 +87,12 @@ z_uintmax_t Z_EXPORT PREFIX(compressBound)(z_uintmax_t sourceLen) {
         return complen + ZLIB_WRAPLEN;
 
 #ifndef NO_QUICK_STRATEGY
-    return sourceLen                       /* The source size itself */
-      + (sourceLen == 0 ? 1 : 0)           /* Always at least one byte for any input */
-      + (sourceLen < 9 ? 1 : 0)            /* One extra byte for lengths less than 9 */
-      + DEFLATE_QUICK_OVERHEAD(sourceLen)  /* Source encoding overhead, padded to next full byte */
-      + DEFLATE_BLOCK_OVERHEAD             /* Deflate block overhead bytes */
-      + ZLIB_WRAPLEN;                      /* zlib wrapper */
+    return sourceLen                        /* The source size itself */
+        + (sourceLen == 0 ? 1 : 0)          /* Always at least one byte for any input */
+        + (sourceLen < 9 ? 1 : 0)           /* One extra byte for lengths less than 9 */
+        + DEFLATE_QUICK_OVERHEAD(sourceLen) /* Source encoding overhead, padded to next full byte */
+        + DEFLATE_BLOCK_OVERHEAD            /* Deflate block overhead bytes */
+        + ZLIB_WRAPLEN;                     /* zlib wrapper */
 #else
     return sourceLen + (sourceLen >> 4) + 7 + ZLIB_WRAPLEN;
 #endif

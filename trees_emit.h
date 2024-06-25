@@ -2,6 +2,7 @@
 #define TREES_EMIT_H_
 
 #include "zbuild.h"
+
 #include "trees.h"
 
 #ifdef ZLIB_DEBUG
@@ -9,27 +10,27 @@
 #  include <inttypes.h>
 #endif
 
-
 /* trees.h */
-extern Z_INTERNAL const ct_data static_ltree[L_CODES+2];
+extern Z_INTERNAL const ct_data static_ltree[L_CODES + 2];
 extern Z_INTERNAL const ct_data static_dtree[D_CODES];
 
 extern const unsigned char Z_INTERNAL zng_dist_code[DIST_CODE_LEN];
-extern const unsigned char Z_INTERNAL zng_length_code[STD_MAX_MATCH-STD_MIN_MATCH+1];
+extern const unsigned char Z_INTERNAL zng_length_code[STD_MAX_MATCH - STD_MIN_MATCH + 1];
 
 extern Z_INTERNAL const int base_length[LENGTH_CODES];
 extern Z_INTERNAL const int base_dist[D_CODES];
 
 /* Bit buffer and deflate code stderr tracing */
 #ifdef ZLIB_DEBUG
-#  define send_bits_trace(s, value, length) { \
-        Tracevv((stderr, " l %2d v %4llx ", (int)(length), (long long)(value))); \
-        Assert(length > 0 && length <= BIT_BUF_SIZE, "invalid length"); \
-    }
-#  define send_code_trace(s, c) \
-    if (z_verbose > 2) { \
-        fprintf(stderr, "\ncd %3d ", (c)); \
-    }
+#  define send_bits_trace(s, value, length)                                        \
+      {                                                                            \
+          Tracevv((stderr, " l %2d v %4llx ", (int)(length), (long long)(value))); \
+          Assert(length > 0 && length <= BIT_BUF_SIZE, "invalid length");          \
+      }
+#  define send_code_trace(s, c)              \
+      if (z_verbose > 2) {                   \
+          fprintf(stderr, "\ncd %3d ", (c)); \
+      }
 #else
 #  define send_bits_trace(s, value, length)
 #  define send_code_trace(s, c)
@@ -39,36 +40,37 @@ extern Z_INTERNAL const int base_dist[D_CODES];
  * (64 - bi_valid) bits from value, leaving (width - (64-bi_valid))
  * unused bits in value.
  */
-#define send_bits(s, t_val, t_len, bi_buf, bi_valid) {\
-    uint64_t val = (uint64_t)t_val;\
-    uint32_t len = (uint32_t)t_len;\
-    uint32_t total_bits = bi_valid + len;\
-    send_bits_trace(s, val, len);\
-    sent_bits_add(s, len);\
-    if (total_bits < BIT_BUF_SIZE) {\
-        bi_buf |= val << bi_valid;\
-        bi_valid = total_bits;\
-    } else if (bi_valid == BIT_BUF_SIZE) {\
-        put_uint64(s, bi_buf);\
-        bi_buf = val;\
-        bi_valid = len;\
-    } else {\
-        bi_buf |= val << bi_valid;\
-        put_uint64(s, bi_buf);\
-        bi_buf = val >> (BIT_BUF_SIZE - bi_valid);\
-        bi_valid = total_bits - BIT_BUF_SIZE;\
-    }\
-}
+#define send_bits(s, t_val, t_len, bi_buf, bi_valid)   \
+    {                                                  \
+        uint64_t val = (uint64_t)t_val;                \
+        uint32_t len = (uint32_t)t_len;                \
+        uint32_t total_bits = bi_valid + len;          \
+        send_bits_trace(s, val, len);                  \
+        sent_bits_add(s, len);                         \
+        if (total_bits < BIT_BUF_SIZE) {               \
+            bi_buf |= val << bi_valid;                 \
+            bi_valid = total_bits;                     \
+        } else if (bi_valid == BIT_BUF_SIZE) {         \
+            put_uint64(s, bi_buf);                     \
+            bi_buf = val;                              \
+            bi_valid = len;                            \
+        } else {                                       \
+            bi_buf |= val << bi_valid;                 \
+            put_uint64(s, bi_buf);                     \
+            bi_buf = val >> (BIT_BUF_SIZE - bi_valid); \
+            bi_valid = total_bits - BIT_BUF_SIZE;      \
+        }                                              \
+    }
 
 /* Send a code of the given tree. c and tree must not have side effects */
 #ifdef ZLIB_DEBUG
-#  define send_code(s, c, tree, bi_buf, bi_valid) { \
-    send_code_trace(s, c); \
-    send_bits(s, tree[c].Code, tree[c].Len, bi_buf, bi_valid); \
-}
+#  define send_code(s, c, tree, bi_buf, bi_valid)                    \
+      {                                                              \
+          send_code_trace(s, c);                                     \
+          send_bits(s, tree[c].Code, tree[c].Len, bi_buf, bi_valid); \
+      }
 #else
-#  define send_code(s, c, tree, bi_buf, bi_valid) \
-    send_bits(s, tree[c].Code, tree[c].Len, bi_buf, bi_valid)
+#  define send_code(s, c, tree, bi_buf, bi_valid) send_bits(s, tree[c].Code, tree[c].Len, bi_buf, bi_valid)
 #endif
 
 /* ===========================================================================
@@ -116,8 +118,8 @@ static inline uint32_t zng_emit_lit(deflate_state *s, const ct_data *ltree, unsi
 /* ===========================================================================
  * Emit match distance/length code
  */
-static inline uint32_t zng_emit_dist(deflate_state *s, const ct_data *ltree, const ct_data *dtree,
-    uint32_t lc, uint32_t dist) {
+static inline uint32_t zng_emit_dist(deflate_state *s, const ct_data *ltree, const ct_data *dtree, uint32_t lc,
+                                     uint32_t dist) {
     uint32_t c, extra;
     uint8_t code;
     uint64_t match_bits;
@@ -127,7 +129,7 @@ static inline uint32_t zng_emit_dist(deflate_state *s, const ct_data *ltree, con
 
     /* Send the length code, len is the match length - STD_MIN_MATCH */
     code = zng_length_code[lc];
-    c = code+LITERALS+1;
+    c = code + LITERALS + 1;
     Assert(c < L_CODES, "bad l_code");
     send_code_trace(s, c);
 
@@ -172,8 +174,8 @@ static inline void zng_emit_end_block(deflate_state *s, const ct_data *ltree, co
     send_code(s, END_BLOCK, ltree, bi_buf, bi_valid);
     s->bi_valid = bi_valid;
     s->bi_buf = bi_buf;
-    Tracev((stderr, "\n+++ Emit End Block: Last: %u Pending: %u Total Out: %" PRIu64 "\n",
-        last, s->pending, (uint64_t)s->strm->total_out));
+    Tracev((stderr, "\n+++ Emit End Block: Last: %u Pending: %u Total Out: %" PRIu64 "\n", last, s->pending,
+            (uint64_t)s->strm->total_out));
     Z_UNUSED(last);
 }
 
@@ -187,8 +189,8 @@ static inline void zng_tr_emit_lit(deflate_state *s, const ct_data *ltree, unsig
 /* ===========================================================================
  * Emit match and count bits
  */
-static inline void zng_tr_emit_dist(deflate_state *s, const ct_data *ltree, const ct_data *dtree,
-    uint32_t lc, uint32_t dist) {
+static inline void zng_tr_emit_dist(deflate_state *s, const ct_data *ltree, const ct_data *dtree, uint32_t lc,
+                                    uint32_t dist) {
     cmpr_bits_add(s, zng_emit_dist(s, ltree, dtree, lc, dist));
 }
 

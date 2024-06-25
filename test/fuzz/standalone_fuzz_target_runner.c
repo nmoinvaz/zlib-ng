@@ -1,7 +1,7 @@
+#include "zbuild.h"
+
 #include <assert.h>
 #include <stdio.h>
-
-#include "zbuild.h"
 
 extern int LLVMFuzzerTestOneInput(const unsigned char *data, size_t size);
 

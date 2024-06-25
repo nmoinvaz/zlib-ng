@@ -7,6 +7,7 @@
  */
 
 #include "zbuild.h"
+
 #include "adler32_p.h"
 #include "adler32_ssse3_p.h"
 #include <immintrin.h>
@@ -20,12 +21,11 @@ Z_INTERNAL uint32_t adler32_fold_copy_sse42(uint32_t adler, uint8_t *dst, const 
 
 rem_peel:
     if (len < 16) {
-       return adler32_copy_len_16(adler0, src, dst, len, adler1);
+        return adler32_copy_len_16(adler0, src, dst, len, adler1);
     }
 
     __m128i vbuf, vbuf_0;
-    __m128i vs1_0, vs3, vs1, vs2, vs2_0, v_sad_sum1, v_short_sum2, v_short_sum2_0,
-            v_sad_sum2, vsum2, vsum2_0;
+    __m128i vs1_0, vs3, vs1, vs2, vs2_0, v_sad_sum1, v_short_sum2, v_short_sum2_0, v_sad_sum2, vsum2, vsum2_0;
     __m128i zero = _mm_setzero_si128();
     const __m128i dot2v = _mm_setr_epi8(32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17);
     const __m128i dot2v_0 = _mm_setr_epi8(16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1);
@@ -33,7 +33,6 @@ rem_peel:
     size_t k;
 
     while (len >= 16) {
-
         k = MIN(len, NMAX);
         k -= k % 16;
         len -= k;
@@ -50,15 +49,15 @@ rem_peel:
                vs1 = adler + sum(c[i])
                vs2 = sum2 + 16 vs1 + sum( (16-i+1) c[i] )
             */
-            vbuf = _mm_loadu_si128((__m128i*)src);
-            vbuf_0 = _mm_loadu_si128((__m128i*)(src + 16));
+            vbuf = _mm_loadu_si128((__m128i *)src);
+            vbuf_0 = _mm_loadu_si128((__m128i *)(src + 16));
             src += 32;
             k -= 32;
 
             v_sad_sum1 = _mm_sad_epu8(vbuf, zero);
             v_sad_sum2 = _mm_sad_epu8(vbuf_0, zero);
-            _mm_storeu_si128((__m128i*)dst, vbuf);
-            _mm_storeu_si128((__m128i*)(dst + 16), vbuf_0);
+            _mm_storeu_si128((__m128i *)dst, vbuf);
+            _mm_storeu_si128((__m128i *)(dst + 16), vbuf_0);
             dst += 32;
 
             v_short_sum2 = _mm_maddubs_epi16(vbuf, dot2v);
@@ -85,7 +84,7 @@ rem_peel:
                vs1 = adler + sum(c[i])
                vs2 = sum2 + 16 vs1 + sum( (16-i+1) c[i] )
             */
-            vbuf = _mm_loadu_si128((__m128i*)src);
+            vbuf = _mm_loadu_si128((__m128i *)src);
             src += 16;
             k -= 16;
 
@@ -98,7 +97,7 @@ rem_peel:
             vs2 = _mm_add_epi32(vsum2, vs2);
             vs1_0 = vs1;
 
-            _mm_storeu_si128((__m128i*)dst, vbuf);
+            _mm_storeu_si128((__m128i *)dst, vbuf);
             dst += 16;
         }
 

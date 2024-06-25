@@ -4,11 +4,10 @@
  */
 
 #include "zbuild.h"
-
-#include <stdio.h>
-#include <assert.h>
-
 #include "zutil.h"
+
+#include <assert.h>
+#include <stdio.h>
 
 #if defined(_WIN32) || defined(__CYGWIN__)
 #  include <fcntl.h>
@@ -25,12 +24,13 @@
 #  include <strings.h>
 #endif
 
-#define CHECK_ERR(err, msg) { \
-    if (err != Z_OK) { \
-        fprintf(stderr, "%s error: %d\n", msg, err); \
-        exit(1); \
-    } \
-}
+#define CHECK_ERR(err, msg)                              \
+    {                                                    \
+        if (err != Z_OK) {                               \
+            fprintf(stderr, "%s error: %d\n", msg, err); \
+            exit(1);                                     \
+        }                                                \
+    }
 
 /* Default read/write i/o buffer size based on GZBUFSIZE */
 #define BUFSIZE 131072
@@ -39,7 +39,7 @@
  * deflate() using specialized parameters
  */
 static void deflate_params(FILE *fin, FILE *fout, int32_t read_buf_size, int32_t write_buf_size, int32_t level,
-    int32_t window_bits, int32_t mem_level, int32_t strategy, int32_t flush) {
+                           int32_t window_bits, int32_t mem_level, int32_t strategy, int32_t flush) {
     PREFIX3(stream) c_stream; /* compression stream */
     uint8_t *read_buf;
     uint8_t *write_buf;
@@ -76,12 +76,13 @@ static void deflate_params(FILE *fin, FILE *fout, int32_t read_buf_size, int32_t
         if (read <= 0)
             break;
 
-        c_stream.next_in  = (z_const uint8_t *)read_buf;
+        c_stream.next_in = (z_const uint8_t *)read_buf;
         c_stream.avail_in = read;
 
         do {
             err = PREFIX(deflate)(&c_stream, flush);
-            if (err == Z_STREAM_END) break;
+            if (err == Z_STREAM_END)
+                break;
             CHECK_ERR(err, "deflate");
 
             if (c_stream.next_out == write_buf + write_buf_size) {
@@ -103,7 +104,8 @@ static void deflate_params(FILE *fin, FILE *fout, int32_t read_buf_size, int32_t
             }
 
             err = PREFIX(deflate)(&c_stream, Z_FINISH);
-            if (err == Z_STREAM_END) break;
+            if (err == Z_STREAM_END)
+                break;
             CHECK_ERR(err, "deflate");
         } while (1);
     }
@@ -124,13 +126,12 @@ static void deflate_params(FILE *fin, FILE *fout, int32_t read_buf_size, int32_t
  * inflate() using specialized parameters
  */
 static void inflate_params(FILE *fin, FILE *fout, int32_t read_buf_size, int32_t write_buf_size, int32_t window_bits,
-    int32_t flush) {
+                           int32_t flush) {
     PREFIX3(stream) d_stream; /* decompression stream */
     uint8_t *read_buf;
     uint8_t *write_buf;
     int32_t read;
     int err;
-
 
     read_buf = (uint8_t *)malloc(read_buf_size);
     if (read_buf == NULL) {
@@ -162,7 +163,7 @@ static void inflate_params(FILE *fin, FILE *fout, int32_t read_buf_size, int32_t
         if (read <= 0)
             break;
 
-        d_stream.next_in  = (z_const uint8_t *)read_buf;
+        d_stream.next_in = (z_const uint8_t *)read_buf;
         d_stream.avail_in = read;
 
         do {
@@ -173,7 +174,8 @@ static void inflate_params(FILE *fin, FILE *fout, int32_t read_buf_size, int32_t
             if (flush == Z_FINISH && err == Z_BUF_ERROR && read_buf_size != BUFSIZE)
                 err = Z_OK;
 
-            if (err == Z_STREAM_END) break;
+            if (err == Z_STREAM_END)
+                break;
             CHECK_ERR(err, "inflate");
 
             if (d_stream.next_out == write_buf + write_buf_size) {
@@ -195,7 +197,8 @@ static void inflate_params(FILE *fin, FILE *fout, int32_t read_buf_size, int32_t
             }
 
             err = PREFIX(inflate)(&d_stream, Z_FINISH);
-            if (err == Z_STREAM_END) break;
+            if (err == Z_STREAM_END)
+                break;
             CHECK_ERR(err, "inflate");
         } while (1);
     }
@@ -213,23 +216,25 @@ static void inflate_params(FILE *fin, FILE *fout, int32_t read_buf_size, int32_t
 }
 
 static void show_help(void) {
-    printf("Usage: minideflate [-c][-d][-k] [-f|-h|-R|-F] [-m level] [-r/-t size] [-s flush] [-w bits] [-0 to -9] [input file]\n\n"
-           "  -c : write to standard output\n"
-           "  -d : decompress\n"
-           "  -k : keep input file\n"
-           "  -f : compress with Z_FILTERED\n"
-           "  -h : compress with Z_HUFFMAN_ONLY\n"
-           "  -R : compress with Z_RLE\n"
-           "  -F : compress with Z_FIXED\n"
-           "  -m : memory level (1 to 8)\n"
-           "  -w : window bits..\n"
-           "     :   -1 to -15 for raw deflate\n"
-           "     :    0 to  15 for deflate (adler32)\n"
-           "     :   16 to  31 for gzip (crc32)\n"
-           "  -s : flush type (0 to 5)\n"
-           "  -r : read buffer size\n"
-           "  -t : write buffer size\n"
-           "  -0 to -9 : compression level\n\n");
+    printf(
+        "Usage: minideflate [-c][-d][-k] [-f|-h|-R|-F] [-m level] [-r/-t size] [-s flush] [-w bits] [-0 to -9] [input "
+        "file]\n\n"
+        "  -c : write to standard output\n"
+        "  -d : decompress\n"
+        "  -k : keep input file\n"
+        "  -f : compress with Z_FILTERED\n"
+        "  -h : compress with Z_HUFFMAN_ONLY\n"
+        "  -R : compress with Z_RLE\n"
+        "  -F : compress with Z_FIXED\n"
+        "  -m : memory level (1 to 8)\n"
+        "  -w : window bits..\n"
+        "     :   -1 to -15 for raw deflate\n"
+        "     :    0 to  15 for deflate (adler32)\n"
+        "     :   16 to  31 for gzip (crc32)\n"
+        "  -s : flush type (0 to 5)\n"
+        "  -r : read buffer size\n"
+        "  -t : write buffer size\n"
+        "  -0 to -9 : compression level\n\n");
 }
 
 int main(int argc, char **argv) {
@@ -247,10 +252,9 @@ int main(int argc, char **argv) {
     FILE *fin = stdin;
     FILE *fout = stdout;
 
-
     if (argc == 1) {
         show_help();
-        return 64;   /* EX_USAGE */
+        return 64; /* EX_USAGE */
     }
 
     for (i = 1; i < argc; i++) {
@@ -285,7 +289,7 @@ int main(int argc, char **argv) {
             return 0;
         } else if (argv[i][0] == '-') {
             show_help();
-            return 64;   /* EX_USAGE */
+            return 64; /* EX_USAGE */
         } else
             break;
     }

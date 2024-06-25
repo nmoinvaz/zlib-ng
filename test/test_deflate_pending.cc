@@ -7,14 +7,12 @@
 #  include "zlib-ng.h"
 #endif
 
-#include <stdio.h>
+#include "test_shared.h"
+#include <gtest/gtest.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <gtest/gtest.h>
-
-#include "test_shared.h"
 
 TEST(deflate, pending) {
     PREFIX3(stream) c_stream;
@@ -23,7 +21,6 @@ TEST(deflate, pending) {
     int *bits;
     unsigned *ped;
     int err;
-
 
     bits = (int *)calloc(256, 1);
     ASSERT_TRUE(bits != NULL);
@@ -54,7 +51,8 @@ TEST(deflate, pending) {
     for (;;) {
         c_stream.avail_out = 1;
         err = PREFIX(deflate)(&c_stream, Z_FINISH);
-        if (err == Z_STREAM_END) break;
+        if (err == Z_STREAM_END)
+            break;
         EXPECT_EQ(err, Z_OK);
     }
 

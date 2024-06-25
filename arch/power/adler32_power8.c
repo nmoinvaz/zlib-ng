@@ -38,9 +38,10 @@
 
 #ifdef POWER8_VSX
 
-#include <altivec.h>
-#include "zbuild.h"
-#include "adler32_p.h"
+#  include "zbuild.h"
+
+#  include "adler32_p.h"
+#  include <altivec.h>
 
 /* Vector across sum unsigned int (saturate).  */
 static inline vector unsigned int vec_sumsu(vector unsigned int __a, vector unsigned int __b) {
@@ -69,14 +70,13 @@ Z_INTERNAL uint32_t adler32_power8(uint32_t adler, const uint8_t *buf, size_t le
         return adler32_len_64(s1, buf, len, s2);
 
     /* Use POWER VSX instructions for len >= 64. */
-    const vector unsigned int v_zeros = { 0 };
-    const vector unsigned char v_mul = {16, 15, 14, 13, 12, 11, 10, 9, 8, 7,
-         6, 5, 4, 3, 2, 1};
+    const vector unsigned int v_zeros = {0};
+    const vector unsigned char v_mul = {16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1};
     const vector unsigned char vsh = vec_splat_u8(4);
     const vector unsigned int vmask = {0xffffffff, 0x0, 0x0, 0x0};
-    vector unsigned int vs1 = { 0 };
-    vector unsigned int vs2 = { 0 };
-    vector unsigned int vs1_save = { 0 };
+    vector unsigned int vs1 = {0};
+    vector unsigned int vs2 = {0};
+    vector unsigned int vs1_save = {0};
     vector unsigned int vsum1, vsum2;
     vector unsigned char vbuf;
     int n;
@@ -89,7 +89,7 @@ Z_INTERNAL uint32_t adler32_power8(uint32_t adler, const uint8_t *buf, size_t le
         len -= NMAX;
         n = NMAX / 16;
         do {
-            vbuf = vec_xl(0, (unsigned char *) buf);
+            vbuf = vec_xl(0, (unsigned char *)buf);
             vsum1 = vec_sum4s(vbuf, v_zeros); /* sum(i=1 to 16) buf[i].  */
             /* sum(i=1 to 16) buf[i]*(16-i+1).  */
             vsum2 = vec_msum(vbuf, v_mul, v_zeros);
@@ -123,7 +123,7 @@ Z_INTERNAL uint32_t adler32_power8(uint32_t adler, const uint8_t *buf, size_t le
         while (len >= 16) {
             len -= 16;
 
-            vbuf = vec_xl(0, (unsigned char *) buf);
+            vbuf = vec_xl(0, (unsigned char *)buf);
 
             vsum1 = vec_sum4s(vbuf, v_zeros); /* sum(i=1 to 16) buf[i].  */
             /* sum(i=1 to 16) buf[i]*(16-i+1).  */

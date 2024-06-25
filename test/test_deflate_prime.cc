@@ -7,14 +7,12 @@
 #  include "zlib-ng.h"
 #endif
 
-#include <stdio.h>
+#include "test_shared_ng.h"
+#include <gtest/gtest.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "test_shared_ng.h"
-
-#include <gtest/gtest.h>
 
 TEST(deflate, prime) {
     PREFIX3(stream) c_stream, d_stream;
@@ -70,7 +68,7 @@ TEST(deflate, prime) {
     err = PREFIX(deflateEnd)(&c_stream);
     EXPECT_EQ(err, Z_OK);
 
-    d_stream.next_in  = compr;
+    d_stream.next_in = compr;
     d_stream.avail_in = (uint32_t)c_stream.total_out;
     d_stream.next_out = uncompr;
     d_stream.avail_out = (uint32_t)uncompr_len;

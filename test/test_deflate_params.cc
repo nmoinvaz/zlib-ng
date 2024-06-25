@@ -7,22 +7,20 @@
 #  include "zlib-ng.h"
 #endif
 
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-#include <inttypes.h>
-#include <time.h>
-
 #include "deflate.h"
 
-#include <gtest/gtest.h>
-
 #include "test_shared.h"
+#include <gtest/gtest.h>
+#include <inttypes.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
 
-#define COMPR_BUFFER_SIZE (48 * 1024)
+#define COMPR_BUFFER_SIZE   (48 * 1024)
 #define UNCOMPR_BUFFER_SIZE (64 * 1024)
-#define UNCOMPR_RAND_SIZE (8 * 1024)
+#define UNCOMPR_RAND_SIZE   (8 * 1024)
 
 TEST(deflate, params) {
     PREFIX3(stream) c_stream, d_stream;
@@ -118,14 +116,14 @@ TEST(deflate, params) {
     err = PREFIX(deflateEnd)(&c_stream);
     EXPECT_EQ(err, Z_OK);
 
-    d_stream.next_in  = compr;
+    d_stream.next_in = compr;
     d_stream.avail_in = (unsigned int)compr_len;
 
     err = PREFIX(inflateInit)(&d_stream);
     EXPECT_EQ(err, Z_OK);
 
     do {
-        d_stream.next_out = uncompr;            /* discard the output */
+        d_stream.next_out = uncompr; /* discard the output */
         d_stream.avail_out = uncompr_len;
         err = PREFIX(inflate)(&d_stream, Z_NO_FLUSH);
         if (err == Z_STREAM_END)

@@ -5,34 +5,33 @@
 #include "zbuild.h"
 
 #if defined(X86_SSSE3)
-#include <immintrin.h>
-#include "../generic/chunk_permute_table.h"
+#  include "../generic/chunk_permute_table.h"
+#  include <immintrin.h>
 
 typedef __m128i chunk_t;
 
-#define CHUNK_SIZE 16
+#  define CHUNK_SIZE 16
 
-#define HAVE_CHUNKMEMSET_2
-#define HAVE_CHUNKMEMSET_4
-#define HAVE_CHUNKMEMSET_8
-#define HAVE_CHUNK_MAG
+#  define HAVE_CHUNKMEMSET_2
+#  define HAVE_CHUNKMEMSET_4
+#  define HAVE_CHUNKMEMSET_8
+#  define HAVE_CHUNK_MAG
 
 static const lut_rem_pair perm_idx_lut[13] = {
-    {0, 1},      /* 3 */
-    {0, 0},      /* don't care */
-    {1 * 32, 1}, /* 5 */
-    {2 * 32, 4}, /* 6 */
-    {3 * 32, 2}, /* 7 */
-    {0 * 32, 0}, /* don't care */
-    {4 * 32, 7}, /* 9 */
-    {5 * 32, 6}, /* 10 */
-    {6 * 32, 5}, /* 11 */
-    {7 * 32, 4}, /* 12 */
-    {8 * 32, 3}, /* 13 */
-    {9 * 32, 2}, /* 14 */
-    {10 * 32, 1},/* 15 */
+    {0, 1},       /* 3 */
+    {0, 0},       /* don't care */
+    {1 * 32, 1},  /* 5 */
+    {2 * 32, 4},  /* 6 */
+    {3 * 32, 2},  /* 7 */
+    {0 * 32, 0},  /* don't care */
+    {4 * 32, 7},  /* 9 */
+    {5 * 32, 6},  /* 10 */
+    {6 * 32, 5},  /* 11 */
+    {7 * 32, 4},  /* 12 */
+    {8 * 32, 3},  /* 13 */
+    {9 * 32, 2},  /* 14 */
+    {10 * 32, 1}, /* 15 */
 };
-
 
 static inline void chunkmemset_2(uint8_t *from, chunk_t *chunk) {
     int16_t tmp;
@@ -69,25 +68,25 @@ static inline chunk_t GET_CHUNK_MAG(uint8_t *buf, uint32_t *chunk_rem, uint32_t 
      * in a vector register, anyway.  If what we assume is wrong about what is used,
      * the memory sanitizer will still usefully flag it */
     __msan_unpoison(buf + dist, 16 - dist);
-    ret_vec = _mm_loadu_si128((__m128i*)buf);
+    ret_vec = _mm_loadu_si128((__m128i *)buf);
     *chunk_rem = lut_rem.remval;
 
-    perm_vec = _mm_load_si128((__m128i*)(permute_table + lut_rem.idx));
+    perm_vec = _mm_load_si128((__m128i *)(permute_table + lut_rem.idx));
     ret_vec = _mm_shuffle_epi8(ret_vec, perm_vec);
 
     return ret_vec;
 }
 
-#define CHUNKSIZE        chunksize_ssse3
-#define CHUNKMEMSET      chunkmemset_ssse3
-#define CHUNKMEMSET_SAFE chunkmemset_safe_ssse3
-#define CHUNKCOPY        chunkcopy_ssse3
-#define CHUNKUNROLL      chunkunroll_ssse3
+#  define CHUNKSIZE        chunksize_ssse3
+#  define CHUNKMEMSET      chunkmemset_ssse3
+#  define CHUNKMEMSET_SAFE chunkmemset_safe_ssse3
+#  define CHUNKCOPY        chunkcopy_ssse3
+#  define CHUNKUNROLL      chunkunroll_ssse3
 
-#include "chunkset_tpl.h"
+#  include "chunkset_tpl.h"
 
-#define INFLATE_FAST     inflate_fast_ssse3
+#  define INFLATE_FAST inflate_fast_ssse3
 
-#include "inffast_tpl.h"
+#  include "inffast_tpl.h"
 
 #endif

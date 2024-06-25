@@ -17,10 +17,10 @@
  */
 
 #ifndef __builtin_crypto_vpmsumw
-#define __builtin_crypto_vpmsumw __builtin_crypto_vpmsumb
+#  define __builtin_crypto_vpmsumw __builtin_crypto_vpmsumb
 #endif
 #ifndef __builtin_crypto_vpmsumd
-#define __builtin_crypto_vpmsumd __builtin_crypto_vpmsumb
+#  define __builtin_crypto_vpmsumd __builtin_crypto_vpmsumb
 #endif
 
 static inline __vector unsigned long long __attribute__((overloadable))

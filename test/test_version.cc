@@ -7,14 +7,12 @@
 #  include "zlib-ng.h"
 #endif
 
-#include <stdio.h>
+#include "test_shared.h"
+#include <gtest/gtest.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "test_shared.h"
-
-#include <gtest/gtest.h>
 
 TEST(version, basic) {
     static const char *my_version = PREFIX2(VERSION);
@@ -22,6 +20,6 @@ TEST(version, basic) {
     EXPECT_EQ(zVersion()[0], my_version[0]);
     EXPECT_STREQ(zVersion(), PREFIX2(VERSION));
 
-    printf("zlib-ng version %s = 0x%08lx, compile flags = 0x%lx\n",
-            ZLIBNG_VERSION, ZLIBNG_VERNUM, PREFIX(zlibCompileFlags)());
+    printf("zlib-ng version %s = 0x%08lx, compile flags = 0x%lx\n", ZLIBNG_VERSION, ZLIBNG_VERNUM,
+           PREFIX(zlibCompileFlags)());
 }

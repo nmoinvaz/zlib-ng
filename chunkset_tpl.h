@@ -3,10 +3,11 @@
  */
 
 #include "zbuild.h"
+
 #include <stdlib.h>
 
 #if CHUNK_SIZE == 32 && defined(X86_SSSE3)
-extern uint8_t* chunkmemset_ssse3(uint8_t *out, unsigned dist, unsigned len);
+extern uint8_t *chunkmemset_ssse3(uint8_t *out, unsigned dist, unsigned len);
 #endif
 
 /* Returns the chunk size */
@@ -25,7 +26,7 @@ Z_INTERNAL uint32_t CHUNKSIZE(void) {
    without iteration, which will hopefully make the branch prediction more
    reliable. */
 #ifndef HAVE_CHUNKCOPY
-static inline uint8_t* CHUNKCOPY(uint8_t *out, uint8_t const *from, unsigned len) {
+static inline uint8_t *CHUNKCOPY(uint8_t *out, uint8_t const *from, unsigned len) {
     Assert(len > 0, "chunkcopy should never have a length 0");
     chunk_t chunk;
     int32_t align = ((len - 1) % sizeof(chunk_t)) + 1;
@@ -54,7 +55,7 @@ static inline uint8_t* CHUNKCOPY(uint8_t *out, uint8_t const *from, unsigned len
    least 258 bytes of output space available (258 being the maximum length
    output from a single token; see inflate_fast()'s assumptions below). */
 #ifndef HAVE_CHUNKUNROLL
-static inline uint8_t* CHUNKUNROLL(uint8_t *out, unsigned *dist, unsigned *len) {
+static inline uint8_t *CHUNKUNROLL(uint8_t *out, unsigned *dist, unsigned *len) {
     unsigned char const *from = out - *dist;
     chunk_t chunk;
     while (*dist < *len && *dist < sizeof(chunk_t)) {
@@ -71,29 +72,29 @@ static inline uint8_t* CHUNKUNROLL(uint8_t *out, unsigned *dist, unsigned *len) 
 #ifndef HAVE_CHUNK_MAG
 /* Loads a magazine to feed into memory of the pattern */
 static inline chunk_t GET_CHUNK_MAG(uint8_t *buf, uint32_t *chunk_rem, uint32_t dist) {
-        /* This code takes string of length dist from "from" and repeats
-         * it for as many times as can fit in a chunk_t (vector register) */
-        uint32_t cpy_dist;
-        uint32_t bytes_remaining = sizeof(chunk_t);
-        chunk_t chunk_load;
-        uint8_t *cur_chunk = (uint8_t *)&chunk_load;
-        while (bytes_remaining) {
-            cpy_dist = MIN(dist, bytes_remaining);
-            memcpy(cur_chunk, buf, cpy_dist);
-            bytes_remaining -= cpy_dist;
-            cur_chunk += cpy_dist;
-            /* This allows us to bypass an expensive integer division since we're effectively
-             * counting in this loop, anyway */
-            *chunk_rem = cpy_dist;
-        }
+    /* This code takes string of length dist from "from" and repeats
+     * it for as many times as can fit in a chunk_t (vector register) */
+    uint32_t cpy_dist;
+    uint32_t bytes_remaining = sizeof(chunk_t);
+    chunk_t chunk_load;
+    uint8_t *cur_chunk = (uint8_t *)&chunk_load;
+    while (bytes_remaining) {
+        cpy_dist = MIN(dist, bytes_remaining);
+        memcpy(cur_chunk, buf, cpy_dist);
+        bytes_remaining -= cpy_dist;
+        cur_chunk += cpy_dist;
+        /* This allows us to bypass an expensive integer division since we're effectively
+         * counting in this loop, anyway */
+        *chunk_rem = cpy_dist;
+    }
 
-        return chunk_load;
+    return chunk_load;
 }
 #endif
 
 /* Copy DIST bytes from OUT - DIST into OUT + DIST * k, for 0 <= k < LEN/DIST.
    Return OUT + LEN. */
-Z_INTERNAL uint8_t* CHUNKMEMSET(uint8_t *out, unsigned dist, unsigned len) {
+Z_INTERNAL uint8_t *CHUNKMEMSET(uint8_t *out, unsigned dist, unsigned len) {
     /* Debug performance related issues when len < sizeof(uint64_t):
        Assert(len >= sizeof(uint64_t), "chunkmemset should be called on larger chunks"); */
     Assert(dist > 0, "chunkmemset cannot have a distance 0");
@@ -123,12 +124,12 @@ Z_INTERNAL uint8_t* CHUNKMEMSET(uint8_t *out, unsigned dist, unsigned len) {
     } else
 #endif
 #ifdef HAVE_CHUNKMEMSET_4
-    if (dist == 4) {
+        if (dist == 4) {
         chunkmemset_4(from, &chunk_load);
     } else
 #endif
 #ifdef HAVE_CHUNKMEMSET_8
-    if (dist == 8) {
+        if (dist == 8) {
         chunkmemset_8(from, &chunk_load);
     } else if (dist == sizeof(chunk_t)) {
         loadchunk(from, &chunk_load);
@@ -168,7 +169,7 @@ Z_INTERNAL uint8_t* CHUNKMEMSET(uint8_t *out, unsigned dist, unsigned len) {
     return out;
 }
 
-Z_INTERNAL uint8_t* CHUNKMEMSET_SAFE(uint8_t *out, unsigned dist, unsigned len, unsigned left) {
+Z_INTERNAL uint8_t *CHUNKMEMSET_SAFE(uint8_t *out, unsigned dist, unsigned len, unsigned left) {
 #if !defined(UNALIGNED64_OK)
 #  if !defined(UNALIGNED_OK)
     static const uint32_t align_mask = 7;

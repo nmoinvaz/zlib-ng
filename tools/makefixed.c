@@ -1,8 +1,11 @@
-#include <stdio.h>
 #include "zbuild.h"
 #include "zutil.h"
+
 #include "inftrees.h"
+
 #include "inflate.h"
+
+#include <stdio.h>
 
 // Build and return state with length and distance decoding tables and index sizes set to fixed code decoding.
 void Z_INTERNAL buildfixedtables(struct inflate_state *state) {
@@ -15,10 +18,14 @@ void Z_INTERNAL buildfixedtables(struct inflate_state *state) {
 
     // literal/length table
     sym = 0;
-    while (sym < 144) state->lens[sym++] = 8;
-    while (sym < 256) state->lens[sym++] = 9;
-    while (sym < 280) state->lens[sym++] = 7;
-    while (sym < 288) state->lens[sym++] = 8;
+    while (sym < 144)
+        state->lens[sym++] = 8;
+    while (sym < 256)
+        state->lens[sym++] = 9;
+    while (sym < 280)
+        state->lens[sym++] = 7;
+    while (sym < 288)
+        state->lens[sym++] = 8;
     next = fixed;
     lenfix = next;
     bits = 9;
@@ -26,7 +33,8 @@ void Z_INTERNAL buildfixedtables(struct inflate_state *state) {
 
     // distance table
     sym = 0;
-    while (sym < 32) state->lens[sym++] = 5;
+    while (sym < 32)
+        state->lens[sym++] = 5;
     distfix = next;
     bits = 5;
     zng_inflate_table(DISTS, state->lens, 32, &(next), &(bits), state->work);
@@ -36,7 +44,6 @@ void Z_INTERNAL buildfixedtables(struct inflate_state *state) {
     state->distcode = distfix;
     state->distbits = 5;
 }
-
 
 //  Create fixed tables on the fly and write out a inffixed_tbl.h file that is #include'd above.
 //  makefixed() writes those tables to stdout, which would be piped to inffixed_tbl.h.
@@ -61,8 +68,8 @@ void makefixed(void) {
     for (;;) {
         if ((low % 7) == 0)
             printf("\n    ");
-        printf("{%u,%u,%d}", (low & 127) == 99 ? 64 : state.lencode[low].op,
-            state.lencode[low].bits, state.lencode[low].val);
+        printf("{%u,%u,%d}", (low & 127) == 99 ? 64 : state.lencode[low].op, state.lencode[low].bits,
+               state.lencode[low].val);
         if (++low == size)
             break;
         putchar(',');

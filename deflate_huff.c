@@ -5,7 +5,9 @@
  */
 
 #include "zbuild.h"
+
 #include "deflate.h"
+
 #include "deflate_p.h"
 #include "functable.h"
 
@@ -14,7 +16,7 @@
  * (It will be regenerated if this run of deflate switches away from Huffman.)
  */
 Z_INTERNAL block_state deflate_huff(deflate_state *s, int flush) {
-    int bflush = 0;         /* set if current block must be flushed */
+    int bflush = 0; /* set if current block must be flushed */
 
     for (;;) {
         /* Make sure that we have a literal to write. */
@@ -23,7 +25,7 @@ Z_INTERNAL block_state deflate_huff(deflate_state *s, int flush) {
             if (s->lookahead == 0) {
                 if (flush == Z_NO_FLUSH)
                     return need_more;
-                break;      /* flush the current block */
+                break; /* flush the current block */
             }
         }
 

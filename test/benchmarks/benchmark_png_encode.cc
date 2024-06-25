@@ -1,27 +1,27 @@
-#include <stdio.h>
+#include "benchmark_png_shared.h"
 #include <assert.h>
 #include <benchmark/benchmark.h>
-#include "benchmark_png_shared.h"
+#include <stdio.h>
 
-#define IMWIDTH 1024
+#define IMWIDTH  1024
 #define IMHEIGHT 1024
 
-class png_encode: public benchmark::Fixture {
-private:
+class png_encode : public benchmark::Fixture {
+   private:
     png_dat outpng;
 
     /* Backing this on the heap is a more realistic benchmark */
     uint8_t *input_img_buf = NULL;
 
-public:
+   public:
     /* Let's make the vanilla version have something extremely compressible */
     virtual void init_img(png_bytep img_bytes, size_t width, size_t height) {
         init_compressible(img_bytes, width * height);
     }
 
-    void SetUp(const ::benchmark::State& state) {
-        input_img_buf = (uint8_t*)malloc(IMWIDTH * IMHEIGHT * 3);
-        outpng.buf = (uint8_t*)malloc(IMWIDTH * IMHEIGHT * 3);
+    void SetUp(const ::benchmark::State &state) {
+        input_img_buf = (uint8_t *)malloc(IMWIDTH * IMHEIGHT * 3);
+        outpng.buf = (uint8_t *)malloc(IMWIDTH * IMHEIGHT * 3);
         /* Using malloc rather than zng_alloc so that we can call realloc.
          * IMWIDTH * IMHEIGHT is likely to be more than enough bytes, though,
          * given that a simple run length encoding already pretty much can

@@ -7,14 +7,12 @@
 #  include "zlib-ng.h"
 #endif
 
-#include <stdio.h>
+#include "test_shared.h"
+#include <gtest/gtest.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "test_shared.h"
-
-#include <gtest/gtest.h>
 
 TEST(deflate, tune) {
     PREFIX3(stream) c_stream;
@@ -31,7 +29,7 @@ TEST(deflate, tune) {
     err = PREFIX(deflateInit)(&c_stream, Z_BEST_COMPRESSION);
     EXPECT_EQ(err, Z_OK);
 
-    err = PREFIX(deflateTune)(&c_stream, good_length, max_lazy,nice_length, max_chain);
+    err = PREFIX(deflateTune)(&c_stream, good_length, max_lazy, nice_length, max_chain);
     EXPECT_EQ(err, Z_OK);
 
     c_stream.next_in = (z_const unsigned char *)hello;
@@ -47,7 +45,8 @@ TEST(deflate, tune) {
     for (;;) {
         c_stream.avail_out = 1;
         err = PREFIX(deflate)(&c_stream, Z_FINISH);
-        if (err == Z_STREAM_END) break;
+        if (err == Z_STREAM_END)
+            break;
         EXPECT_EQ(err, Z_OK);
     }
 

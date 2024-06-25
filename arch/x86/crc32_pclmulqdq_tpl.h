@@ -20,8 +20,8 @@
 #include "zbuild.h"
 
 #include <immintrin.h>
+#include <smmintrin.h>  // _mm_extract_epi32
 #include <wmmintrin.h>
-#include <smmintrin.h> // _mm_extract_epi32
 #ifdef X86_VPCLMULQDQ
 #  include <immintrin.h>
 #endif
@@ -33,16 +33,14 @@
 #include <assert.h>
 
 #ifdef X86_VPCLMULQDQ
-static size_t fold_16_vpclmulqdq(__m128i *xmm_crc0, __m128i *xmm_crc1,
-    __m128i *xmm_crc2, __m128i *xmm_crc3, const uint8_t *src, size_t len, __m128i init_crc,
-    int32_t first);
-static size_t fold_16_vpclmulqdq_copy(__m128i *xmm_crc0, __m128i *xmm_crc1,
-    __m128i *xmm_crc2, __m128i *xmm_crc3, uint8_t *dst, const uint8_t *src, size_t len);
+static size_t fold_16_vpclmulqdq(__m128i *xmm_crc0, __m128i *xmm_crc1, __m128i *xmm_crc2, __m128i *xmm_crc3,
+                                 const uint8_t *src, size_t len, __m128i init_crc, int32_t first);
+static size_t fold_16_vpclmulqdq_copy(__m128i *xmm_crc0, __m128i *xmm_crc1, __m128i *xmm_crc2, __m128i *xmm_crc3,
+                                      uint8_t *dst, const uint8_t *src, size_t len);
 #endif
 
 static void fold_1(__m128i *xmm_crc0, __m128i *xmm_crc1, __m128i *xmm_crc2, __m128i *xmm_crc3) {
-    const __m128i xmm_fold4 = _mm_set_epi32( 0x00000001, 0x54442bd4,
-                                             0x00000001, 0xc6e41596);
+    const __m128i xmm_fold4 = _mm_set_epi32(0x00000001, 0x54442bd4, 0x00000001, 0xc6e41596);
     __m128i x_tmp3;
     __m128 ps_crc0, ps_crc3, ps_res;
 
@@ -62,8 +60,7 @@ static void fold_1(__m128i *xmm_crc0, __m128i *xmm_crc1, __m128i *xmm_crc2, __m1
 }
 
 static void fold_2(__m128i *xmm_crc0, __m128i *xmm_crc1, __m128i *xmm_crc2, __m128i *xmm_crc3) {
-    const __m128i xmm_fold4 = _mm_set_epi32( 0x00000001, 0x54442bd4,
-                                             0x00000001, 0xc6e41596);
+    const __m128i xmm_fold4 = _mm_set_epi32(0x00000001, 0x54442bd4, 0x00000001, 0xc6e41596);
     __m128i x_tmp3, x_tmp2;
     __m128 ps_crc0, ps_crc1, ps_crc2, ps_crc3, ps_res31, ps_res20;
 
@@ -91,8 +88,7 @@ static void fold_2(__m128i *xmm_crc0, __m128i *xmm_crc1, __m128i *xmm_crc2, __m1
 }
 
 static void fold_3(__m128i *xmm_crc0, __m128i *xmm_crc1, __m128i *xmm_crc2, __m128i *xmm_crc3) {
-    const __m128i xmm_fold4 = _mm_set_epi32( 0x00000001, 0x54442bd4,
-                                             0x00000001, 0xc6e41596);
+    const __m128i xmm_fold4 = _mm_set_epi32(0x00000001, 0x54442bd4, 0x00000001, 0xc6e41596);
     __m128i x_tmp3;
     __m128 ps_crc0, ps_crc1, ps_crc2, ps_crc3, ps_res32, ps_res21, ps_res10;
 
@@ -126,8 +122,7 @@ static void fold_3(__m128i *xmm_crc0, __m128i *xmm_crc1, __m128i *xmm_crc2, __m1
 }
 
 static void fold_4(__m128i *xmm_crc0, __m128i *xmm_crc1, __m128i *xmm_crc2, __m128i *xmm_crc3) {
-    const __m128i xmm_fold4 = _mm_set_epi32( 0x00000001, 0x54442bd4,
-                                             0x00000001, 0xc6e41596);
+    const __m128i xmm_fold4 = _mm_set_epi32(0x00000001, 0x54442bd4, 0x00000001, 0xc6e41596);
     __m128i x_tmp0, x_tmp1, x_tmp2, x_tmp3;
     __m128 ps_crc0, ps_crc1, ps_crc2, ps_crc3;
     __m128 ps_t0, ps_t1, ps_t2, ps_t3;
@@ -186,10 +181,9 @@ static const unsigned ALIGNED_(32) pshufb_shf_table[60] = {
     0x0201008f, 0x06050403, 0x0a090807, 0x0e0d0c0b  /* shl  1 (16 -15)/shr15*/
 };
 
-static void partial_fold(const size_t len, __m128i *xmm_crc0, __m128i *xmm_crc1, __m128i *xmm_crc2,
-                         __m128i *xmm_crc3, __m128i *xmm_crc_part) {
-    const __m128i xmm_fold4 = _mm_set_epi32( 0x00000001, 0x54442bd4,
-                                             0x00000001, 0xc6e41596);
+static void partial_fold(const size_t len, __m128i *xmm_crc0, __m128i *xmm_crc1, __m128i *xmm_crc2, __m128i *xmm_crc3,
+                         __m128i *xmm_crc_part) {
+    const __m128i xmm_fold4 = _mm_set_epi32(0x00000001, 0x54442bd4, 0x00000001, 0xc6e41596);
     const __m128i xmm_mask3 = _mm_set1_epi32((int32_t)0x80808080);
 
     __m128i xmm_shl, xmm_shr, xmm_tmp1, xmm_tmp2, xmm_tmp3;
@@ -238,8 +232,8 @@ static inline void crc32_fold_load(__m128i *fold, __m128i *fold0, __m128i *fold1
     *fold3 = _mm_load_si128(fold + 3);
 }
 
-static inline void crc32_fold_save(__m128i *fold, const __m128i *fold0, const __m128i *fold1,
-                                   const __m128i *fold2, const __m128i *fold3) {
+static inline void crc32_fold_save(__m128i *fold, const __m128i *fold0, const __m128i *fold1, const __m128i *fold2,
+                                   const __m128i *fold3) {
     _mm_storeu_si128(fold + 0, *fold0);
     _mm_storeu_si128(fold + 1, *fold1);
     _mm_storeu_si128(fold + 2, *fold2);
@@ -253,10 +247,14 @@ Z_INTERNAL uint32_t CRC32_FOLD_RESET(crc32_fold *crc) {
     return 0;
 }
 
-#define ONCE(op)                 if (first) { first = 0; op; }
-#define XOR_INITIAL128(where)    ONCE(where = _mm_xor_si128(where, xmm_initial))
+#define ONCE(op)   \
+    if (first) {   \
+        first = 0; \
+        op;        \
+    }
+#define XOR_INITIAL128(where) ONCE(where = _mm_xor_si128(where, xmm_initial))
 #ifdef X86_VPCLMULQDQ
-#  define XOR_INITIAL512(where)  ONCE(where = _mm512_xor_si512(where, zmm_initial))
+#  define XOR_INITIAL512(where) ONCE(where = _mm512_xor_si512(where, zmm_initial))
 #endif
 
 #ifdef X86_VPCLMULQDQ
@@ -278,16 +276,12 @@ static const unsigned ALIGNED_(16) crc_k[] = {
     0xdb710640, 0x00000001  /* rk8 */
 };
 
-static const unsigned ALIGNED_(16) crc_mask[4] = {
-    0xFFFFFFFF, 0xFFFFFFFF, 0x00000000, 0x00000000
-};
+static const unsigned ALIGNED_(16) crc_mask[4] = {0xFFFFFFFF, 0xFFFFFFFF, 0x00000000, 0x00000000};
 
-static const unsigned ALIGNED_(16) crc_mask2[4] = {
-    0x00000000, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF
-};
+static const unsigned ALIGNED_(16) crc_mask2[4] = {0x00000000, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF};
 
 Z_INTERNAL uint32_t CRC32_FOLD_FINAL(crc32_fold *crc) {
-    const __m128i xmm_mask  = _mm_load_si128((__m128i *)crc_mask);
+    const __m128i xmm_mask = _mm_load_si128((__m128i *)crc_mask);
     const __m128i xmm_mask2 = _mm_load_si128((__m128i *)crc_mask2);
     __m128i xmm_crc0, xmm_crc1, xmm_crc2, xmm_crc3;
     __m128i x_tmp0, x_tmp1, x_tmp2, crc_fold;

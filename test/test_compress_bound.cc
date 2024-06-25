@@ -7,19 +7,17 @@
 #  include "zlib-ng.h"
 #endif
 
-#include <stdio.h>
+#include "test_shared.h"
+#include <gtest/gtest.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <gtest/gtest.h>
-
-#include "test_shared.h"
 
 #define MAX_LENGTH (32)
 
 class compress_bound_variant : public testing::TestWithParam<int32_t> {
-public:
+   public:
     void estimate(int32_t level) {
         z_size_t estimate_len = 0;
         uint8_t *uncompressed = NULL;
@@ -42,9 +40,8 @@ public:
 
             err = PREFIX(compress2)(dest, &dest_len, uncompressed, i, level);
             EXPECT_EQ(err, Z_OK);
-            EXPECT_GE(estimate_len, dest_len) <<
-                "level: " << level << "\n" <<
-                "length: " << i;
+            EXPECT_GE(estimate_len, dest_len) << "level: " << level << "\n"
+                                              << "length: " << i;
         }
 
         free(uncompressed);
@@ -55,5 +52,4 @@ TEST_P(compress_bound_variant, estimate) {
     estimate(GetParam());
 }
 
-INSTANTIATE_TEST_SUITE_P(compress_bound, compress_bound_variant,
-    testing::Values(0, 1, 2, 3, 4, 5, 6, 7, 8, 9));
+INSTANTIATE_TEST_SUITE_P(compress_bound, compress_bound_variant, testing::Values(0, 1, 2, 3, 4, 5, 6, 7, 8, 9));

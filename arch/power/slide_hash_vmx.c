@@ -4,7 +4,7 @@
  */
 #ifdef PPC_VMX
 
-#define SLIDE_PPC slide_hash_vmx
-#include "slide_ppc_tpl.h"
+#  define SLIDE_PPC slide_hash_vmx
+#  include "slide_ppc_tpl.h"
 
 #endif /* PPC_VMX */

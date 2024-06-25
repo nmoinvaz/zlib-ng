@@ -7,14 +7,12 @@
 #  include "zlib-ng.h"
 #endif
 
-#include <stdio.h>
+#include "test_shared.h"
+#include <gtest/gtest.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <gtest/gtest.h>
-
-#include "test_shared.h"
 
 #define MAX_LENGTH (32)
 
@@ -34,7 +32,7 @@ static const deflate_bound_test tests[] = {
 };
 
 class deflate_bound_variant : public testing::TestWithParam<deflate_bound_test> {
-public:
+   public:
     void estimate(deflate_bound_test param) {
         PREFIX3(stream) c_stream;
         int estimate_len = 0;
@@ -57,8 +55,8 @@ public:
             if (!param.after_init)
                 estimate_len = PREFIX(deflateBound)(&c_stream, i);
 
-            err = PREFIX(deflateInit2)(&c_stream, param.level, Z_DEFLATED,
-                param.window_size, param.mem_level, Z_DEFAULT_STRATEGY);
+            err = PREFIX(deflateInit2)(&c_stream, param.level, Z_DEFLATED, param.window_size, param.mem_level,
+                                       Z_DEFAULT_STRATEGY);
             EXPECT_EQ(err, Z_OK);
 
             /* calculate actual output length and update structure */
@@ -73,12 +71,11 @@ public:
 
                 /* do the compression */
                 err = PREFIX(deflate)(&c_stream, Z_FINISH);
-                EXPECT_EQ(err, Z_STREAM_END) <<
-                    "level: " << param.level << "\n" <<
-                    "window_size: " << param.window_size << "\n" <<
-                    "mem_level: " << param.mem_level << "\n" <<
-                    "after_init: " << param.after_init << "\n" <<
-                    "length: " << i;
+                EXPECT_EQ(err, Z_STREAM_END) << "level: " << param.level << "\n"
+                                             << "window_size: " << param.window_size << "\n"
+                                             << "mem_level: " << param.mem_level << "\n"
+                                             << "after_init: " << param.after_init << "\n"
+                                             << "length: " << i;
 
                 free(out_buf);
                 out_buf = NULL;

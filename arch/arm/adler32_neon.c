@@ -6,20 +6,16 @@
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 #ifdef ARM_NEON
-#include "neon_intrins.h"
-#include "zbuild.h"
-#include "adler32_p.h"
+#  include "zbuild.h"
+
+#  include "adler32_p.h"
+#  include "neon_intrins.h"
 
 static void NEON_accum32(uint32_t *s, const uint8_t *buf, size_t len) {
-    static const uint16_t ALIGNED_(16) taps[64] = {
-        64, 63, 62, 61, 60, 59, 58, 57,
-        56, 55, 54, 53, 52, 51, 50, 49,
-        48, 47, 46, 45, 44, 43, 42, 41,
-        40, 39, 38, 37, 36, 35, 34, 33,
-        32, 31, 30, 29, 28, 27, 26, 25,
-        24, 23, 22, 21, 20, 19, 18, 17,
-        16, 15, 14, 13, 12, 11, 10, 9,
-        8, 7, 6, 5, 4, 3, 2, 1 };
+    static const uint16_t ALIGNED_(16)
+        taps[64] = {64, 63, 62, 61, 60, 59, 58, 57, 56, 55, 54, 53, 52, 51, 50, 49, 48, 47, 46, 45, 44, 43,
+                    42, 41, 40, 39, 38, 37, 36, 35, 34, 33, 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21,
+                    20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9,  8,  7,  6,  5,  4,  3,  2,  1};
 
     uint32x4_t adacc = vdupq_n_u32(0);
     uint32x4_t s2acc = vdupq_n_u32(0);

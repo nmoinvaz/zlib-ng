@@ -22,12 +22,13 @@
    Z_DATA_ERROR if the input data was corrupted, including if the input data is
    an incomplete zlib stream.
 */
-int Z_EXPORT PREFIX(uncompress2)(unsigned char *dest, z_uintmax_t *destLen, const unsigned char *source, z_uintmax_t *sourceLen) {
+int Z_EXPORT PREFIX(uncompress2)(unsigned char *dest, z_uintmax_t *destLen, const unsigned char *source,
+                                 z_uintmax_t *sourceLen) {
     PREFIX3(stream) stream;
     int err;
     const unsigned int max = (unsigned int)-1;
     z_uintmax_t len, left;
-    unsigned char buf[1];    /* for detection of incomplete stream when *destLen == 0 */
+    unsigned char buf[1]; /* for detection of incomplete stream when *destLen == 0 */
 
     len = *sourceLen;
     if (*destLen) {
@@ -45,7 +46,8 @@ int Z_EXPORT PREFIX(uncompress2)(unsigned char *dest, z_uintmax_t *destLen, cons
     stream.opaque = NULL;
 
     err = PREFIX(inflateInit)(&stream);
-    if (err != Z_OK) return err;
+    if (err != Z_OK)
+        return err;
 
     stream.next_out = dest;
     stream.avail_out = 0;
@@ -69,12 +71,13 @@ int Z_EXPORT PREFIX(uncompress2)(unsigned char *dest, z_uintmax_t *destLen, cons
         left = 1;
 
     PREFIX(inflateEnd)(&stream);
-    return err == Z_STREAM_END ? Z_OK :
-           err == Z_NEED_DICT ? Z_DATA_ERROR  :
-           err == Z_BUF_ERROR && left + stream.avail_out ? Z_DATA_ERROR :
-           err;
+    return err == Z_STREAM_END                          ? Z_OK
+        : err == Z_NEED_DICT                            ? Z_DATA_ERROR
+        : err == Z_BUF_ERROR && left + stream.avail_out ? Z_DATA_ERROR
+                                                        : err;
 }
 
-int Z_EXPORT PREFIX(uncompress)(unsigned char *dest, z_uintmax_t *destLen, const unsigned char *source, z_uintmax_t sourceLen) {
+int Z_EXPORT PREFIX(uncompress)(unsigned char *dest, z_uintmax_t *destLen, const unsigned char *source,
+                                z_uintmax_t sourceLen) {
     return PREFIX(uncompress2)(dest, destLen, source, &sourceLen);
 }

@@ -8,21 +8,21 @@
 
 #ifdef X86_SSE2
 uint32_t chunksize_sse2(void);
-uint8_t* chunkmemset_safe_sse2(uint8_t *out, unsigned dist, unsigned len, unsigned left);
+uint8_t *chunkmemset_safe_sse2(uint8_t *out, unsigned dist, unsigned len, unsigned left);
 
 #  ifdef HAVE_BUILTIN_CTZ
-    uint32_t compare256_sse2(const uint8_t *src0, const uint8_t *src1);
-    uint32_t longest_match_sse2(deflate_state *const s, Pos cur_match);
-    uint32_t longest_match_slow_sse2(deflate_state *const s, Pos cur_match);
-    void slide_hash_sse2(deflate_state *s);
+uint32_t compare256_sse2(const uint8_t *src0, const uint8_t *src1);
+uint32_t longest_match_sse2(deflate_state *const s, Pos cur_match);
+uint32_t longest_match_slow_sse2(deflate_state *const s, Pos cur_match);
+void slide_hash_sse2(deflate_state *s);
 #  endif
-    void inflate_fast_sse2(PREFIX3(stream)* strm, uint32_t start);
+void inflate_fast_sse2(PREFIX3(stream) * strm, uint32_t start);
 #endif
 
 #ifdef X86_SSSE3
 uint32_t adler32_ssse3(uint32_t adler, const uint8_t *buf, size_t len);
-uint8_t* chunkmemset_safe_ssse3(uint8_t *out, unsigned dist, unsigned len, unsigned left);
-void inflate_fast_ssse3(PREFIX3(stream) *strm, uint32_t start);
+uint8_t *chunkmemset_safe_ssse3(uint8_t *out, unsigned dist, unsigned len, unsigned left);
+void inflate_fast_ssse3(PREFIX3(stream) * strm, uint32_t start);
 #endif
 
 #ifdef X86_SSE42
@@ -33,15 +33,15 @@ uint32_t adler32_fold_copy_sse42(uint32_t adler, uint8_t *dst, const uint8_t *sr
 uint32_t adler32_avx2(uint32_t adler, const uint8_t *buf, size_t len);
 uint32_t adler32_fold_copy_avx2(uint32_t adler, uint8_t *dst, const uint8_t *src, size_t len);
 uint32_t chunksize_avx2(void);
-uint8_t* chunkmemset_safe_avx2(uint8_t *out, unsigned dist, unsigned len, unsigned left);
+uint8_t *chunkmemset_safe_avx2(uint8_t *out, unsigned dist, unsigned len, unsigned left);
 
 #  ifdef HAVE_BUILTIN_CTZ
-    uint32_t compare256_avx2(const uint8_t *src0, const uint8_t *src1);
-    uint32_t longest_match_avx2(deflate_state *const s, Pos cur_match);
-    uint32_t longest_match_slow_avx2(deflate_state *const s, Pos cur_match);
-    void slide_hash_avx2(deflate_state *s);
+uint32_t compare256_avx2(const uint8_t *src0, const uint8_t *src1);
+uint32_t longest_match_avx2(deflate_state *const s, Pos cur_match);
+uint32_t longest_match_slow_avx2(deflate_state *const s, Pos cur_match);
+void slide_hash_avx2(deflate_state *s);
 #  endif
-    void inflate_fast_avx2(PREFIX3(stream)* strm, uint32_t start);
+void inflate_fast_avx2(PREFIX3(stream) * strm, uint32_t start);
 #endif
 #ifdef X86_AVX512
 uint32_t adler32_avx512(uint32_t adler, const uint8_t *buf, size_t len);
@@ -54,19 +54,18 @@ uint32_t adler32_fold_copy_avx512_vnni(uint32_t adler, uint8_t *dst, const uint8
 
 #ifdef X86_PCLMULQDQ_CRC
 uint32_t crc32_fold_pclmulqdq_reset(crc32_fold *crc);
-void     crc32_fold_pclmulqdq_copy(crc32_fold *crc, uint8_t *dst, const uint8_t *src, size_t len);
-void     crc32_fold_pclmulqdq(crc32_fold *crc, const uint8_t *src, size_t len, uint32_t init_crc);
+void crc32_fold_pclmulqdq_copy(crc32_fold *crc, uint8_t *dst, const uint8_t *src, size_t len);
+void crc32_fold_pclmulqdq(crc32_fold *crc, const uint8_t *src, size_t len, uint32_t init_crc);
 uint32_t crc32_fold_pclmulqdq_final(crc32_fold *crc);
 uint32_t crc32_pclmulqdq(uint32_t crc32, const uint8_t *buf, size_t len);
 #endif
 #ifdef X86_VPCLMULQDQ_CRC
 uint32_t crc32_fold_vpclmulqdq_reset(crc32_fold *crc);
-void     crc32_fold_vpclmulqdq_copy(crc32_fold *crc, uint8_t *dst, const uint8_t *src, size_t len);
-void     crc32_fold_vpclmulqdq(crc32_fold *crc, const uint8_t *src, size_t len, uint32_t init_crc);
+void crc32_fold_vpclmulqdq_copy(crc32_fold *crc, uint8_t *dst, const uint8_t *src, size_t len);
+void crc32_fold_vpclmulqdq(crc32_fold *crc, const uint8_t *src, size_t len, uint32_t init_crc);
 uint32_t crc32_fold_vpclmulqdq_final(crc32_fold *crc);
 uint32_t crc32_vpclmulqdq(uint32_t crc32, const uint8_t *buf, size_t len);
 #endif
-
 
 #ifdef DISABLE_RUNTIME_CPU_DETECTION
 // X86 - SSE2
@@ -87,7 +86,7 @@ uint32_t crc32_vpclmulqdq(uint32_t crc32, const uint8_t *buf, size_t len);
 #      undef native_longest_match_slow
 #      define native_longest_match_slow longest_match_slow_sse2
 #    endif
-#endif
+#  endif
 // X86 - SSSE3
 #  if defined(X86_SSSE3) && defined(__SSSE3__)
 #    undef native_adler32
@@ -104,18 +103,18 @@ uint32_t crc32_vpclmulqdq(uint32_t crc32, const uint8_t *buf, size_t len);
 #  endif
 
 // X86 - PCLMUL
-#if defined(X86_PCLMULQDQ_CRC) && defined(__PCLMUL__)
-#  undef native_crc32
-#  define native_crc32 crc32_pclmulqdq
-#  undef native_crc32_fold
-#  define native_crc32_fold crc32_fold_pclmulqdq
-#  undef native_crc32_fold_copy
-#  define native_crc32_fold_copy crc32_fold_pclmulqdq_copy
-#  undef native_crc32_fold_final
-#  define native_crc32_fold_final crc32_fold_pclmulqdq_final
-#  undef native_crc32_fold_reset
-#  define native_crc32_fold_reset crc32_fold_pclmulqdq_reset
-#endif
+#  if defined(X86_PCLMULQDQ_CRC) && defined(__PCLMUL__)
+#    undef native_crc32
+#    define native_crc32 crc32_pclmulqdq
+#    undef native_crc32_fold
+#    define native_crc32_fold crc32_fold_pclmulqdq
+#    undef native_crc32_fold_copy
+#    define native_crc32_fold_copy crc32_fold_pclmulqdq_copy
+#    undef native_crc32_fold_final
+#    define native_crc32_fold_final crc32_fold_pclmulqdq_final
+#    undef native_crc32_fold_reset
+#    define native_crc32_fold_reset crc32_fold_pclmulqdq_reset
+#  endif
 // X86 - AVX
 #  if defined(X86_AVX2) && defined(__AVX2__)
 #    undef native_adler32
@@ -141,7 +140,8 @@ uint32_t crc32_vpclmulqdq(uint32_t crc32, const uint8_t *buf, size_t len);
 #  endif
 
 // X86 - AVX512 (F,DQ,BW,Vl)
-#  if defined(X86_AVX512) && defined(__AVX512F__) && defined(__AVX512DQ__) && defined(__AVX512BW__) && defined(__AVX512VL__)
+#  if defined(X86_AVX512) && defined(__AVX512F__) && defined(__AVX512DQ__) && defined(__AVX512BW__) && \
+      defined(__AVX512VL__)
 #    undef native_adler32
 #    define native_adler32 adler32_avx512
 #    undef native_adler32_fold_copy

@@ -7,13 +7,11 @@
 #  include "zlib-ng.h"
 #endif
 
+#include "test_shared.h"
+#include <gtest/gtest.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "test_shared.h"
-
-#include <gtest/gtest.h>
 
 TEST(deflate, hash_head_0) {
     PREFIX3(stream) strm;

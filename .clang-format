@@ -1,0 +1,42 @@
+---
+BasedOnStyle: Google
+
+AlignConsecutiveMacros: AcrossEmptyLines
+AlignOperands: DontAlign
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+ColumnLimit: 120
+DerivePointerAlignment: true
+IndentPPDirectives: AfterHash
+IndentWidth: 4
+PPIndentWidth: 2
+IncludeCategories:
+  # "zbuild.h" is on top
+  - Regex:           '^"zbuild.h"$'
+    Priority:        -10
+    CaseSensitive:   false
+  # "zutil.h" is on top
+  - Regex:           '^"zutil.h"$'
+    Priority:        -10
+    CaseSensitive:   false
+  # "zutil_p.h" is on top
+  - Regex:           '^"zutil_p.h"$'
+    Priority:        -9
+    CaseSensitive:   false
+  # "deflate.h" is on top
+  - Regex:           '^"deflate.h"$'
+    Priority:        -9
+    CaseSensitive:   false
+  # "inftrees.h" is on top
+  - Regex:           '^"inftrees.h"$'
+    Priority:        -9
+    CaseSensitive:   false
+  # "inflate.h" is on top
+  - Regex:           '^"inflate.h"$'
+    Priority:        -8
+    CaseSensitive:   false
+  # Google test framework includes
+  - Regex:           '^"benchmark/'
+    Priority:        10
+    CaseSensitive:   true

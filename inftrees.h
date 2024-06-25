@@ -25,9 +25,9 @@
    of a literal, the base length or distance, or the offset from
    the current table to the next table.  Each entry is four bytes. */
 typedef struct {
-    unsigned char op;         /* operation, extra bits, table bits */
-    unsigned char bits;       /* bits in this part of the code */
-    uint16_t val;             /* offset in table or code value */
+    unsigned char op;   /* operation, extra bits, table bits */
+    unsigned char bits; /* bits in this part of the code */
+    uint16_t val;       /* offset in table or code value */
 } code;
 
 /* op values as set by inflate_table():
@@ -49,18 +49,14 @@ typedef struct {
    inflate_table() calls in inflate.c and infback.c.  If the root table size is
    changed, then these maximum sizes would be need to be recalculated and
    updated. */
-#define ENOUGH_LENS 1332
+#define ENOUGH_LENS  1332
 #define ENOUGH_DISTS 592
-#define ENOUGH (ENOUGH_LENS+ENOUGH_DISTS)
+#define ENOUGH       (ENOUGH_LENS + ENOUGH_DISTS)
 
 /* Type of code to build for inflate_table() */
-typedef enum {
-    CODES,
-    LENS,
-    DISTS
-} codetype;
+typedef enum { CODES, LENS, DISTS } codetype;
 
-int Z_INTERNAL zng_inflate_table (codetype type, uint16_t *lens, unsigned codes,
-                                  code * *table, unsigned *bits, uint16_t *work);
+int Z_INTERNAL zng_inflate_table(codetype type, uint16_t *lens, unsigned codes, code **table, unsigned *bits,
+                                 uint16_t *work);
 
 #endif /* INFTREES_H_ */

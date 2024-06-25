@@ -7,14 +7,12 @@
 #  include "zlib-ng.h"
 #endif
 
-#include <stdio.h>
+#include "test_shared.h"
+#include <gtest/gtest.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <gtest/gtest.h>
-
-#include "test_shared.h"
 
 #define TESTFILE "foo.gz"
 
@@ -53,9 +51,9 @@ TEST(gzip, readwrite) {
     ASSERT_TRUE(file != NULL);
 
     /* Read uncompressed data - hello, hello! string twice */
-    strcpy((char*)uncompr, "garbages");
+    strcpy((char *)uncompr, "garbages");
     EXPECT_EQ(PREFIX(gzread)(file, uncompr, (unsigned)uncompr_len), (int)(hello_len + hello_len));
-    EXPECT_STREQ((char*)uncompr, hello);
+    EXPECT_STREQ((char *)uncompr, hello);
 
     /* Check position at the end of the gz file */
     EXPECT_EQ(PREFIX(gzeof)(file), 1);
@@ -67,10 +65,10 @@ TEST(gzip, readwrite) {
     EXPECT_EQ(PREFIX(gzgetc)(file), ' ');
     EXPECT_EQ(PREFIX(gzungetc)(' ', file), ' ');
     /* Read first hello, hello! string with gzgets */
-    strcpy((char*)uncompr, "garbages");
-    PREFIX(gzgets)(file, (char*)uncompr, (int)uncompr_len);
-    EXPECT_EQ(strlen((char*)uncompr), 7UL); /* " hello!" */
-    EXPECT_STREQ((char*)uncompr, hello + 6);
+    strcpy((char *)uncompr, "garbages");
+    PREFIX(gzgets)(file, (char *)uncompr, (int)uncompr_len);
+    EXPECT_EQ(strlen((char *)uncompr), 7UL); /* " hello!" */
+    EXPECT_STREQ((char *)uncompr, hello + 6);
 
     /* Seek to second hello, hello! string */
     pos = PREFIX(gzseek)(file, 14L, SEEK_SET);
@@ -80,7 +78,7 @@ TEST(gzip, readwrite) {
     /* Check position not at end of file */
     EXPECT_EQ(PREFIX(gzeof)(file), 0);
     /* Read first hello, hello! string with gzfread */
-    strcpy((char*)uncompr, "garbages");
+    strcpy((char *)uncompr, "garbages");
     read = PREFIX(gzfread)(uncompr, uncompr_len, 1, file);
     EXPECT_STREQ((const char *)uncompr, hello);
 

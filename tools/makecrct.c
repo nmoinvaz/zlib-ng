@@ -1,12 +1,13 @@
 /* makecrct.c -- output crc32 tables
  * Copyright (C) 1995-2022 Mark Adler
  * For conditions of distribution and use, see copyright notice in zlib.h
-*/
+ */
 
-#include <stdio.h>
-#include <inttypes.h>
 #include "zbuild.h"
 #include "zutil.h"
+
+#include <inttypes.h>
+#include <stdio.h>
 
 /*
     The crc32 table header file contains tables for both 32-bit and 64-bit
@@ -73,7 +74,7 @@ static void make_crc_table(void) {
     }
 
     /* initialize the x^2^n mod p(x) table */
-    p = (uint32_t)1 << 30;         /* x^1 */
+    p = (uint32_t)1 << 30; /* x^1 */
     x2n_table[0] = p;
     for (n = 1; n < 32; n++)
         x2n_table[n] = p = multmodp(p, p);
@@ -105,9 +106,8 @@ static void write_table(const uint32_t *table, int k) {
     int n;
 
     for (n = 0; n < k; n++)
-        printf("%s0x%08" PRIx32 "%s", n == 0 || n % 5 ? "" : "    ",
-                (uint32_t)(table[n]),
-                n == k - 1 ? "" : (n % 5 == 4 ? ",\n" : ", "));
+        printf("%s0x%08" PRIx32 "%s", n == 0 || n % 5 ? "" : "    ", (uint32_t)(table[n]),
+               n == k - 1 ? "" : (n % 5 == 4 ? ",\n" : ", "));
 }
 
 /*
@@ -118,9 +118,8 @@ static void write_table32hi(const z_word_t *table, int k) {
     int n;
 
     for (n = 0; n < k; n++)
-        printf("%s0x%08" PRIx32 "%s", n == 0 || n % 5 ? "" : "    ",
-                (uint32_t)(table[n] >> 32),
-                n == k - 1 ? "" : (n % 5 == 4 ? ",\n" : ", "));
+        printf("%s0x%08" PRIx32 "%s", n == 0 || n % 5 ? "" : "    ", (uint32_t)(table[n] >> 32),
+               n == k - 1 ? "" : (n % 5 == 4 ? ",\n" : ", "));
 }
 
 /*
@@ -134,9 +133,8 @@ static void write_table64(const z_word_t *table, int k) {
     int n;
 
     for (n = 0; n < k; n++)
-        printf("%s0x%016" PRIx64 "%s", n == 0 || n % 3 ? "" : "    ",
-                (uint64_t)(table[n]),
-                n == k - 1 ? "" : (n % 3 == 2 ? ",\n" : ", "));
+        printf("%s0x%016" PRIx64 "%s", n == 0 || n % 3 ? "" : "    ", (uint64_t)(table[n]),
+               n == k - 1 ? "" : (n % 3 == 2 ? ",\n" : ", "));
 }
 
 static void print_crc_table(void) {

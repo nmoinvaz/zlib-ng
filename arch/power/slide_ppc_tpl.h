@@ -3,9 +3,11 @@
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 
-#include <altivec.h>
 #include "zbuild.h"
+
 #include "deflate.h"
+
+#include <altivec.h>
 
 static inline void slide_hash_chain(Pos *table, uint32_t entries, uint16_t wsize) {
     const vector unsigned short vmx_wsize = vec_splats(wsize);
@@ -20,7 +22,7 @@ static inline void slide_hash_chain(Pos *table, uint32_t entries, uint16_t wsize
 
         p += 8;
         entries -= 8;
-   } while (entries > 0);
+    } while (entries > 0);
 }
 
 void Z_INTERNAL SLIDE_PPC(deflate_state *s) {

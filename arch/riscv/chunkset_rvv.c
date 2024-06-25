@@ -3,8 +3,9 @@
  * Contributed by Alex Chiang <alex.chiang@sifive.com>
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
-#include <riscv_vector.h>
 #include "zbuild.h"
+
+#include <riscv_vector.h>
 
 /*
  * RISC-V glibc would enable RVV optimized memcpy at runtime by IFUNC,
@@ -16,18 +17,19 @@
 #define HAVE_CHUNKMEMSET_4
 #define HAVE_CHUNKMEMSET_8
 
-#define CHUNK_MEMSET_RVV_IMPL(elen)                                     \
-do {                                                                    \
-    size_t vl, len = CHUNK_SIZE / sizeof(uint##elen##_t);               \
-    uint##elen##_t val = *(uint##elen##_t*)from;                        \
-    uint##elen##_t* chunk_p = (uint##elen##_t*)chunk;                   \
-    do {                                                                \
-        vl = __riscv_vsetvl_e##elen##m4(len);                           \
-        vuint##elen##m4_t v_val = __riscv_vmv_v_x_u##elen##m4(val, vl); \
-        __riscv_vse##elen##_v_u##elen##m4(chunk_p, v_val, vl);          \
-        len -= vl; chunk_p += vl;                                       \
-    } while (len > 0);                                                  \
-} while (0)
+#define CHUNK_MEMSET_RVV_IMPL(elen)                                         \
+    do {                                                                    \
+        size_t vl, len = CHUNK_SIZE / sizeof(uint##elen##_t);               \
+        uint##elen##_t val = *(uint##elen##_t *)from;                       \
+        uint##elen##_t *chunk_p = (uint##elen##_t *)chunk;                  \
+        do {                                                                \
+            vl = __riscv_vsetvl_e##elen##m4(len);                           \
+            vuint##elen##m4_t v_val = __riscv_vmv_v_x_u##elen##m4(val, vl); \
+            __riscv_vse##elen##_v_u##elen##m4(chunk_p, v_val, vl);          \
+            len -= vl;                                                      \
+            chunk_p += vl;                                                  \
+        } while (len > 0);                                                  \
+    } while (0)
 
 /* We don't have a 32-byte datatype for RISC-V arch. */
 typedef struct chunk_s {
@@ -69,22 +71,22 @@ static inline void storechunk(uint8_t *out, chunk_t *chunk) {
  * We load/store a single chunk once in the `CHUNKCOPY`.
  * However, RISC-V glibc would enable RVV optimized memcpy at runtime by IFUNC,
  * such that, we prefer copy large memory size once to make good use of the the RVV advance.
- * 
+ *
  * To be aligned to the other platforms, we didn't modify `CHUNKCOPY` method a lot,
  * but we still copy as much memory as possible for some conditions.
- * 
+ *
  * case 1: out - from >= len (no overlap)
  *         We can use memcpy to copy `len` size once
  *         because the memory layout would be the same.
  *
  * case 2: overlap
- *         We copy N chunks using memcpy at once, aiming to achieve our goal: 
+ *         We copy N chunks using memcpy at once, aiming to achieve our goal:
  *         to copy as much memory as possible.
- * 
+ *
  *         After using a single memcpy to copy N chunks, we have to use series of
  *         loadchunk and storechunk to ensure the result is correct.
  */
-static inline uint8_t* CHUNKCOPY(uint8_t *out, uint8_t const *from, unsigned len) {
+static inline uint8_t *CHUNKCOPY(uint8_t *out, uint8_t const *from, unsigned len) {
     Assert(len > 0, "chunkcopy should never have a length 0");
     int32_t align = ((len - 1) % sizeof(chunk_t)) + 1;
     memcpy(out, from, sizeof(chunk_t));
@@ -116,6 +118,6 @@ static inline uint8_t* CHUNKCOPY(uint8_t *out, uint8_t const *from, unsigned len
 
 #include "chunkset_tpl.h"
 
-#define INFLATE_FAST     inflate_fast_rvv
+#define INFLATE_FAST inflate_fast_rvv
 
 #include "inffast_tpl.h"

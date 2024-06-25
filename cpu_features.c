@@ -4,7 +4,9 @@
  */
 
 #include "zbuild.h"
+
 #include "cpu_features.h"
+
 #include <string.h>
 
 Z_INTERNAL void cpu_check_features(struct cpu_features *features) {

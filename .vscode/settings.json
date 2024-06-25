@@ -1,0 +1,21 @@
+{
+    "files.associations": {
+        "bitset": "cpp",
+        "locale": "cpp",
+        "memory": "cpp",
+        "optional": "cpp",
+        "system_error": "cpp",
+        "thread": "cpp",
+        "type_traits": "cpp",
+        "variant": "cpp",
+        "vector": "cpp",
+        "xstring": "cpp",
+        "*.in": "c",
+        "algorithm": "c",
+        "xiosbase": "c",
+        "xlocale": "c",
+        "xutility": "c",
+        "regex": "c",
+        "deflate.h": "c"
+    }
+}

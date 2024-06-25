@@ -4,22 +4,19 @@
  */
 
 #ifdef COPY
-static size_t fold_16_vpclmulqdq_copy(__m128i *xmm_crc0, __m128i *xmm_crc1,
-    __m128i *xmm_crc2, __m128i *xmm_crc3, uint8_t *dst, const uint8_t *src, size_t len) {
+static size_t fold_16_vpclmulqdq_copy(__m128i *xmm_crc0, __m128i *xmm_crc1, __m128i *xmm_crc2, __m128i *xmm_crc3,
+                                      uint8_t *dst, const uint8_t *src, size_t len) {
 #else
-static size_t fold_16_vpclmulqdq(__m128i *xmm_crc0, __m128i *xmm_crc1,
-    __m128i *xmm_crc2, __m128i *xmm_crc3, const uint8_t *src, size_t len,
-    __m128i init_crc, int32_t first) {
+static size_t fold_16_vpclmulqdq(__m128i *xmm_crc0, __m128i *xmm_crc1, __m128i *xmm_crc2, __m128i *xmm_crc3,
+                                 const uint8_t *src, size_t len, __m128i init_crc, int32_t first) {
     __m512i zmm_initial = _mm512_zextsi128_si512(init_crc);
 #endif
     __m512i zmm_t0, zmm_t1, zmm_t2, zmm_t3;
     __m512i zmm_crc0, zmm_crc1, zmm_crc2, zmm_crc3;
     __m512i z0, z1, z2, z3;
     size_t len_tmp = len;
-    const __m512i zmm_fold4 = _mm512_set4_epi32(
-        0x00000001, 0x54442bd4, 0x00000001, 0xc6e41596);
-    const __m512i zmm_fold16 = _mm512_set4_epi32(
-        0x00000001, 0x1542778a, 0x00000001, 0x322d1430);
+    const __m512i zmm_fold4 = _mm512_set4_epi32(0x00000001, 0x54442bd4, 0x00000001, 0xc6e41596);
+    const __m512i zmm_fold16 = _mm512_set4_epi32(0x00000001, 0x1542778a, 0x00000001, 0x322d1430);
 
     // zmm register init
     zmm_crc0 = _mm512_setzero_si512();
@@ -32,8 +29,8 @@ static size_t fold_16_vpclmulqdq(__m128i *xmm_crc0, __m128i *xmm_crc1,
     zmm_crc3 = _mm512_loadu_si512((__m512i *)src + 3);
 
     /* already have intermediate CRC in xmm registers
-        * fold4 with 4 xmm_crc to get zmm_crc0
-    */
+     * fold4 with 4 xmm_crc to get zmm_crc0
+     */
     zmm_crc0 = _mm512_inserti32x4(zmm_crc0, *xmm_crc0, 0);
     zmm_crc0 = _mm512_inserti32x4(zmm_crc0, *xmm_crc1, 1);
     zmm_crc0 = _mm512_inserti32x4(zmm_crc0, *xmm_crc2, 2);

@@ -1,19 +1,20 @@
-#include <stdio.h>
-#include <assert.h>
-
 #include "zbuild.h"
+
+#include <assert.h>
+#include <stdio.h>
 #ifdef ZLIB_COMPAT
 #  include "zlib.h"
 #else
 #  include "zlib-ng.h"
 #endif
 
-#define CHECK_ERR(err, msg) { \
-    if (err != Z_OK) { \
-        fprintf(stderr, "%s error: %d\n", msg, err); \
-        exit(1); \
-    } \
-}
+#define CHECK_ERR(err, msg)                              \
+    {                                                    \
+        if (err != Z_OK) {                               \
+            fprintf(stderr, "%s error: %d\n", msg, err); \
+            exit(1);                                     \
+        }                                                \
+    }
 
 static const uint8_t *data;
 static size_t dataLen;
@@ -35,20 +36,20 @@ void test_dict_deflate(unsigned char **compr, size_t *comprLen) {
       #define Z_BEST_COMPRESSION       9
       #define Z_DEFAULT_COMPRESSION  (-1) */
 
-    int method = Z_DEFLATED; /* The deflate compression method (the only one
-                                supported in this version) */
-    int windowBits = 8 + data[(dataLen > 1) ? 1:0] % 8; /* The windowBits parameter is the base
-      two logarithm of the window size (the size of the history buffer).  It
-      should be in the range 8..15 for this version of the library. */
-    int memLevel = 1 + data[(dataLen > 2) ? 2:0] % 9;   /* memLevel=1 uses minimum memory but is
-      slow and reduces compression ratio; memLevel=9 uses maximum memory for
-      optimal speed. */
-    int strategy = data[(dataLen > 3) ? 3:0] % 5;       /* [0..4]
-      #define Z_FILTERED            1
-      #define Z_HUFFMAN_ONLY        2
-      #define Z_RLE                 3
-      #define Z_FIXED               4
-      #define Z_DEFAULT_STRATEGY    0 */
+    int method = Z_DEFLATED;                              /* The deflate compression method (the only one
+                                                             supported in this version) */
+    int windowBits = 8 + data[(dataLen > 1) ? 1 : 0] % 8; /* The windowBits parameter is the base
+        two logarithm of the window size (the size of the history buffer).  It
+        should be in the range 8..15 for this version of the library. */
+    int memLevel = 1 + data[(dataLen > 2) ? 2 : 0] % 9;   /* memLevel=1 uses minimum memory but is
+        slow and reduces compression ratio; memLevel=9 uses maximum memory for
+        optimal speed. */
+    int strategy = data[(dataLen > 3) ? 3 : 0] % 5;       /* [0..4]
+        #define Z_FILTERED            1
+        #define Z_HUFFMAN_ONLY        2
+        #define Z_RLE                 3
+        #define Z_FIXED               4
+        #define Z_DEFAULT_STRATEGY    0 */
 
     /* deflate would fail for no-compression or for speed levels. */
     if (level == 0 || level == 1)
@@ -58,12 +59,10 @@ void test_dict_deflate(unsigned char **compr, size_t *comprLen) {
     c_stream.zfree = zfree;
     c_stream.opaque = (void *)0;
 
-    err = PREFIX(deflateInit2)(&c_stream, level, method, windowBits, memLevel,
-                               strategy);
+    err = PREFIX(deflateInit2)(&c_stream, level, method, windowBits, memLevel, strategy);
     CHECK_ERR(err, "deflateInit");
 
-    err = PREFIX(deflateSetDictionary)(
-        &c_stream, (const unsigned char *)data, dictionaryLen);
+    err = PREFIX(deflateSetDictionary)(&c_stream, (const unsigned char *)data, dictionaryLen);
     CHECK_ERR(err, "deflateSetDictionary");
 
     /* deflateBound does not provide enough space for low compression levels. */
@@ -117,8 +116,7 @@ void test_dict_inflate(unsigned char *compr, size_t comprLen) {
                 fprintf(stderr, "unexpected dictionary");
                 exit(1);
             }
-            err = PREFIX(inflateSetDictionary)(
-                    &d_stream, (const unsigned char *)data, dictionaryLen);
+            err = PREFIX(inflateSetDictionary)(&d_stream, (const unsigned char *)data, dictionaryLen);
         }
         CHECK_ERR(err, "inflate with dict");
     }

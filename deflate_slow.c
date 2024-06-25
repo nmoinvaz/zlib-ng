@@ -5,7 +5,9 @@
  */
 
 #include "zbuild.h"
+
 #include "deflate.h"
+
 #include "deflate_p.h"
 #include "functable.h"
 
@@ -15,8 +17,8 @@
  * no better match at the next window position.
  */
 Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
-    Pos hash_head;           /* head of hash chain */
-    int bflush;              /* set if current block must be flushed */
+    Pos hash_head; /* head of hash chain */
+    int bflush;    /* set if current block must be flushed */
     int64_t dist;
     uint32_t match_len;
     match_func longest_match;
@@ -78,9 +80,9 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
             unsigned int max_insert = s->strstart + s->lookahead - STD_MIN_MATCH;
             /* Do not insert strings in hash table beyond this. */
 
-            check_match(s, s->strstart-1, s->prev_match, s->prev_length);
+            check_match(s, s->strstart - 1, s->prev_match, s->prev_length);
 
-            bflush = zng_tr_tally_dist(s, s->strstart -1 - s->prev_match, s->prev_length - STD_MIN_MATCH);
+            bflush = zng_tr_tally_dist(s, s->strstart - 1 - s->prev_match, s->prev_length - STD_MIN_MATCH);
 
             /* Insert in hash table all strings up to the end of the match.
              * strstart-1 and strstart are already inserted. If there is not
@@ -109,7 +111,7 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
              * single literal. If there was a match but the current match
              * is longer, truncate the previous match to a single literal.
              */
-            bflush = zng_tr_tally_lit(s, s->window[s->strstart-1]);
+            bflush = zng_tr_tally_lit(s, s->window[s->strstart - 1]);
             if (UNLIKELY(bflush))
                 FLUSH_BLOCK_ONLY(s, 0);
             s->prev_length = match_len;
@@ -129,7 +131,7 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
     }
     Assert(flush != Z_NO_FLUSH, "no flush?");
     if (UNLIKELY(s->match_available)) {
-        Z_UNUSED(zng_tr_tally_lit(s, s->window[s->strstart-1]));
+        Z_UNUSED(zng_tr_tally_lit(s, s->window[s->strstart - 1]));
         s->match_available = 0;
     }
     s->insert = s->strstart < (STD_MIN_MATCH - 1) ? s->strstart : (STD_MIN_MATCH - 1);

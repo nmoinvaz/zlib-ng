@@ -29,7 +29,7 @@ static uint32_t multmodp(uint32_t a, uint32_t b) {
 static uint32_t x2nmodp(z_off64_t n, unsigned k) {
     uint32_t p;
 
-    p = (uint32_t)1 << 31;           /* x^0 == 1 */
+    p = (uint32_t)1 << 31; /* x^0 == 1 */
     while (n) {
         if (n & 1)
             p = multmodp(x2n_table[k & 31], p);

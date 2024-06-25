@@ -1,19 +1,20 @@
-#include <stdio.h>
-#include <assert.h>
-
 #include "zbuild.h"
+
+#include <assert.h>
+#include <stdio.h>
 #ifdef ZLIB_COMPAT
 #  include "zlib.h"
 #else
 #  include "zlib-ng.h"
 #endif
 
-#define CHECK_ERR(err, msg) { \
-    if (err != Z_OK) { \
-        fprintf(stderr, "%s error: %d\n", msg, err); \
-        exit(1); \
-    } \
-}
+#define CHECK_ERR(err, msg)                              \
+    {                                                    \
+        if (err != Z_OK) {                               \
+            fprintf(stderr, "%s error: %d\n", msg, err); \
+            exit(1);                                     \
+        }                                                \
+    }
 
 static const uint8_t *data;
 static size_t dataLen;
@@ -79,7 +80,7 @@ void test_sync(unsigned char *compr, size_t comprLen, unsigned char *uncompr, si
     CHECK_ERR(err, "inflate");
 
     d_stream.avail_in = (unsigned int)comprLen - 2; /* read all compressed data */
-    err = PREFIX(inflateSync)(&d_stream); /* but skip the damaged part */
+    err = PREFIX(inflateSync)(&d_stream);           /* but skip the damaged part */
     CHECK_ERR(err, "inflateSync");
 
     err = PREFIX(inflate)(&d_stream, Z_FINISH);

@@ -6,16 +6,15 @@
 
 #include "zbuild.h"
 #ifdef ZLIB_COMPAT
-#include "zlib.h"
+#  include "zlib.h"
 #else
-#include "zlib-ng.h"
+#  include "zlib-ng.h"
 #endif
-
-#include <gtest/gtest.h>
 
 #include <algorithm>
 #include <atomic>
 #include <cstring>
+#include <gtest/gtest.h>
 #include <thread>
 
 static uint8_t buf[8 * 1024];
@@ -30,10 +29,9 @@ class Mutator {
         STOPPED,
     };
 
-public:
-    Mutator()
-        : m_state(State::PAUSED), m_target_state(State::PAUSED),
-          m_thread(&Mutator::run, this) {}
+   public:
+    Mutator() : m_state(State::PAUSED), m_target_state(State::PAUSED), m_thread(&Mutator::run, this) {
+    }
     ~Mutator() {
         transition(State::STOPPED);
         m_thread.join();
@@ -47,7 +45,7 @@ public:
         transition(State::RUNNING);
     }
 
-private:
+   private:
     void run() {
         while (true) {
             m_state.store(m_target_state);
@@ -55,7 +53,7 @@ private:
                 continue;
             if (m_state == State::STOPPED)
                 break;
-            for (uint8_t & i: buf)
+            for (uint8_t& i : buf)
                 i++;
         }
     }

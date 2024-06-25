@@ -4,8 +4,9 @@
  */
 
 #include "zbuild.h"
-#include "functable.h"
+
 #include "adler32_p.h"
+#include "functable.h"
 
 /* ========================================================================= */
 Z_INTERNAL uint32_t adler32_c(uint32_t adler, const uint8_t *buf, size_t len) {
@@ -32,16 +33,16 @@ Z_INTERNAL uint32_t adler32_c(uint32_t adler, const uint8_t *buf, size_t len) {
     while (len >= NMAX) {
         len -= NMAX;
 #ifdef UNROLL_MORE
-        n = NMAX / 16;          /* NMAX is divisible by 16 */
+        n = NMAX / 16; /* NMAX is divisible by 16 */
 #else
-        n = NMAX / 8;           /* NMAX is divisible by 8 */
+        n = NMAX / 8; /* NMAX is divisible by 8 */
 #endif
         do {
 #ifdef UNROLL_MORE
-            DO16(adler, sum2, buf);          /* 16 sums unrolled */
+            DO16(adler, sum2, buf); /* 16 sums unrolled */
             buf += 16;
 #else
-            DO8(adler, sum2, buf, 0);         /* 8 sums unrolled */
+            DO8(adler, sum2, buf, 0); /* 8 sums unrolled */
             buf += 8;
 #endif
         } while (--n);

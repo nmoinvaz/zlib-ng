@@ -15,10 +15,10 @@ void slide_hash_vmx(deflate_state *s);
 #ifdef POWER8_VSX
 uint32_t adler32_power8(uint32_t adler, const uint8_t *buf, size_t len);
 uint32_t chunksize_power8(void);
-uint8_t* chunkmemset_safe_power8(uint8_t *out, unsigned dist, unsigned len, unsigned left);
+uint8_t *chunkmemset_safe_power8(uint8_t *out, unsigned dist, unsigned len, unsigned left);
 uint32_t crc32_power8(uint32_t crc, const uint8_t *buf, size_t len);
 void slide_hash_power8(deflate_state *s);
-void inflate_fast_power8(PREFIX3(stream) *strm, uint32_t start);
+void inflate_fast_power8(PREFIX3(stream) * strm, uint32_t start);
 #endif
 
 #ifdef POWER9
@@ -26,7 +26,6 @@ uint32_t compare256_power9(const uint8_t *src0, const uint8_t *src1);
 uint32_t longest_match_power9(deflate_state *const s, Pos cur_match);
 uint32_t longest_match_slow_power9(deflate_state *const s, Pos cur_match);
 #endif
-
 
 #ifdef DISABLE_RUNTIME_CPU_DETECTION
 // Power - VMX

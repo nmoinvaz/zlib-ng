@@ -8,15 +8,35 @@
 #ifndef ADLER32_P_H
 #define ADLER32_P_H
 
-#define BASE 65521U     /* largest prime smaller than 65536 */
+#define BASE 65521U /* largest prime smaller than 65536 */
 #define NMAX 5552
 /* NMAX is the largest n such that 255n(n+1)/2 + (n+1)(BASE-1) <= 2^32-1 */
 
-#define DO1(sum1, sum2, buf, i)  {(sum1) += buf[(i)]; (sum2) += (sum1);}
-#define DO2(sum1, sum2, buf, i)  {DO1(sum1, sum2, buf, i); DO1(sum1, sum2, buf, i+1);}
-#define DO4(sum1, sum2, buf, i)  {DO2(sum1, sum2, buf, i); DO2(sum1, sum2, buf, i+2);}
-#define DO8(sum1, sum2, buf, i)  {DO4(sum1, sum2, buf, i); DO4(sum1, sum2, buf, i+4);}
-#define DO16(sum1, sum2, buf)    {DO8(sum1, sum2, buf, 0); DO8(sum1, sum2, buf, 8);}
+#define DO1(sum1, sum2, buf, i) \
+    {                           \
+        (sum1) += buf[(i)];     \
+        (sum2) += (sum1);       \
+    }
+#define DO2(sum1, sum2, buf, i)      \
+    {                                \
+        DO1(sum1, sum2, buf, i);     \
+        DO1(sum1, sum2, buf, i + 1); \
+    }
+#define DO4(sum1, sum2, buf, i)      \
+    {                                \
+        DO2(sum1, sum2, buf, i);     \
+        DO2(sum1, sum2, buf, i + 2); \
+    }
+#define DO8(sum1, sum2, buf, i)      \
+    {                                \
+        DO4(sum1, sum2, buf, i);     \
+        DO4(sum1, sum2, buf, i + 4); \
+    }
+#define DO16(sum1, sum2, buf)    \
+    {                            \
+        DO8(sum1, sum2, buf, 0); \
+        DO8(sum1, sum2, buf, 8); \
+    }
 
 static inline uint32_t adler32_len_1(uint32_t adler, const uint8_t *buf, uint32_t sum2) {
     adler += buf[0];
@@ -33,19 +53,20 @@ static inline uint32_t adler32_len_16(uint32_t adler, const uint8_t *buf, size_t
         sum2 += adler;
     }
     adler %= BASE;
-    sum2 %= BASE;            /* only added so many BASE's */
+    sum2 %= BASE; /* only added so many BASE's */
     /* return recombined sums */
     return adler | (sum2 << 16);
 }
 
-static inline uint32_t adler32_copy_len_16(uint32_t adler, const uint8_t *buf, uint8_t *dst, size_t len, uint32_t sum2) {
+static inline uint32_t adler32_copy_len_16(uint32_t adler, const uint8_t *buf, uint8_t *dst, size_t len,
+                                           uint32_t sum2) {
     while (len--) {
         *dst = *buf++;
         adler += *dst++;
         sum2 += adler;
     }
     adler %= BASE;
-    sum2 %= BASE;            /* only added so many BASE's */
+    sum2 %= BASE; /* only added so many BASE's */
     /* return recombined sums */
     return adler | (sum2 << 16);
 }

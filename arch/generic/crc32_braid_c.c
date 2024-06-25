@@ -8,6 +8,7 @@
  */
 
 #include "zbuild.h"
+
 #include "crc32_braid_p.h"
 #include "crc32_braid_tbl.h"
 
@@ -39,22 +40,21 @@
   least-significant byte of the word as the first byte of data, without any pre
   or post conditioning. This is used to combine the CRCs of each braid.
  */
-#if BYTE_ORDER == LITTLE_ENDIAN
+#  if BYTE_ORDER == LITTLE_ENDIAN
 static uint32_t crc_word(z_word_t data) {
     int k;
     for (k = 0; k < W; k++)
         data = (data >> 8) ^ crc_table[data & 0xff];
     return (uint32_t)data;
 }
-#elif BYTE_ORDER == BIG_ENDIAN
+#  elif BYTE_ORDER == BIG_ENDIAN
 static z_word_t crc_word(z_word_t data) {
     int k;
     for (k = 0; k < W; k++)
-        data = (data << 8) ^
-            crc_big_table[(data >> ((W - 1) << 3)) & 0xff];
+        data = (data << 8) ^ crc_big_table[(data >> ((W - 1) << 3)) & 0xff];
     return data;
 }
-#endif /* BYTE_ORDER */
+#  endif /* BYTE_ORDER */
 
 #endif /* W */
 
@@ -84,113 +84,113 @@ Z_INTERNAL uint32_t PREFIX(crc32_braid)(uint32_t crc, const uint8_t *buf, size_t
         words = (z_word_t const *)buf;
 
         z_word_t crc0, word0, comb;
-#if N > 1
+#  if N > 1
         z_word_t crc1, word1;
-#if N > 2
+#    if N > 2
         z_word_t crc2, word2;
-#if N > 3
+#      if N > 3
         z_word_t crc3, word3;
-#if N > 4
+#        if N > 4
         z_word_t crc4, word4;
-#if N > 5
+#          if N > 5
         z_word_t crc5, word5;
-#endif
-#endif
-#endif
-#endif
-#endif
+#          endif
+#        endif
+#      endif
+#    endif
+#  endif
         /* Initialize the CRC for each braid. */
         crc0 = ZSWAPWORD(c);
-#if N > 1
+#  if N > 1
         crc1 = 0;
-#if N > 2
+#    if N > 2
         crc2 = 0;
-#if N > 3
+#      if N > 3
         crc3 = 0;
-#if N > 4
+#        if N > 4
         crc4 = 0;
-#if N > 5
+#          if N > 5
         crc5 = 0;
-#endif
-#endif
-#endif
-#endif
-#endif
+#          endif
+#        endif
+#      endif
+#    endif
+#  endif
         /* Process the first blks-1 blocks, computing the CRCs on each braid independently. */
         while (--blks) {
             /* Load the word for each braid into registers. */
             word0 = crc0 ^ words[0];
-#if N > 1
+#  if N > 1
             word1 = crc1 ^ words[1];
-#if N > 2
+#    if N > 2
             word2 = crc2 ^ words[2];
-#if N > 3
+#      if N > 3
             word3 = crc3 ^ words[3];
-#if N > 4
+#        if N > 4
             word4 = crc4 ^ words[4];
-#if N > 5
+#          if N > 5
             word5 = crc5 ^ words[5];
-#endif
-#endif
-#endif
-#endif
-#endif
+#          endif
+#        endif
+#      endif
+#    endif
+#  endif
             words += N;
 
             /* Compute and update the CRC for each word. The loop should get unrolled. */
             crc0 = BRAID_TABLE[0][word0 & 0xff];
-#if N > 1
+#  if N > 1
             crc1 = BRAID_TABLE[0][word1 & 0xff];
-#if N > 2
+#    if N > 2
             crc2 = BRAID_TABLE[0][word2 & 0xff];
-#if N > 3
+#      if N > 3
             crc3 = BRAID_TABLE[0][word3 & 0xff];
-#if N > 4
+#        if N > 4
             crc4 = BRAID_TABLE[0][word4 & 0xff];
-#if N > 5
+#          if N > 5
             crc5 = BRAID_TABLE[0][word5 & 0xff];
-#endif
-#endif
-#endif
-#endif
-#endif
+#          endif
+#        endif
+#      endif
+#    endif
+#  endif
             for (k = 1; k < W; k++) {
                 crc0 ^= BRAID_TABLE[k][(word0 >> (k << 3)) & 0xff];
-#if N > 1
+#  if N > 1
                 crc1 ^= BRAID_TABLE[k][(word1 >> (k << 3)) & 0xff];
-#if N > 2
+#    if N > 2
                 crc2 ^= BRAID_TABLE[k][(word2 >> (k << 3)) & 0xff];
-#if N > 3
+#      if N > 3
                 crc3 ^= BRAID_TABLE[k][(word3 >> (k << 3)) & 0xff];
-#if N > 4
+#        if N > 4
                 crc4 ^= BRAID_TABLE[k][(word4 >> (k << 3)) & 0xff];
-#if N > 5
+#          if N > 5
                 crc5 ^= BRAID_TABLE[k][(word5 >> (k << 3)) & 0xff];
-#endif
-#endif
-#endif
-#endif
-#endif
+#          endif
+#        endif
+#      endif
+#    endif
+#  endif
             }
         }
 
         /* Process the last block, combining the CRCs of the N braids at the same time. */
         comb = crc_word(crc0 ^ words[0]);
-#if N > 1
+#  if N > 1
         comb = crc_word(crc1 ^ words[1] ^ comb);
-#if N > 2
+#    if N > 2
         comb = crc_word(crc2 ^ words[2] ^ comb);
-#if N > 3
+#      if N > 3
         comb = crc_word(crc3 ^ words[3] ^ comb);
-#if N > 4
+#        if N > 4
         comb = crc_word(crc4 ^ words[4] ^ comb);
-#if N > 5
+#          if N > 5
         comb = crc_word(crc5 ^ words[5] ^ comb);
-#endif
-#endif
-#endif
-#endif
-#endif
+#          endif
+#        endif
+#      endif
+#    endif
+#  endif
         words += N;
         c = ZSWAPWORD(comb);
 

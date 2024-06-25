@@ -4,13 +4,15 @@
  */
 
 #include "zbuild.h"
-#include "zutil_p.h"
+
 #include "deflate.h"
+#include "zutil_p.h"
+
 #include "fallback_builtins.h"
 
 #if defined(X86_SSE2) && defined(HAVE_BUILTIN_CTZ)
 
-#include <emmintrin.h>
+#  include <emmintrin.h>
 
 static inline uint32_t compare256_sse2_static(const uint8_t *src0, const uint8_t *src1) {
     uint32_t len = 0;
@@ -21,8 +23,8 @@ static inline uint32_t compare256_sse2_static(const uint8_t *src0, const uint8_t
 
     /* Do the first load unaligned, than all subsequent ones we have at least
      * one aligned load. Sadly aligning both loads is probably unrealistic */
-    xmm_src0 = _mm_loadu_si128((__m128i*)src0);
-    xmm_src1 = _mm_loadu_si128((__m128i*)src1);
+    xmm_src0 = _mm_loadu_si128((__m128i *)src0);
+    xmm_src1 = _mm_loadu_si128((__m128i *)src1);
     xmm_cmp = _mm_cmpeq_epi8(xmm_src0, xmm_src1);
 
     unsigned mask = (unsigned)_mm_movemask_epi8(xmm_cmp);
@@ -43,8 +45,8 @@ static inline uint32_t compare256_sse2_static(const uint8_t *src0, const uint8_t
     int num_iter = (256 - len) / 16;
 
     for (int i = 0; i < num_iter; ++i) {
-        xmm_src0 = _mm_load_si128((__m128i*)src0);
-        xmm_src1 = _mm_loadu_si128((__m128i*)src1);
+        xmm_src0 = _mm_load_si128((__m128i *)src0);
+        xmm_src1 = _mm_loadu_si128((__m128i *)src1);
         xmm_cmp = _mm_cmpeq_epi8(xmm_src0, xmm_src1);
 
         mask = (unsigned)_mm_movemask_epi8(xmm_cmp);
@@ -64,8 +66,8 @@ static inline uint32_t compare256_sse2_static(const uint8_t *src0, const uint8_t
         src1 = end1 - 16;
         len = 256 - 16;
 
-        xmm_src0 = _mm_loadu_si128((__m128i*)src0);
-        xmm_src1 = _mm_loadu_si128((__m128i*)src1);
+        xmm_src0 = _mm_loadu_si128((__m128i *)src0);
+        xmm_src1 = _mm_loadu_si128((__m128i *)src1);
         xmm_cmp = _mm_cmpeq_epi8(xmm_src0, xmm_src1);
 
         mask = (unsigned)_mm_movemask_epi8(xmm_cmp);
@@ -83,15 +85,15 @@ Z_INTERNAL uint32_t compare256_sse2(const uint8_t *src0, const uint8_t *src1) {
     return compare256_sse2_static(src0, src1);
 }
 
-#define LONGEST_MATCH       longest_match_sse2
-#define COMPARE256          compare256_sse2_static
+#  define LONGEST_MATCH longest_match_sse2
+#  define COMPARE256    compare256_sse2_static
 
-#include "match_tpl.h"
+#  include "match_tpl.h"
 
-#define LONGEST_MATCH_SLOW
-#define LONGEST_MATCH       longest_match_slow_sse2
-#define COMPARE256          compare256_sse2_static
+#  define LONGEST_MATCH_SLOW
+#  define LONGEST_MATCH longest_match_slow_sse2
+#  define COMPARE256    compare256_sse2_static
 
-#include "match_tpl.h"
+#  include "match_tpl.h"
 
 #endif

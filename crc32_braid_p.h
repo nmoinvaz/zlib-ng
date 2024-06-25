@@ -19,7 +19,7 @@
   compiled.
  */
 #ifdef Z_TESTW
-#  if Z_TESTW-1 != -1
+#  if Z_TESTW - 1 != -1
 #    define W Z_TESTW
 #  endif
 #else
@@ -33,17 +33,17 @@
 #endif
 #ifdef W
 #  if W == 8
-     typedef uint64_t z_word_t;
+typedef uint64_t z_word_t;
 #  else
 #    undef W
 #    define W 4
-     typedef uint32_t z_word_t;
+typedef uint32_t z_word_t;
 #  endif
 #endif
 
 #if BYTE_ORDER == LITTLE_ENDIAN
 #  define ZSWAPWORD(word) (word)
-#  define BRAID_TABLE crc_braid_table
+#  define BRAID_TABLE     crc_braid_table
 #elif BYTE_ORDER == BIG_ENDIAN
 #  if W == 8
 #    define ZSWAPWORD(word) ZSWAP64(word)
@@ -56,9 +56,17 @@
 #endif
 
 #define DO1 c = crc_table[(c ^ *buf++) & 0xff] ^ (c >> 8)
-#define DO8 DO1; DO1; DO1; DO1; DO1; DO1; DO1; DO1
+#define DO8 \
+    DO1;    \
+    DO1;    \
+    DO1;    \
+    DO1;    \
+    DO1;    \
+    DO1;    \
+    DO1;    \
+    DO1
 
 /* CRC polynomial. */
-#define POLY 0xedb88320         /* p(x) reflected, with x^32 implied */
+#define POLY 0xedb88320 /* p(x) reflected, with x^32 implied */
 
 #endif /* CRC32_BRAID_P_H_ */

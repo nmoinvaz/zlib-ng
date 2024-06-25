@@ -4,8 +4,9 @@
  */
 #include "zbuild.h"
 #include "zutil.h"
-#include "functable.h"
+
 #include "crc32.h"
+#include "functable.h"
 
 Z_INTERNAL uint32_t crc32_fold_reset_c(crc32_fold *crc) {
     crc->value = CRC32_INITIAL_VALUE;

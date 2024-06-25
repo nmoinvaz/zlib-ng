@@ -1,23 +1,23 @@
-#include <stdio.h>
-#include <benchmark/benchmark.h>
 #include "benchmark_png_shared.h"
 #include <assert.h>
+#include <benchmark/benchmark.h>
+#include <stdio.h>
 
-class png_decode: public benchmark::Fixture {
-protected:
+class png_decode : public benchmark::Fixture {
+   protected:
     png_dat inpng[10];
 
     /* Backing this on the heap is a more realistic benchmark */
     uint8_t *output_img_buf = NULL;
 
-public:
+   public:
     /* Let's make the vanilla version have something extremely compressible */
     virtual void init_img(png_bytep img_bytes, size_t width, size_t height) {
-        init_compressible(img_bytes, width*height);
+        init_compressible(img_bytes, width * height);
     }
 
-    void SetUp(const ::benchmark::State& state) {
-        output_img_buf = (uint8_t*)malloc(IMWIDTH * IMHEIGHT * 3);
+    void SetUp(const ::benchmark::State &state) {
+        output_img_buf = (uint8_t *)malloc(IMWIDTH * IMHEIGHT * 3);
         assert(output_img_buf != NULL);
         init_img(output_img_buf, IMWIDTH, IMHEIGHT);
 
@@ -32,7 +32,7 @@ public:
     void Bench(benchmark::State &state) {
         for (auto _ : state) {
             int compress_lvl = state.range(0);
-            png_parse_dat in = { inpng[compress_lvl].buf };
+            png_parse_dat in = {inpng[compress_lvl].buf};
             uint32_t width, height;
             decode_png(&in, (png_bytepp)&output_img_buf, IMWIDTH * IMHEIGHT * 3, width, height);
         }
@@ -46,20 +46,20 @@ public:
     }
 };
 
-class png_decode_realistic: public png_decode {
-private:
+class png_decode_realistic : public png_decode {
+   private:
     bool test_files_found = false;
 
-public:
+   public:
     void SetUp(const ::benchmark::State &state) {
         output_img_buf = NULL;
-        output_img_buf = (uint8_t*)malloc(IMWIDTH * IMHEIGHT * 3);
+        output_img_buf = (uint8_t *)malloc(IMWIDTH * IMHEIGHT * 3);
         /* Let's take all the images at different compression levels and jam their bytes into buffers */
         char test_fname[25];
         FILE *files[10];
 
         /* Set all to NULL */
-        memset(files, 0, sizeof(FILE*));
+        memset(files, 0, sizeof(FILE *));
 
         for (size_t i = 0; i < 10; ++i) {
             sprintf(test_fname, "test_pngs/%1lu.png", i);
@@ -72,7 +72,7 @@ public:
 
                 /* For proper cleanup */
                 for (size_t j = i; j < 10; ++j) {
-                    inpng[i] = { NULL, 0, 0 };
+                    inpng[i] = {NULL, 0, 0};
                 }
 
                 return;
@@ -88,7 +88,7 @@ public:
             size_t num_bytes = ftell(in_file);
             rewind(in_file);
 
-            uint8_t *raw_file = (uint8_t*)malloc(num_bytes);
+            uint8_t *raw_file = (uint8_t *)malloc(num_bytes);
             if (raw_file == NULL)
                 abort();
 

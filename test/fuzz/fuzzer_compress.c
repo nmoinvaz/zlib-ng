@@ -1,7 +1,7 @@
-#include <stdio.h>
-#include <assert.h>
-
 #include "zbuild.h"
+
+#include <assert.h>
+#include <stdio.h>
 #ifdef ZLIB_COMPAT
 #  include "zlib.h"
 #else
@@ -11,9 +11,7 @@
 static const uint8_t *data;
 static size_t dataLen;
 
-static void check_compress_level(uint8_t *compr, z_size_t comprLen,
-                                 uint8_t *uncompr, z_size_t uncomprLen,
-                                 int level) {
+static void check_compress_level(uint8_t *compr, z_size_t comprLen, uint8_t *uncompr, z_size_t uncomprLen, int level) {
     PREFIX(compress2)(compr, &comprLen, data, dataLen, level);
     PREFIX(uncompress)(uncompr, &uncomprLen, compr, comprLen);
 
@@ -22,12 +20,13 @@ static void check_compress_level(uint8_t *compr, z_size_t comprLen,
     assert(0 == memcmp(data, uncompr, dataLen));
 }
 
-#define put_byte(s, i, c) {s[i] = (unsigned char)(c);}
+#define put_byte(s, i, c) \
+    { s[i] = (unsigned char)(c); }
 
 static void write_zlib_header(uint8_t *s) {
     unsigned level_flags = 0; /* compression level (0..3) */
-    unsigned w_bits = 8; /* window size log2(w_size) (8..16) */
-    unsigned int header = (Z_DEFLATED + ((w_bits-8)<<4)) << 8;
+    unsigned w_bits = 8;      /* window size log2(w_size) (8..16) */
+    unsigned int header = (Z_DEFLATED + ((w_bits - 8) << 4)) << 8;
     header |= (level_flags << 6);
 
     header += 31 - (header % 31);

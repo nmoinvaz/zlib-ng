@@ -15,9 +15,13 @@
 
 #include "zbuild.h"
 #include "zutil.h"
+
 #include "inftrees.h"
+
 #include "inflate.h"
+
 #include "dfltcc_inflate.h"
+
 #include "dfltcc_detail.h"
 
 void Z_INTERNAL PREFIX(dfltcc_reset_inflate_state)(PREFIX3(streamp) strm) {
@@ -41,9 +45,8 @@ static inline dfltcc_cc dfltcc_xpnd(PREFIX3(streamp) strm) {
     size_t avail_out = strm->avail_out;
     dfltcc_cc cc;
 
-    cc = dfltcc(DFLTCC_XPND | HBT_CIRCULAR,
-                param, &strm->next_out, &avail_out,
-                &strm->next_in, &avail_in, state->window);
+    cc = dfltcc(DFLTCC_XPND | HBT_CIRCULAR, param, &strm->next_out, &avail_out, &strm->next_in, &avail_in,
+                state->window);
     strm->avail_in = avail_in;
     strm->avail_out = avail_out;
     return cc;
@@ -107,8 +110,8 @@ dfltcc_inflate_action Z_INTERNAL PREFIX(dfltcc_inflate)(PREFIX3(streamp) strm, i
     }
     state->mode = TYPEDO;
     /* Break if operands are exhausted, otherwise continue looping */
-    return (cc == DFLTCC_CC_OP1_TOO_SHORT || cc == DFLTCC_CC_OP2_TOO_SHORT) ?
-        DFLTCC_INFLATE_BREAK : DFLTCC_INFLATE_CONTINUE;
+    return (cc == DFLTCC_CC_OP1_TOO_SHORT || cc == DFLTCC_CC_OP2_TOO_SHORT) ? DFLTCC_INFLATE_BREAK
+                                                                            : DFLTCC_INFLATE_CONTINUE;
 }
 
 int Z_INTERNAL PREFIX(dfltcc_was_inflate_used)(PREFIX3(streamp) strm) {
@@ -164,8 +167,8 @@ int Z_INTERNAL PREFIX(dfltcc_inflate_disable)(PREFIX3(streamp) strm) {
 /*
    Preloading history.
 */
-int Z_INTERNAL PREFIX(dfltcc_inflate_set_dictionary)(PREFIX3(streamp) strm,
-                                                     const unsigned char *dictionary, uInt dict_length) {
+int Z_INTERNAL PREFIX(dfltcc_inflate_set_dictionary)(PREFIX3(streamp) strm, const unsigned char *dictionary,
+                                                     uInt dict_length) {
     struct inflate_state *state = (struct inflate_state *)strm->state;
     struct dfltcc_param_v0 *param = &state->arch.common.param;
 
@@ -178,8 +181,8 @@ int Z_INTERNAL PREFIX(dfltcc_inflate_set_dictionary)(PREFIX3(streamp) strm,
     return Z_OK;
 }
 
-int Z_INTERNAL PREFIX(dfltcc_inflate_get_dictionary)(PREFIX3(streamp) strm,
-                                                     unsigned char *dictionary, uInt *dict_length) {
+int Z_INTERNAL PREFIX(dfltcc_inflate_get_dictionary)(PREFIX3(streamp) strm, unsigned char *dictionary,
+                                                     uInt *dict_length) {
     struct inflate_state *state = (struct inflate_state *)strm->state;
     struct dfltcc_param_v0 *param = &state->arch.common.param;
 

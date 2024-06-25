@@ -7,18 +7,16 @@
 #  include "zlib-ng.h"
 #endif
 
-#include <stdio.h>
+#include "test_shared.h"
+#include <gtest/gtest.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <gtest/gtest.h>
-
-#include "test_shared.h"
-
 TEST(deflate, header) {
     PREFIX3(stream) c_stream;
-    PREFIX(gz_header) *head;
+    PREFIX(gz_header) * head;
     uint8_t compr[128];
     z_size_t compr_len = sizeof(compr);
     int err;
@@ -44,7 +42,7 @@ TEST(deflate, header) {
 
     PREFIX(deflateBound)(&c_stream, (unsigned long)compr_len);
 
-    c_stream.next_in  = (unsigned char *)hello;
+    c_stream.next_in = (unsigned char *)hello;
     c_stream.next_out = compr;
 
     while (c_stream.total_in != hello_len && c_stream.total_out < compr_len) {
@@ -57,7 +55,8 @@ TEST(deflate, header) {
     for (;;) {
         c_stream.avail_out = 1;
         err = PREFIX(deflate)(&c_stream, Z_FINISH);
-        if (err == Z_STREAM_END) break;
+        if (err == Z_STREAM_END)
+            break;
         EXPECT_EQ(err, Z_OK);
     }
 

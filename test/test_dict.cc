@@ -7,14 +7,12 @@
 #  include "zlib-ng.h"
 #endif
 
-#include <stdio.h>
+#include "test_shared.h"
+#include <gtest/gtest.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "test_shared.h"
-
-#include <gtest/gtest.h>
 
 /* Maximum dictionary size, according to inflateGetDictionary() description. */
 #define MAX_DICTIONARY_SIZE 32768
@@ -36,8 +34,7 @@ TEST(dictionary, basic) {
     err = PREFIX(deflateInit)(&c_stream, Z_BEST_COMPRESSION);
     EXPECT_EQ(err, Z_OK);
 
-    err = PREFIX(deflateSetDictionary)(&c_stream,
-        (const unsigned char *)dictionary, (int)sizeof(dictionary));
+    err = PREFIX(deflateSetDictionary)(&c_stream, (const unsigned char *)dictionary, (int)sizeof(dictionary));
     EXPECT_EQ(err, Z_OK);
 
     dict_adler = c_stream.adler;
@@ -55,9 +52,9 @@ TEST(dictionary, basic) {
 
     compr_len = (z_size_t)c_stream.total_out;
 
-    strcpy((char*)uncompr, "garbage garbage garbage");
+    strcpy((char *)uncompr, "garbage garbage garbage");
 
-    d_stream.next_in  = compr;
+    d_stream.next_in = compr;
     d_stream.avail_in = (unsigned int)compr_len;
 
     err = PREFIX(inflateInit)(&d_stream);
@@ -72,8 +69,8 @@ TEST(dictionary, basic) {
             break;
         if (err == Z_NEED_DICT) {
             EXPECT_EQ(d_stream.adler, dict_adler);
-            err = PREFIX(inflateSetDictionary)(&d_stream, (const unsigned char*)dictionary,
-                (uint32_t)sizeof(dictionary));
+            err = PREFIX(inflateSetDictionary)(&d_stream, (const unsigned char *)dictionary,
+                                               (uint32_t)sizeof(dictionary));
             EXPECT_EQ(d_stream.adler, dict_adler);
         }
         EXPECT_EQ(err, Z_OK);
@@ -94,5 +91,5 @@ TEST(dictionary, basic) {
     err = PREFIX(inflateEnd)(&d_stream);
     EXPECT_EQ(err, Z_OK);
 
-    EXPECT_TRUE(strncmp((char*)uncompr, hello, sizeof(hello)) == 0);
+    EXPECT_TRUE(strncmp((char *)uncompr, hello, sizeof(hello)) == 0);
 }

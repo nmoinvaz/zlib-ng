@@ -9,13 +9,14 @@
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 #include "zbuild.h"
+
 #include "deflate.h"
 
-#include <immintrin.h>
 #include <assert.h>
+#include <immintrin.h>
 
-static inline void slide_hash_chain(Pos *table0, Pos *table1, uint32_t entries0,
-                                    uint32_t entries1, const __m128i wsize) {
+static inline void slide_hash_chain(Pos *table0, Pos *table1, uint32_t entries0, uint32_t entries1,
+                                    const __m128i wsize) {
     uint32_t entries;
     Pos *table;
     __m128i value0, value1, result0, result1;

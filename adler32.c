@@ -4,8 +4,9 @@
  */
 
 #include "zbuild.h"
-#include "functable.h"
+
 #include "adler32_p.h"
+#include "functable.h"
 
 #ifdef ZLIB_COMPAT
 unsigned long Z_EXPORT PREFIX(adler32_z)(unsigned long adler, const unsigned char *buf, size_t len) {
@@ -39,17 +40,21 @@ static uint32_t adler32_combine_(uint32_t adler1, uint32_t adler2, z_off64_t len
         return 0xffffffff;
 
     /* the derivation of this formula is left as an exercise for the reader */
-    len2 %= BASE;                 /* assumes len2 >= 0 */
+    len2 %= BASE; /* assumes len2 >= 0 */
     rem = (unsigned)len2;
     sum1 = adler1 & 0xffff;
     sum2 = rem * sum1;
     sum2 %= BASE;
     sum1 += (adler2 & 0xffff) + BASE - 1;
     sum2 += ((adler1 >> 16) & 0xffff) + ((adler2 >> 16) & 0xffff) + BASE - rem;
-    if (sum1 >= BASE) sum1 -= BASE;
-    if (sum1 >= BASE) sum1 -= BASE;
-    if (sum2 >= ((unsigned long)BASE << 1)) sum2 -= ((unsigned long)BASE << 1);
-    if (sum2 >= BASE) sum2 -= BASE;
+    if (sum1 >= BASE)
+        sum1 -= BASE;
+    if (sum1 >= BASE)
+        sum1 -= BASE;
+    if (sum2 >= ((unsigned long)BASE << 1))
+        sum2 -= ((unsigned long)BASE << 1);
+    if (sum2 >= BASE)
+        sum2 -= BASE;
     return sum1 | (sum2 << 16);
 }
 

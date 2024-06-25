@@ -4,9 +4,10 @@
  */
 
 #include "zbuild.h"
+
 #include "fallback_builtins.h"
 
-typedef uint32_t (*compare256_rle_func)(const uint8_t* src0, const uint8_t* src1);
+typedef uint32_t (*compare256_rle_func)(const uint8_t *src0, const uint8_t *src1);
 
 /* ALIGNED, byte comparison */
 static inline uint32_t compare256_rle_c(const uint8_t *src0, const uint8_t *src1) {
@@ -72,7 +73,7 @@ static inline uint32_t compare256_rle_unaligned_16(const uint8_t *src0, const ui
     return 256;
 }
 
-#ifdef HAVE_BUILTIN_CTZ
+#  ifdef HAVE_BUILTIN_CTZ
 /* 32-bit unaligned integer comparison */
 static inline uint32_t compare256_rle_unaligned_32(const uint8_t *src0, const uint8_t *src1) {
     uint32_t sv, len = 0;
@@ -98,9 +99,9 @@ static inline uint32_t compare256_rle_unaligned_32(const uint8_t *src0, const ui
     return 256;
 }
 
-#endif
+#  endif
 
-#if defined(UNALIGNED64_OK) && defined(HAVE_BUILTIN_CTZLL)
+#  if defined(UNALIGNED64_OK) && defined(HAVE_BUILTIN_CTZLL)
 /* 64-bit unaligned integer comparison */
 static inline uint32_t compare256_rle_unaligned_64(const uint8_t *src0, const uint8_t *src1) {
     uint32_t src0_cmp32, len = 0;
@@ -128,7 +129,6 @@ static inline uint32_t compare256_rle_unaligned_64(const uint8_t *src0, const ui
     return 256;
 }
 
-#endif
+#  endif
 
 #endif
-

@@ -3,16 +3,17 @@
  */
 
 #ifdef POWER8_VSX
-#include <altivec.h>
-#include "zbuild.h"
+#  include "zbuild.h"
+
+#  include <altivec.h>
 
 typedef vector unsigned char chunk_t;
 
-#define CHUNK_SIZE 16
+#  define CHUNK_SIZE 16
 
-#define HAVE_CHUNKMEMSET_2
-#define HAVE_CHUNKMEMSET_4
-#define HAVE_CHUNKMEMSET_8
+#  define HAVE_CHUNKMEMSET_2
+#  define HAVE_CHUNKMEMSET_4
+#  define HAVE_CHUNKMEMSET_8
 
 static inline void chunkmemset_2(uint8_t *from, chunk_t *chunk) {
     uint16_t tmp;
@@ -40,16 +41,16 @@ static inline void storechunk(uint8_t *out, chunk_t *chunk) {
     vec_xst(*chunk, 0, out);
 }
 
-#define CHUNKSIZE        chunksize_power8
-#define CHUNKCOPY        chunkcopy_power8
-#define CHUNKUNROLL      chunkunroll_power8
-#define CHUNKMEMSET      chunkmemset_power8
-#define CHUNKMEMSET_SAFE chunkmemset_safe_power8
+#  define CHUNKSIZE        chunksize_power8
+#  define CHUNKCOPY        chunkcopy_power8
+#  define CHUNKUNROLL      chunkunroll_power8
+#  define CHUNKMEMSET      chunkmemset_power8
+#  define CHUNKMEMSET_SAFE chunkmemset_safe_power8
 
-#include "chunkset_tpl.h"
+#  include "chunkset_tpl.h"
 
-#define INFLATE_FAST     inflate_fast_power8
+#  define INFLATE_FAST inflate_fast_power8
 
-#include "inffast_tpl.h"
+#  include "inffast_tpl.h"
 
 #endif

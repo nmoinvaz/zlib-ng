@@ -9,18 +9,22 @@
 
 #ifdef X86_AVX2
 
-#include "zbuild.h"
-#include <immintrin.h>
-#include "adler32_p.h"
-#include "adler32_avx2_p.h"
-#include "x86_intrins.h"
+#  include "zbuild.h"
+
+#  include "adler32_avx2_p.h"
+#  include "adler32_p.h"
+#  include "x86_intrins.h"
+#  include <immintrin.h>
 
 extern uint32_t adler32_fold_copy_sse42(uint32_t adler, uint8_t *dst, const uint8_t *src, size_t len);
 extern uint32_t adler32_ssse3(uint32_t adler, const uint8_t *src, size_t len);
 
-static inline uint32_t adler32_fold_copy_impl(uint32_t adler, uint8_t *dst, const uint8_t *src, size_t len, const int COPY) {
-    if (src == NULL) return 1L;
-    if (len == 0) return adler;
+static inline uint32_t adler32_fold_copy_impl(uint32_t adler, uint8_t *dst, const uint8_t *src, size_t len,
+                                              const int COPY) {
+    if (src == NULL)
+        return 1L;
+    if (len == 0)
+        return adler;
 
     uint32_t adler0, adler1;
     adler1 = (adler >> 16) & 0xffff;
@@ -43,8 +47,8 @@ rem_peel:
 
     __m256i vs1, vs2;
 
-    const __m256i dot2v = _mm256_setr_epi8(32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15,
-                                           14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1);
+    const __m256i dot2v = _mm256_setr_epi8(32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14,
+                                           13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1);
     const __m256i dot3v = _mm256_set1_epi16(1);
     const __m256i zero = _mm256_setzero_si256();
 
@@ -63,21 +67,21 @@ rem_peel:
                vs1 = adler + sum(c[i])
                vs2 = sum2 + 32 vs1 + sum( (32-i+1) c[i] )
             */
-            __m256i vbuf = _mm256_loadu_si256((__m256i*)src);
+            __m256i vbuf = _mm256_loadu_si256((__m256i *)src);
             src += 32;
             k -= 32;
 
-            __m256i vs1_sad = _mm256_sad_epu8(vbuf, zero); // Sum of abs diff, resulting in 2 x int32's
+            __m256i vs1_sad = _mm256_sad_epu8(vbuf, zero);  // Sum of abs diff, resulting in 2 x int32's
 
             if (COPY) {
-                _mm256_storeu_si256((__m256i*)dst, vbuf);
+                _mm256_storeu_si256((__m256i *)dst, vbuf);
                 dst += 32;
             }
- 
+
             vs1 = _mm256_add_epi32(vs1, vs1_sad);
             vs3 = _mm256_add_epi32(vs3, vs1_0);
-            __m256i v_short_sum2 = _mm256_maddubs_epi16(vbuf, dot2v); // sum 32 uint8s to 16 shorts
-            __m256i vsum2 = _mm256_madd_epi16(v_short_sum2, dot3v); // sum 16 shorts to 8 uint32s
+            __m256i v_short_sum2 = _mm256_maddubs_epi16(vbuf, dot2v);  // sum 32 uint8s to 16 shorts
+            __m256i vsum2 = _mm256_madd_epi16(v_short_sum2, dot3v);    // sum 16 shorts to 8 uint32s
             vs2 = _mm256_add_epi32(vsum2, vs2);
             vs1_0 = vs1;
         }
@@ -116,13 +120,12 @@ rem_peel:
          performed on the maximum possible inputs before overflow
          */
 
-
-         /* In AVX2-land, this trip through GPRs will probably be unavoidable, as there's no cheap and easy
-          * conversion from 64 bit integer to 32 bit (needed for the inexpensive modulus with a constant).
-          * This casting to 32 bit is cheap through GPRs (just register aliasing). See above for exactly
-          * what the compiler is doing to avoid integer divisions. */
-         adler0 = partial_hsum256(vs1) % BASE;
-         adler1 = hsum256(vs2) % BASE;
+        /* In AVX2-land, this trip through GPRs will probably be unavoidable, as there's no cheap and easy
+         * conversion from 64 bit integer to 32 bit (needed for the inexpensive modulus with a constant).
+         * This casting to 32 bit is cheap through GPRs (just register aliasing). See above for exactly
+         * what the compiler is doing to avoid integer divisions. */
+        adler0 = partial_hsum256(vs1) % BASE;
+        adler1 = hsum256(vs2) % BASE;
     }
 
     adler = adler0 | (adler1 << 16);

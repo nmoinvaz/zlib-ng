@@ -4,12 +4,14 @@
  */
 
 #include "zbuild.h"
-#include "zutil_p.h"
+
 #include "deflate.h"
+#include "zutil_p.h"
+
 #include "fallback_builtins.h"
 
 #if defined(ARM_NEON) && defined(HAVE_BUILTIN_CTZLL)
-#include "neon_intrins.h"
+#  include "neon_intrins.h"
 
 static inline uint32_t compare256_neon_static(const uint8_t *src0, const uint8_t *src1) {
     uint32_t len = 0;
@@ -46,15 +48,15 @@ Z_INTERNAL uint32_t compare256_neon(const uint8_t *src0, const uint8_t *src1) {
     return compare256_neon_static(src0, src1);
 }
 
-#define LONGEST_MATCH       longest_match_neon
-#define COMPARE256          compare256_neon_static
+#  define LONGEST_MATCH longest_match_neon
+#  define COMPARE256    compare256_neon_static
 
-#include "match_tpl.h"
+#  include "match_tpl.h"
 
-#define LONGEST_MATCH_SLOW
-#define LONGEST_MATCH       longest_match_slow_neon
-#define COMPARE256          compare256_neon_static
+#  define LONGEST_MATCH_SLOW
+#  define LONGEST_MATCH longest_match_slow_neon
+#  define COMPARE256    compare256_neon_static
 
-#include "match_tpl.h"
+#  include "match_tpl.h"
 
 #endif

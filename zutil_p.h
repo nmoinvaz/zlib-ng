@@ -8,8 +8,8 @@
 #if defined(__APPLE__) || defined(HAVE_POSIX_MEMALIGN) || defined(HAVE_ALIGNED_ALLOC)
 #  include <stdlib.h>
 #elif defined(__FreeBSD__)
-#  include <stdlib.h>
 #  include <malloc_np.h>
+#  include <stdlib.h>
 #else
 #  include <malloc.h>
 #endif
@@ -19,7 +19,7 @@ static inline void *zng_alloc(size_t size) {
 #ifdef HAVE_ALIGNED_ALLOC
     /* Size must be a multiple of alignment */
     size = (size + (64 - 1)) & ~(64 - 1);
-    return (void *)aligned_alloc(64, size);  /* Defined in C11 */
+    return (void *)aligned_alloc(64, size); /* Defined in C11 */
 #elif defined(HAVE_POSIX_MEMALIGN)
     void *ptr;
     return posix_memalign(&ptr, 64, size) ? NULL : ptr;
