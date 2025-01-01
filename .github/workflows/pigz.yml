@@ -15,12 +15,14 @@ jobs:
             os: ubuntu-latest
             compiler: gcc
             codecov: ubuntu_gcc_pigz
+            parallels-jobs: 1
 
           - name: Ubuntu GCC Symbol Prefix
             os: ubuntu-latest
             compiler: gcc
             codecov: ubuntu_gcc_pigz
             cmake-args: -DZLIB_SYMBOL_PREFIX=zTest_
+            parallels-jobs: 1
 
           - name: Ubuntu Clang
             os: ubuntu-latest
@@ -51,6 +53,7 @@ jobs:
             cmake-args: -DCMAKE_TOOLCHAIN_FILE=../../cmake/toolchain-aarch64.cmake
             packages: qemu-user gcc-aarch64-linux-gnu libc-dev-arm64-cross
             codecov: ubuntu_gcc_pigz_aarch64
+            parallels-jobs: 1
 
     steps:
     - name: Checkout repository
