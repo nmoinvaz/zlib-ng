@@ -209,8 +209,8 @@ static void init_functable(void) {
     }
 #endif
 #ifdef POWER8_VSX_CRC32
-    if (cf.power.has_arch_2_07)
-        ft.crc32 = &crc32_power8;
+    //if (cf.power.has_arch_2_07)
+    //    ft.crc32 = &crc32_power8;
 #endif
     // Power9
 #ifdef POWER9
