@@ -691,7 +691,7 @@ jobs:
 
     - name: Make source tree read-only
       shell: bash
-      run: chmod -R a-w .
+      run: find . -type f -exec chmod a-w {} \;
 
     - name: Generate project files
       shell: bash
@@ -727,7 +727,7 @@ jobs:
 
     - name: Make source tree writable
       shell: bash
-      run: chmod -R +w .
+      run: find . -type f -exec chmod -R +w {} \;
 
     - name: Generate coverage report
       if: matrix.codecov
