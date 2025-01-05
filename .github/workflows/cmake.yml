@@ -666,6 +666,7 @@ jobs:
           -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi;libunwind;compiler-rt" \
           -DLLVM_USE_SANITIZER=MemoryWithOrigins \
           -DLIBCXXABI_USE_LLVM_UNWINDER=OFF \
+          -DLLVM_ENABLE_PROJECTS=compiler-rt \
           -DLIBCXX_INCLUDE_BENCHMARKS=OFF \
           -DLLVM_INCLUDE_TESTS=OFF \
           -DLLVM_INCLUDE_DOCS=OFF
