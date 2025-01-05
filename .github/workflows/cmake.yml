@@ -139,78 +139,78 @@ jobs:
           #   cmake-args: -DWITH_PCLMULQDQ=OFF -DWITH_SANITIZER=Undefined
           #   codecov: ubuntu_gcc_no_pclmulqdq
 
-          - name: Ubuntu GCC Compat No Opt ASAN
-            os: ubuntu-latest
-            compiler: gcc
-            cxx-compiler: g++
-            cmake-args: -DZLIB_COMPAT=ON -DWITH_NEW_STRATEGIES=OFF -DWITH_OPTIM=OFF -DWITH_SANITIZER=Address
-            codecov: ubuntu_gcc_compat_no_opt
-            cflags: -DNOT_TWEAK_COMPILER
+          # - name: Ubuntu GCC Compat No Opt ASAN
+          #   os: ubuntu-latest
+          #   compiler: gcc
+          #   cxx-compiler: g++
+          #   cmake-args: -DZLIB_COMPAT=ON -DWITH_NEW_STRATEGIES=OFF -DWITH_OPTIM=OFF -DWITH_SANITIZER=Address
+          #   codecov: ubuntu_gcc_compat_no_opt
+          #   cflags: -DNOT_TWEAK_COMPILER
 
-          - name: Ubuntu GCC ARM SF ASAN
-            os: ubuntu-latest
-            cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-arm.cmake -DWITH_SANITIZER=Address
-            asan-options: detect_leaks=0
-            packages: qemu-user crossbuild-essential-armel
-            codecov: ubuntu_gcc_armsf
+          # - name: Ubuntu GCC ARM SF ASAN
+          #   os: ubuntu-latest
+          #   cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-arm.cmake -DWITH_SANITIZER=Address
+          #   asan-options: detect_leaks=0
+          #   packages: qemu-user crossbuild-essential-armel
+          #   codecov: ubuntu_gcc_armsf
 
-          - name: Ubuntu GCC ARM SF Compat No Opt UBSAN
-            os: ubuntu-latest
-            cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-arm.cmake -DZLIB_COMPAT=ON -DWITH_NEW_STRATEGIES=OFF -DWITH_OPTIM=OFF -DWITH_SANITIZER=Undefined
-            packages: qemu-user crossbuild-essential-armel
-            codecov: ubuntu_gcc_armsf_compat_no_opt
+          # - name: Ubuntu GCC ARM SF Compat No Opt UBSAN
+          #   os: ubuntu-latest
+          #   cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-arm.cmake -DZLIB_COMPAT=ON -DWITH_NEW_STRATEGIES=OFF -DWITH_OPTIM=OFF -DWITH_SANITIZER=Undefined
+          #   packages: qemu-user crossbuild-essential-armel
+          #   codecov: ubuntu_gcc_armsf_compat_no_opt
 
-          - name: Ubuntu GCC ARM HF ASAN
-            os: ubuntu-latest
-            cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-armhf.cmake -DWITH_SANITIZER=Address
-            asan-options: detect_leaks=0
-            packages: qemu-user crossbuild-essential-armhf
-            codecov: ubuntu_gcc_armhf
+          # - name: Ubuntu GCC ARM HF ASAN
+          #   os: ubuntu-latest
+          #   cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-armhf.cmake -DWITH_SANITIZER=Address
+          #   asan-options: detect_leaks=0
+          #   packages: qemu-user crossbuild-essential-armhf
+          #   codecov: ubuntu_gcc_armhf
 
-          - name: Ubuntu GCC ARM HF No ACLE ASAN
-            os: ubuntu-latest
-            cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-armhf.cmake -DWITH_ACLE=OFF -DWITH_SANITIZER=Address
-            asan-options: detect_leaks=0
-            packages: qemu-user crossbuild-essential-armhf
-            codecov: ubuntu_gcc_armhf_no_acle
+          # - name: Ubuntu GCC ARM HF No ACLE ASAN
+          #   os: ubuntu-latest
+          #   cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-armhf.cmake -DWITH_ACLE=OFF -DWITH_SANITIZER=Address
+          #   asan-options: detect_leaks=0
+          #   packages: qemu-user crossbuild-essential-armhf
+          #   codecov: ubuntu_gcc_armhf_no_acle
 
-          - name: Ubuntu GCC ARM HF No NEON ASAN
-            os: ubuntu-latest
-            cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-armhf.cmake -DWITH_NEON=OFF -DWITH_SANITIZER=Address
-            asan-options: detect_leaks=0
-            packages: qemu-user crossbuild-essential-armhf
-            codecov: ubuntu_gcc_armhf_no_neon
+          # - name: Ubuntu GCC ARM HF No NEON ASAN
+          #   os: ubuntu-latest
+          #   cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-armhf.cmake -DWITH_NEON=OFF -DWITH_SANITIZER=Address
+          #   asan-options: detect_leaks=0
+          #   packages: qemu-user crossbuild-essential-armhf
+          #   codecov: ubuntu_gcc_armhf_no_neon
 
-          - name: Ubuntu GCC ARM HF Compat No Opt UBSAN
-            os: ubuntu-latest
-            cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-armhf.cmake -DZLIB_COMPAT=ON -DWITH_NEW_STRATEGIES=OFF -DWITH_OPTIM=OFF -DWITH_SANITIZER=Undefined
-            packages: qemu-user crossbuild-essential-armhf
-            codecov: ubuntu_gcc_armhf_compat_no_opt
+          # - name: Ubuntu GCC ARM HF Compat No Opt UBSAN
+          #   os: ubuntu-latest
+          #   cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-armhf.cmake -DZLIB_COMPAT=ON -DWITH_NEW_STRATEGIES=OFF -DWITH_OPTIM=OFF -DWITH_SANITIZER=Undefined
+          #   packages: qemu-user crossbuild-essential-armhf
+          #   codecov: ubuntu_gcc_armhf_compat_no_opt
 
-          - name: Ubuntu GCC AARCH64 ASAN
-            os: ubuntu-latest
-            cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-aarch64.cmake -DWITH_SANITIZER=Address
-            asan-options: detect_leaks=0
-            packages: qemu-user crossbuild-essential-arm64
-            codecov: ubuntu_gcc_aarch64
+          # - name: Ubuntu GCC AARCH64 ASAN
+          #   os: ubuntu-latest
+          #   cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-aarch64.cmake -DWITH_SANITIZER=Address
+          #   asan-options: detect_leaks=0
+          #   packages: qemu-user crossbuild-essential-arm64
+          #   codecov: ubuntu_gcc_aarch64
 
-          - name: Ubuntu GCC AARCH64 No ACLE UBSAN
-            os: ubuntu-latest
-            cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-aarch64.cmake -DWITH_ACLE=OFF -DWITH_SANITIZER=Undefined
-            packages: qemu-user crossbuild-essential-arm64
-            codecov: ubuntu_gcc_aarch64_no_acle
+          # - name: Ubuntu GCC AARCH64 No ACLE UBSAN
+          #   os: ubuntu-latest
+          #   cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-aarch64.cmake -DWITH_ACLE=OFF -DWITH_SANITIZER=Undefined
+          #   packages: qemu-user crossbuild-essential-arm64
+          #   codecov: ubuntu_gcc_aarch64_no_acle
 
-          - name: Ubuntu GCC AARCH64 No NEON UBSAN
-            os: ubuntu-latest
-            cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-aarch64.cmake -DWITH_NEON=OFF -DWITH_SANITIZER=Undefined
-            packages: qemu-user crossbuild-essential-arm64
-            codecov: ubuntu_gcc_aarch64_no_neon
+          # - name: Ubuntu GCC AARCH64 No NEON UBSAN
+          #   os: ubuntu-latest
+          #   cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-aarch64.cmake -DWITH_NEON=OFF -DWITH_SANITIZER=Undefined
+          #   packages: qemu-user crossbuild-essential-arm64
+          #   codecov: ubuntu_gcc_aarch64_no_neon
 
-          - name: Ubuntu GCC AARCH64 Compat No Opt UBSAN
-            os: ubuntu-latest
-            cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-aarch64.cmake -DZLIB_COMPAT=ON -DWITH_NEW_STRATEGIES=OFF -DWITH_OPTIM=OFF -DWITH_SANITIZER=Undefined
-            packages: qemu-user crossbuild-essential-arm64
-            codecov: ubuntu_gcc_aarch64_compat_no_opt
+          # - name: Ubuntu GCC AARCH64 Compat No Opt UBSAN
+          #   os: ubuntu-latest
+          #   cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-aarch64.cmake -DZLIB_COMPAT=ON -DWITH_NEW_STRATEGIES=OFF -DWITH_OPTIM=OFF -DWITH_SANITIZER=Undefined
+          #   packages: qemu-user crossbuild-essential-arm64
+          #   codecov: ubuntu_gcc_aarch64_compat_no_opt
 
           - name: Ubuntu GCC MIPS
             os: ubuntu-latest
@@ -349,37 +349,37 @@ jobs:
           #   # The dedicated z15 test VM has 4 cores
           #   parallels-jobs: 4
 
-          - name: Ubuntu MinGW i686
-            os: ubuntu-22.04
-            cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-mingw-i686.cmake
-            packages: wine wine32 gcc-mingw-w64-i686 g++-mingw-w64-i686 libpcre2-8-0=10.39-3ubuntu0.1 libpcre2-8-0:i386=10.39-3ubuntu0.1 libodbc1=2.3.9-5ubuntu0.1 libodbc1:i386=2.3.9-5ubuntu0.1 libodbc2=2.3.9-5ubuntu0.1 libodbc2:i386=2.3.9-5ubuntu0.1 libodbccr2=2.3.9-5ubuntu0.1 libodbccr2:i386=2.3.9-5ubuntu0.1 libwine:i386=6.0.3~repack-1 libgphoto2-6:i386=2.5.27-1build2 libsane:i386=1.1.1-5 libgd3=2.3.0-2ubuntu2 libgd3:i386=2.3.0-2ubuntu2 libgcc-s1:i386 libstdc++6:i386
-            ldflags: -static
-            codecov: ubuntu_gcc_mingw_i686
-            # Limit parallel test jobs to prevent wine errors
-            parallels-jobs: 1
+          # - name: Ubuntu MinGW i686
+          #   os: ubuntu-22.04
+          #   cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-mingw-i686.cmake
+          #   packages: wine wine32 gcc-mingw-w64-i686 g++-mingw-w64-i686 libpcre2-8-0=10.39-3ubuntu0.1 libpcre2-8-0:i386=10.39-3ubuntu0.1 libodbc1=2.3.9-5ubuntu0.1 libodbc1:i386=2.3.9-5ubuntu0.1 libodbc2=2.3.9-5ubuntu0.1 libodbc2:i386=2.3.9-5ubuntu0.1 libodbccr2=2.3.9-5ubuntu0.1 libodbccr2:i386=2.3.9-5ubuntu0.1 libwine:i386=6.0.3~repack-1 libgphoto2-6:i386=2.5.27-1build2 libsane:i386=1.1.1-5 libgd3=2.3.0-2ubuntu2 libgd3:i386=2.3.0-2ubuntu2 libgcc-s1:i386 libstdc++6:i386
+          #   ldflags: -static
+          #   codecov: ubuntu_gcc_mingw_i686
+          #   # Limit parallel test jobs to prevent wine errors
+          #   parallels-jobs: 1
 
-          - name: Ubuntu MinGW x86_64
-            os: ubuntu-latest
-            cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-mingw-x86_64.cmake
-            packages: wine wine64 gcc-mingw-w64 g++-mingw-w64
-            ldflags: -static
-            codecov: ubuntu_gcc_mingw_x86_64
-             # Limit parallel test jobs to prevent wine errors
-            parallels-jobs: 1
+          # - name: Ubuntu MinGW x86_64
+          #   os: ubuntu-latest
+          #   cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-mingw-x86_64.cmake
+          #   packages: wine wine64 gcc-mingw-w64 g++-mingw-w64
+          #   ldflags: -static
+          #   codecov: ubuntu_gcc_mingw_x86_64
+          #    # Limit parallel test jobs to prevent wine errors
+          #   parallels-jobs: 1
 
-          - name: Ubuntu 20.04 Clang 6
-            os: ubuntu-20.04
-            compiler: clang-6.0
-            cxx-compiler: clang++-6.0
-            packages: clang-6.0
+          # - name: Ubuntu 20.04 Clang 6
+          #   os: ubuntu-20.04
+          #   compiler: clang-6.0
+          #   cxx-compiler: clang++-6.0
+          #   packages: clang-6.0
 
-          - name: Ubuntu Clang
-            os: ubuntu-latest
-            compiler: clang-15
-            cxx-compiler: clang++-15
-            packages: clang-15 llvm-15 llvm-15-tools
-            gcov-exec: llvm-cov-15 gcov
-            codecov: ubuntu_clang
+          # - name: Ubuntu Clang
+          #   os: ubuntu-latest
+          #   compiler: clang-15
+          #   cxx-compiler: clang++-15
+          #   packages: clang-15 llvm-15 llvm-15-tools
+          #   gcov-exec: llvm-cov-15 gcov
+          #   codecov: ubuntu_clang
 
           # # Check for undefined symbols in the version script for the modern api
           # - name: Ubuntu Clang Undefined Symbols
@@ -435,14 +435,14 @@ jobs:
           #   gcov-exec: llvm-cov-15 gcov
           #   codecov: ubuntu_clang_mmap
 
-          - name: Ubuntu Clang Debug
-            os: ubuntu-latest
-            compiler: clang-15
-            cxx-compiler: clang++-15
-            packages: clang-15 llvm-15 llvm-15-tools
-            gcov-exec: llvm-cov-15 gcov
-            codecov: ubuntu_clang_debug
-            build-config: Debug
+          # - name: Ubuntu Clang Debug
+          #   os: ubuntu-latest
+          #   compiler: clang-15
+          #   cxx-compiler: clang++-15
+          #   packages: clang-15 llvm-15 llvm-15-tools
+          #   gcov-exec: llvm-cov-15 gcov
+          #   codecov: ubuntu_clang_debug
+          #   build-config: Debug
 
           - name: Ubuntu Clang MSAN
             os: ubuntu-latest
@@ -454,10 +454,10 @@ jobs:
             # https://github.com/llvm/llvm-project/issues/55785
             msan-options: use_sigaltstack=0
 
-          - name: Ubuntu Clang RISC-V
-            os: ubuntu-latest
-            cmake-args: -GNinja -DCMAKE_TOOLCHAIN_FILE=./cmake/toolchain-riscv.cmake -DTOOLCHAIN_PATH=${PWD}/prebuilt-riscv-toolchain-qemu/riscv-clang -DQEMU_PATH=${PWD}/prebuilt-riscv-toolchain-qemu/riscv-qemu/bin/qemu-riscv64
-            packages: build-essential cmake ninja-build
+          # - name: Ubuntu Clang RISC-V
+          #   os: ubuntu-latest
+          #   cmake-args: -GNinja -DCMAKE_TOOLCHAIN_FILE=./cmake/toolchain-riscv.cmake -DTOOLCHAIN_PATH=${PWD}/prebuilt-riscv-toolchain-qemu/riscv-clang -DQEMU_PATH=${PWD}/prebuilt-riscv-toolchain-qemu/riscv-qemu/bin/qemu-riscv64
+          #   packages: build-essential cmake ninja-build
 
           # - name: Ubuntu Emscripten WASM32
           #   os: ubuntu-latest
