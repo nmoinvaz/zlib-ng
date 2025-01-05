@@ -194,7 +194,7 @@ static void init_functable(void) {
     // Power - VMX
 #ifdef PPC_VMX
     if (cf.power.has_altivec) {
-        ft.adler32 = &adler32_vmx;
+        //ft.adler32 = &adler32_vmx;
         ft.slide_hash = &slide_hash_vmx;
     }
 #endif
