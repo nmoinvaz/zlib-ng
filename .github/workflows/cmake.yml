@@ -230,11 +230,21 @@ jobs:
             packages: qemu-user crossbuild-essential-powerpc
             codecov: ubuntu_gcc_ppc
 
+          - name: Ubuntu Clang PPC
+            os: ubuntu-latest
+            cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-powerpc-clang.cmake
+            packages: qemu-user crossbuild-essential-powerpc
+
           - name: Ubuntu GCC PPC No Power8
             os: ubuntu-latest
             cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-powerpc.cmake -DWITH_POWER8=OFF
             packages: qemu-user crossbuild-essential-powerpc
             codecov: ubuntu_gcc_ppc_no_power8
+
+          - name: Ubuntu Clang PPC No Power8
+            os: ubuntu-latest
+            cmake-args: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-powerpc-clang.cmake -DWITH_POWER8=OFF
+            packages: qemu-user crossbuild-essential-powerpc
 
           - name: Ubuntu GCC PPC64
             os: ubuntu-latest
