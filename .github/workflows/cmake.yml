@@ -663,11 +663,10 @@ jobs:
         git clone --depth=1 https://github.com/llvm/llvm-project --single-branch --branch llvmorg-16.0.6
         cmake -S llvm-project/runtimes -B llvm-project/build -G Ninja \
           -DCMAKE_BUILD_TYPE=Release \
-          -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi;libunwind;compiler-rt" \
+          -DLLVM_ENABLE_RUNTIMES="clang;compiler-rt;libcxx;libcxxabi;libunwind" \
           -DLLVM_USE_SANITIZER=MemoryWithOrigins \
           -DLIBCXXABI_USE_LLVM_UNWINDER=OFF \
           -DLIBCXXABI_USE_COMPILER_RT=YES \
-          -DLLVM_ENABLE_PROJECTS=compiler-rt \
           -DLIBCXX_USE_COMPILER_RT=YES \
           -DLIBCXX_INCLUDE_BENCHMARKS=OFF \
           -DLLVM_INCLUDE_TESTS=OFF \
