@@ -202,7 +202,7 @@ static void init_functable(void) {
 #ifdef POWER8_VSX
     if (cf.power.has_arch_2_07) {
         //ft.adler32 = &adler32_power8;
-        ft.chunkmemset_safe = &chunkmemset_safe_power8;
+        //ft.chunkmemset_safe = &chunkmemset_safe_power8;
         ft.chunksize = &chunksize_power8;
         ft.inflate_fast = &inflate_fast_power8;
         ft.slide_hash = &slide_hash_power8;
