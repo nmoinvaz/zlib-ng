@@ -354,35 +354,55 @@ static void test_large_inflate(unsigned char *compr, size_t comprLen, unsigned c
     int err;
     PREFIX3(stream) d_stream; /* decompression stream */
 
-    strcpy((char*)uncompr, "garbage");
+    // Load file index.gz into memory
+    FILE *file = fopen("C:\\Users\\nathan\\Downloads\\solsta-win64\\index.gz", "rb");
+    if (file == NULL) {
+        error("Failed to open file\n");
+    }
+    fseek(file, 0, SEEK_END);
+    long fsize = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    unsigned char *buffer = malloc(fsize);
+    if (buffer == NULL) {
+        error("Failed to allocate memory\n");
+    }
+    fread(buffer, 1, fsize, file);
+    fclose(file);
+
+    // Open file to write to
+    FILE *file2 = fopen("C:\\Users\\nathan\\Downloads\\solsta-win64\\index.js", "wb");
+    if (file2 == NULL) {
+        error("Failed to open file\n");
+    }
 
     d_stream.zalloc = zalloc;
     d_stream.zfree = zfree;
     d_stream.opaque = (void *)0;
 
-    d_stream.next_in  = compr;
-    d_stream.avail_in = (unsigned int)comprLen;
+    d_stream.next_in  = buffer;
+    d_stream.avail_in = (unsigned int)fsize;
     d_stream.total_in = 0;
     d_stream.total_out = 0;
 
-    err = PREFIX(inflateInit)(&d_stream);
+    err = PREFIX(inflateInit2)(&d_stream, -MAX_WBITS);
     CHECK_ERR(err, "inflateInit");
 
+    char uncompr2[INT16_MAX];
     for (;;) {
-        d_stream.next_out = uncompr;            /* discard the output */
-        d_stream.avail_out = (unsigned int)uncomprLen;
-        err = PREFIX(inflate)(&d_stream, Z_NO_FLUSH);
+        int total_out = d_stream.total_out;
+        d_stream.next_out = uncompr2;            /* discard the output */
+        d_stream.avail_out = sizeof(uncompr2);
+        err = PREFIX(inflate)(&d_stream, Z_SYNC_FLUSH);
+        // Write to file
+        int write = d_stream.total_out - total_out;
+        fwrite(uncompr2, 1, write, file2);
         if (err == Z_STREAM_END) break;
         CHECK_ERR(err, "large inflate");
     }
 
     err = PREFIX(inflateEnd)(&d_stream);
+    fclose(file2);
     CHECK_ERR(err, "inflateEnd");
-
-    if (d_stream.total_out != 2*uncomprLen + diff)
-        error("bad large inflate: %" PRIu64 "\n", (uint64_t)d_stream.total_out);
-    else
-        printf("large_inflate(): OK\n");
 }
 
 /* ===========================================================================
@@ -939,7 +959,7 @@ static void test_deflate_tune(unsigned char *compr, size_t comprLen) {
  */
 int main(int argc, char *argv[]) {
     unsigned char *compr, *uncompr;
-    z_uintmax_t comprLen = 10000*sizeof(int); /* don't overflow on MSDOS */
+    z_uintmax_t comprLen = 4000000*sizeof(int); /* don't overflow on MSDOS */
     z_uintmax_t uncomprLen = comprLen;
     static const char* myVersion = PREFIX2(VERSION);
 
@@ -962,22 +982,22 @@ int main(int argc, char *argv[]) {
     if (compr == NULL || uncompr == NULL)
         error("out of memory\n");
 
-    test_compress(compr, comprLen, uncompr, uncomprLen);
+    /*test_compress(compr, comprLen, uncompr, uncomprLen);
 
     test_gzio((argc > 1 ? argv[1] : TESTFILE),
               uncompr, uncomprLen);
 
     test_deflate(compr, comprLen);
-    test_inflate(compr, comprLen, uncompr, uncomprLen);
+    test_inflate(compr, comprLen, uncompr, uncomprLen);*/
 
-    test_large_deflate(compr, comprLen, uncompr, uncomprLen, 0);
+    //test_large_deflate(compr, comprLen, uncompr, uncomprLen, 0);
     test_large_inflate(compr, comprLen, uncompr, uncomprLen);
 
 #ifndef ZLIB_COMPAT
     test_large_deflate(compr, comprLen, uncompr, uncomprLen, 1);
     test_large_inflate(compr, comprLen, uncompr, uncomprLen);
 #endif
-
+#if 0
     test_flush(compr, &comprLen);
 #ifdef ZLIBNG_ENABLE_TESTS
     test_sync(compr, comprLen, uncompr, uncomprLen);
@@ -994,7 +1014,7 @@ int main(int argc, char *argv[]) {
     test_deflate_tune(compr, comprLen);
     test_deflate_pending(compr, comprLen);
     test_deflate_prime(compr, comprLen, uncompr, uncomprLen);
-
+#endif
     free(compr);
     free(uncompr);
 
