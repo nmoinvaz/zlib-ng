@@ -506,202 +506,6 @@ int32_t Z_EXPORT PREFIX(inflate)(PREFIX3(stream) *strm, int32_t flush) {
     ret = Z_OK;
     for (;;)
         switch (state->mode) {
-        case HEAD:
-            if (state->wrap == 0) {
-                state->mode = TYPEDO;
-                break;
-            }
-            NEEDBITS(16);
-#ifdef GUNZIP
-            if ((state->wrap & 2) && hold == 0x8b1f) {  /* gzip header */
-                if (state->wbits == 0)
-                    state->wbits = MAX_WBITS;
-                state->check = CRC32_INITIAL_VALUE;
-                CRC2(state->check, hold);
-                INITBITS();
-                state->mode = FLAGS;
-                break;
-            }
-            if (state->head != NULL)
-                state->head->done = -1;
-            if (!(state->wrap & 1) ||   /* check if zlib header allowed */
-#else
-            if (
-#endif
-                ((BITS(8) << 8) + (hold >> 8)) % 31) {
-                SET_BAD("incorrect header check");
-                break;
-            }
-            if (BITS(4) != Z_DEFLATED) {
-                SET_BAD("unknown compression method");
-                break;
-            }
-            DROPBITS(4);
-            len = BITS(4) + 8;
-            if (state->wbits == 0)
-                state->wbits = len;
-            if (len > MAX_WBITS || len > state->wbits) {
-                SET_BAD("invalid window size");
-                break;
-            }
-#ifdef INFLATE_STRICT
-            state->dmax = 1U << len;
-#endif
-            state->flags = 0;               /* indicate zlib header */
-            Tracev((stderr, "inflate:   zlib header ok\n"));
-            strm->adler = state->check = ADLER32_INITIAL_VALUE;
-            state->mode = hold & 0x200 ? DICTID : TYPE;
-            INITBITS();
-            break;
-#ifdef GUNZIP
-
-        case FLAGS:
-            NEEDBITS(16);
-            state->flags = (int)(hold);
-            if ((state->flags & 0xff) != Z_DEFLATED) {
-                SET_BAD("unknown compression method");
-                break;
-            }
-            if (state->flags & 0xe000) {
-                SET_BAD("unknown header flags set");
-                break;
-            }
-            if (state->head != NULL)
-                state->head->text = (int)((hold >> 8) & 1);
-            if ((state->flags & 0x0200) && (state->wrap & 4))
-                CRC2(state->check, hold);
-            INITBITS();
-            state->mode = TIME;
-            Z_FALLTHROUGH;
-
-        case TIME:
-            NEEDBITS(32);
-            if (state->head != NULL)
-                state->head->time = (unsigned)(hold);
-            if ((state->flags & 0x0200) && (state->wrap & 4))
-                CRC4(state->check, hold);
-            INITBITS();
-            state->mode = OS;
-            Z_FALLTHROUGH;
-
-        case OS:
-            NEEDBITS(16);
-            if (state->head != NULL) {
-                state->head->xflags = (int)(hold & 0xff);
-                state->head->os = (int)(hold >> 8);
-            }
-            if ((state->flags & 0x0200) && (state->wrap & 4))
-                CRC2(state->check, hold);
-            INITBITS();
-            state->mode = EXLEN;
-            Z_FALLTHROUGH;
-
-        case EXLEN:
-            if (state->flags & 0x0400) {
-                NEEDBITS(16);
-                state->length = (uint16_t)hold;
-                if (state->head != NULL)
-                    state->head->extra_len = (uint16_t)hold;
-                if ((state->flags & 0x0200) && (state->wrap & 4))
-                    CRC2(state->check, hold);
-                INITBITS();
-            } else if (state->head != NULL) {
-                state->head->extra = NULL;
-            }
-            state->mode = EXTRA;
-            Z_FALLTHROUGH;
-
-        case EXTRA:
-            if (state->flags & 0x0400) {
-                copy = state->length;
-                if (copy > have)
-                    copy = have;
-                if (copy) {
-                    if (state->head != NULL && state->head->extra != NULL) {
-                        len = state->head->extra_len - state->length;
-                        if (len < state->head->extra_max) {
-                            memcpy(state->head->extra + len, next,
-                                    len + copy > state->head->extra_max ?
-                                    state->head->extra_max - len : copy);
-                        }
-                    }
-                    if ((state->flags & 0x0200) && (state->wrap & 4)) {
-                        state->check = PREFIX(crc32)(state->check, next, copy);
-                    }
-                    have -= copy;
-                    next += copy;
-                    state->length -= copy;
-                }
-                if (state->length)
-                    goto inf_leave;
-            }
-            state->length = 0;
-            state->mode = NAME;
-            Z_FALLTHROUGH;
-
-        case NAME:
-            if (state->flags & 0x0800) {
-                if (have == 0) goto inf_leave;
-                copy = 0;
-                do {
-                    len = (unsigned)(next[copy++]);
-                    if (state->head != NULL && state->head->name != NULL && state->length < state->head->name_max)
-                        state->head->name[state->length++] = (unsigned char)len;
-                } while (len && copy < have);
-                if ((state->flags & 0x0200) && (state->wrap & 4))
-                    state->check = PREFIX(crc32)(state->check, next, copy);
-                have -= copy;
-                next += copy;
-                if (len)
-                    goto inf_leave;
-            } else if (state->head != NULL) {
-                state->head->name = NULL;
-            }
-            state->length = 0;
-            state->mode = COMMENT;
-            Z_FALLTHROUGH;
-
-        case COMMENT:
-            if (state->flags & 0x1000) {
-                if (have == 0) goto inf_leave;
-                copy = 0;
-                do {
-                    len = (unsigned)(next[copy++]);
-                    if (state->head != NULL && state->head->comment != NULL
-                        && state->length < state->head->comm_max)
-                        state->head->comment[state->length++] = (unsigned char)len;
-                } while (len && copy < have);
-                if ((state->flags & 0x0200) && (state->wrap & 4))
-                    state->check = PREFIX(crc32)(state->check, next, copy);
-                have -= copy;
-                next += copy;
-                if (len)
-                    goto inf_leave;
-            } else if (state->head != NULL) {
-                state->head->comment = NULL;
-            }
-            state->mode = HCRC;
-            Z_FALLTHROUGH;
-
-        case HCRC:
-            if (state->flags & 0x0200) {
-                NEEDBITS(16);
-                if ((state->wrap & 4) && hold != (state->check & 0xffff)) {
-                    SET_BAD("header crc mismatch");
-                    break;
-                }
-                INITBITS();
-            }
-            if (state->head != NULL) {
-                state->head->hcrc = (int)((state->flags >> 9) & 1);
-                state->head->done = 1;
-            }
-            /* compute crc32 checksum if not in raw mode */
-            if ((state->wrap & 4) && state->flags)
-                strm->adler = state->check = FUNCTABLE_CALL(crc32_fold_reset)(&state->crc_fold);
-            state->mode = TYPE;
-            break;
-#endif
         case DICTID:
             NEEDBITS(32);
             strm->adler = state->check = ZSWAP32((unsigned)hold);
@@ -1105,6 +909,202 @@ int32_t Z_EXPORT PREFIX(inflate)(PREFIX3(stream) *strm, int32_t flush) {
             left--;
             state->mode = LEN;
             break;
+        case HEAD:
+            if (state->wrap == 0) {
+                state->mode = TYPEDO;
+                break;
+            }
+            NEEDBITS(16);
+#ifdef GUNZIP
+            if ((state->wrap & 2) && hold == 0x8b1f) {  /* gzip header */
+                if (state->wbits == 0)
+                    state->wbits = MAX_WBITS;
+                state->check = CRC32_INITIAL_VALUE;
+                CRC2(state->check, hold);
+                INITBITS();
+                state->mode = FLAGS;
+                break;
+            }
+            if (state->head != NULL)
+                state->head->done = -1;
+            if (!(state->wrap & 1) ||   /* check if zlib header allowed */
+#else
+            if (
+#endif
+                ((BITS(8) << 8) + (hold >> 8)) % 31) {
+                SET_BAD("incorrect header check");
+                break;
+            }
+            if (BITS(4) != Z_DEFLATED) {
+                SET_BAD("unknown compression method");
+                break;
+            }
+            DROPBITS(4);
+            len = BITS(4) + 8;
+            if (state->wbits == 0)
+                state->wbits = len;
+            if (len > MAX_WBITS || len > state->wbits) {
+                SET_BAD("invalid window size");
+                break;
+            }
+#ifdef INFLATE_STRICT
+            state->dmax = 1U << len;
+#endif
+            state->flags = 0;               /* indicate zlib header */
+            Tracev((stderr, "inflate:   zlib header ok\n"));
+            strm->adler = state->check = ADLER32_INITIAL_VALUE;
+            state->mode = hold & 0x200 ? DICTID : TYPE;
+            INITBITS();
+            break;
+#ifdef GUNZIP
+
+        case FLAGS:
+            NEEDBITS(16);
+            state->flags = (int)(hold);
+            if ((state->flags & 0xff) != Z_DEFLATED) {
+                SET_BAD("unknown compression method");
+                break;
+            }
+            if (state->flags & 0xe000) {
+                SET_BAD("unknown header flags set");
+                break;
+            }
+            if (state->head != NULL)
+                state->head->text = (int)((hold >> 8) & 1);
+            if ((state->flags & 0x0200) && (state->wrap & 4))
+                CRC2(state->check, hold);
+            INITBITS();
+            state->mode = TIME;
+            Z_FALLTHROUGH;
+
+        case TIME:
+            NEEDBITS(32);
+            if (state->head != NULL)
+                state->head->time = (unsigned)(hold);
+            if ((state->flags & 0x0200) && (state->wrap & 4))
+                CRC4(state->check, hold);
+            INITBITS();
+            state->mode = OS;
+            Z_FALLTHROUGH;
+
+        case OS:
+            NEEDBITS(16);
+            if (state->head != NULL) {
+                state->head->xflags = (int)(hold & 0xff);
+                state->head->os = (int)(hold >> 8);
+            }
+            if ((state->flags & 0x0200) && (state->wrap & 4))
+                CRC2(state->check, hold);
+            INITBITS();
+            state->mode = EXLEN;
+            Z_FALLTHROUGH;
+
+        case EXLEN:
+            if (state->flags & 0x0400) {
+                NEEDBITS(16);
+                state->length = (uint16_t)hold;
+                if (state->head != NULL)
+                    state->head->extra_len = (uint16_t)hold;
+                if ((state->flags & 0x0200) && (state->wrap & 4))
+                    CRC2(state->check, hold);
+                INITBITS();
+            } else if (state->head != NULL) {
+                state->head->extra = NULL;
+            }
+            state->mode = EXTRA;
+            Z_FALLTHROUGH;
+
+        case EXTRA:
+            if (state->flags & 0x0400) {
+                copy = state->length;
+                if (copy > have)
+                    copy = have;
+                if (copy) {
+                    if (state->head != NULL && state->head->extra != NULL) {
+                        len = state->head->extra_len - state->length;
+                        if (len < state->head->extra_max) {
+                            memcpy(state->head->extra + len, next,
+                                    len + copy > state->head->extra_max ?
+                                    state->head->extra_max - len : copy);
+                        }
+                    }
+                    if ((state->flags & 0x0200) && (state->wrap & 4)) {
+                        state->check = PREFIX(crc32)(state->check, next, copy);
+                    }
+                    have -= copy;
+                    next += copy;
+                    state->length -= copy;
+                }
+                if (state->length)
+                    goto inf_leave;
+            }
+            state->length = 0;
+            state->mode = NAME;
+            Z_FALLTHROUGH;
+
+        case NAME:
+            if (state->flags & 0x0800) {
+                if (have == 0) goto inf_leave;
+                copy = 0;
+                do {
+                    len = (unsigned)(next[copy++]);
+                    if (state->head != NULL && state->head->name != NULL && state->length < state->head->name_max)
+                        state->head->name[state->length++] = (unsigned char)len;
+                } while (len && copy < have);
+                if ((state->flags & 0x0200) && (state->wrap & 4))
+                    state->check = PREFIX(crc32)(state->check, next, copy);
+                have -= copy;
+                next += copy;
+                if (len)
+                    goto inf_leave;
+            } else if (state->head != NULL) {
+                state->head->name = NULL;
+            }
+            state->length = 0;
+            state->mode = COMMENT;
+            Z_FALLTHROUGH;
+
+        case COMMENT:
+            if (state->flags & 0x1000) {
+                if (have == 0) goto inf_leave;
+                copy = 0;
+                do {
+                    len = (unsigned)(next[copy++]);
+                    if (state->head != NULL && state->head->comment != NULL
+                        && state->length < state->head->comm_max)
+                        state->head->comment[state->length++] = (unsigned char)len;
+                } while (len && copy < have);
+                if ((state->flags & 0x0200) && (state->wrap & 4))
+                    state->check = PREFIX(crc32)(state->check, next, copy);
+                have -= copy;
+                next += copy;
+                if (len)
+                    goto inf_leave;
+            } else if (state->head != NULL) {
+                state->head->comment = NULL;
+            }
+            state->mode = HCRC;
+            Z_FALLTHROUGH;
+
+        case HCRC:
+            if (state->flags & 0x0200) {
+                NEEDBITS(16);
+                if ((state->wrap & 4) && hold != (state->check & 0xffff)) {
+                    SET_BAD("header crc mismatch");
+                    break;
+                }
+                INITBITS();
+            }
+            if (state->head != NULL) {
+                state->head->hcrc = (int)((state->flags >> 9) & 1);
+                state->head->done = 1;
+            }
+            /* compute crc32 checksum if not in raw mode */
+            if ((state->wrap & 4) && state->flags)
+                strm->adler = state->check = FUNCTABLE_CALL(crc32_fold_reset)(&state->crc_fold);
+            state->mode = TYPE;
+            break;
+#endif
 
         case CHECK:
             if (state->wrap) {
