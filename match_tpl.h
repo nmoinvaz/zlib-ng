@@ -127,31 +127,33 @@ Z_INTERNAL uint32_t LONGEST_MATCH(deflate_state *const s, Pos cur_match) {
          * that depend on those values. However the length of the match is limited to the
          * lookahead, so the output of deflate is not affected by the uninitialized values.
          */
-        uint32_t len = 0;
-
         /* Use end+start checks to quickly filter non-matches */
+        uint32_t len = 0;
         if (best_len < sizeof(uint32_t)) {
+#if defined(HAVE_BUILTIN_CTZLL) || defined(HAVE_BUILTIN_CLZLL)
             for (;;) {
-#ifdef HAVE_BUILTIN_CTZLL
-                uint64_t start_diff = scan_start ^ zng_memread_8(mbase_start+cur_match);
-                if (start_diff == 0)
-                    break;
+                if (zng_memcmp_2(mbase_end+cur_match, &scan_end) == 0) {
+                    uint64_t diff = scan_start ^ zng_memread_8(mbase_start+cur_match);
+                    if (diff == 0)
+                        break;
 #if BYTE_ORDER == LITTLE_ENDIAN
-                uint32_t match_len = (uint32_t)__builtin_ctzll(start_diff) / 8;
+                    len = (uint32_t)__builtin_ctzll(diff) >> 3;
 #else
-                uint32_t match_len = (uint32_t)__builtin_clzll(start_diff) / 8;
+                    len = (uint32_t)__builtin_clzll(diff) >> 3;
 #endif
-                if (match_len > best_len) {
-                    len = match_len;
-                    break;
+                    if (len > best_len)
+                        break;
                 }
+                GOTO_NEXT_CHAIN;
+            }
 #else
+            for (;;) {
                 if (zng_memcmp_2(mbase_end+cur_match, &scan_end) == 0 &&
                     zng_memcmp_2(mbase_start+cur_match, &scan_start) == 0)
                     break;
-#endif
                 GOTO_NEXT_CHAIN;
             }
+#endif
         } else if (best_len >= sizeof(uint64_t)) {
             for (;;) {
                 if (zng_memcmp_8(mbase_end+cur_match, &scan_end) == 0 &&
