@@ -162,12 +162,30 @@ Z_INTERNAL uint32_t LONGEST_MATCH(deflate_state *const s, Pos cur_match) {
                 GOTO_NEXT_CHAIN;
             }
         } else {
+#if defined(HAVE_BUILTIN_CTZLL) || defined(HAVE_BUILTIN_CLZLL)
+            for (;;) {
+                if (zng_memcmp_4(mbase_end+cur_match, &scan_end) == 0) {
+                    uint64_t diff = scan_start ^ zng_memread_8(mbase_start+cur_match);
+                    if (diff == 0)
+                        break;
+#if BYTE_ORDER == LITTLE_ENDIAN
+                    len = (uint32_t)__builtin_ctzll(diff) >> 3;
+#else
+                    len = (uint32_t)__builtin_clzll(diff) >> 3;
+#endif
+                    if (len > best_len)
+                        break;
+                }
+                GOTO_NEXT_CHAIN;
+            }
+#else
             for (;;) {
                 if (zng_memcmp_4(mbase_end+cur_match, &scan_end) == 0 &&
                     zng_memcmp_4(mbase_start+cur_match, &scan_start) == 0)
                     break;
                 GOTO_NEXT_CHAIN;
             }
+#endif
         }
 
         if (len == 0)
