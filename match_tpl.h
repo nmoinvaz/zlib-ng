@@ -116,15 +116,6 @@ Z_INTERNAL uint32_t LONGEST_MATCH(deflate_state *const s, Pos cur_match) {
     early_exit = s->level < EARLY_EXIT_TRIGGER_LEVEL;
 #endif
     Assert((unsigned long)strstart <= s->window_size - MIN_LOOKAHEAD, "need lookahead");
-
-#ifdef HAVE_BUILTIN_CTZLL
-    /* Choose filtering strategy based on initial best_len.
-     * For short initial matches, ctzll is faster.
-     * For longer initial matches, end+start filter is more effective.
-     */
-    int use_ctzll = (best_len < sizeof(uint64_t));
-#endif
-
     for (;;) {
         if (cur_match >= strstart)
             break;
@@ -138,45 +129,27 @@ Z_INTERNAL uint32_t LONGEST_MATCH(deflate_state *const s, Pos cur_match) {
          */
         uint32_t len = 0;
 
-#ifdef HAVE_BUILTIN_CTZLL
-        if (use_ctzll) {
-            /* For short matches, use single 8-byte comparison with ctzll.
-             * This avoids the end+start filter overhead when offset is small.
-             */
+        /* Use end+start checks to quickly filter non-matches */
+        if (best_len < sizeof(uint32_t)) {
             for (;;) {
+#ifdef HAVE_BUILTIN_CTZLL
                 uint64_t start_diff = scan_start ^ zng_memread_8(mbase_start+cur_match);
-                if (start_diff == 0) {
-                    /* All 8 start bytes match - need compare256 for full length */
+                if (start_diff == 0)
                     break;
-                }
 #if BYTE_ORDER == LITTLE_ENDIAN
                 uint32_t match_len = (uint32_t)__builtin_ctzll(start_diff) / 8;
 #else
                 uint32_t match_len = (uint32_t)__builtin_clzll(start_diff) / 8;
 #endif
                 if (match_len > best_len) {
-                    /* Match ends within first 8 bytes - we know exact length */
                     len = match_len;
                     break;
                 }
-                GOTO_NEXT_CHAIN;
-            }
-        } else {
-            /* For longer matches, use 8-byte end+start filter */
-            for (;;) {
-                if (zng_memcmp_8(mbase_end+cur_match, &scan_end) == 0 &&
-                    zng_memcmp_8(mbase_start+cur_match, &scan_start) == 0)
-                    break;
-                GOTO_NEXT_CHAIN;
-            }
-        }
 #else
-        /* Use end+start checks to quickly filter non-matches */
-        if (best_len < sizeof(uint32_t)) {
-            for (;;) {
                 if (zng_memcmp_2(mbase_end+cur_match, &scan_end) == 0 &&
                     zng_memcmp_2(mbase_start+cur_match, &scan_start) == 0)
                     break;
+#endif
                 GOTO_NEXT_CHAIN;
             }
         } else if (best_len >= sizeof(uint64_t)) {
@@ -194,7 +167,7 @@ Z_INTERNAL uint32_t LONGEST_MATCH(deflate_state *const s, Pos cur_match) {
                 GOTO_NEXT_CHAIN;
             }
         }
-#endif
+
         if (len == 0)
             len = COMPARE256(scan+2, mbase_start+cur_match+2) + 2;
         Assert(scan+len <= window+(unsigned)(s->window_size-1), "wild scan");
