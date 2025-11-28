@@ -129,7 +129,7 @@ Z_INTERNAL uint32_t LONGEST_MATCH(deflate_state *const s, Pos cur_match) {
          */
         uint32_t len = 0;
 #ifdef HAVE_BUILTIN_CTZLL
-        if (best_len < sizeof(uint64_t)) {
+        if (best_len < sizeof(uint64_t) - 1) {
             /* For short matches, we can determine the match length from a single
              * 64-bit comparison, avoiding the more expensive compare256 call.
              */
