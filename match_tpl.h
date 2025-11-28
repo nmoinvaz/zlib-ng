@@ -128,45 +128,40 @@ Z_INTERNAL uint32_t LONGEST_MATCH(deflate_state *const s, Pos cur_match) {
          * lookahead, so the output of deflate is not affected by the uninitialized values.
          */
         uint32_t len = 0;
+
 #ifdef HAVE_BUILTIN_CTZLL
-        if (best_len < sizeof(uint64_t) - 1) {
-            /* For short matches, we can determine the match length from a single
-             * 64-bit comparison, avoiding the more expensive compare256 call.
-             */
-            for (;;) {
-                uint64_t match_val = zng_memread_8(mbase_start+cur_match);
-                uint64_t cmp = scan_start ^ match_val;
-                if (cmp == 0) {
-                    /* The first 8 bytes all matched. Additional scanning will be needed
-                     * (the compare256 call below) to determine the full match length.
-                     */
+        /* Use 8-byte comparisons for both filtering and match length detection.
+         * This replaces the separate 2/4/8-byte filter branches.
+         */
+        for (;;) {
+            uint64_t start_diff = scan_start ^ zng_memread_8(mbase_start+cur_match);
+
+            if (best_len < sizeof(uint64_t)) {
+                /* For short matches, check if start has enough matching bytes */
+                if (start_diff == 0) {
+                    /* All 8 start bytes match - good candidate */
                     break;
                 }
-                /* Compute the number of leading bytes that match. */
 #if BYTE_ORDER == LITTLE_ENDIAN
-                uint32_t cmp_len = (uint32_t)__builtin_ctzll(cmp) / 8;
+                uint32_t match_len = (uint32_t)__builtin_ctzll(start_diff) / 8;
 #else
-                uint32_t cmp_len = (uint32_t)__builtin_clzll(cmp) / 8;
+                uint32_t match_len = (uint32_t)__builtin_clzll(start_diff) / 8;
 #endif
-                if (cmp_len > best_len) {
-                    /* The match is fully contained within the 8 bytes just compared,
-                     * so we know the match length without needing to do the more
-                     * expensive compare256 operation.
-                     */
-                    len = cmp_len;
+                if (match_len > best_len) {
+                    /* Found exact match length without needing compare256 */
+                    len = match_len;
                     break;
                 }
-                GOTO_NEXT_CHAIN;
-            }
-        } else {
-            for (;;) {
-                if (zng_memcmp_8(mbase_end+cur_match, &scan_end) == 0 &&
-                    zng_memcmp_8(mbase_start+cur_match, &scan_start) == 0)
+            } else {
+                /* For longer matches, need both start and end to fully match */
+                uint64_t end_diff = scan_end ^ zng_memread_8(mbase_end+cur_match);
+                if (start_diff == 0 && end_diff == 0)
                     break;
-                GOTO_NEXT_CHAIN;
             }
+            GOTO_NEXT_CHAIN;
         }
 #else
+        /* Use end+start checks to quickly filter non-matches */
         if (best_len < sizeof(uint32_t)) {
             for (;;) {
                 if (zng_memcmp_2(mbase_end+cur_match, &scan_end) == 0 &&
