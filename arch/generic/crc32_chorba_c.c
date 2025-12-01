@@ -33,8 +33,6 @@ Z_INTERNAL uint32_t crc32_chorba_118960_nondestructive (uint32_t crc, const z_wo
 #else
     ALIGNED_(16) z_word_t bitbuffer[bitbuffersizezwords];
 #endif
-    const uint8_t* bitbufferbytes = (const uint8_t*) bitbuffer;
-    uint64_t* bitbufferqwords = (uint64_t*) bitbuffer;
     uint64_t* inputqwords = (uint64_t*) input;
 
     size_t i = 0;
@@ -393,6 +391,7 @@ Z_INTERNAL uint32_t crc32_chorba_118960_nondestructive (uint32_t crc, const z_wo
         bitbuffer[(j + (i / sizeof(z_word_t))) % bitbuffersizezwords] = 0;
     }
 
+   uint64_t* bitbufferqwords = (uint64_t*) bitbuffer;
     uint64_t next1_64 = 0;
     uint64_t next2_64 = 0;
     uint64_t next3_64 = 0;
@@ -484,6 +483,7 @@ Z_INTERNAL uint32_t crc32_chorba_118960_nondestructive (uint32_t crc, const z_wo
     final[4] ^= next5_64;
 
     uint8_t* final_bytes = (uint8_t*) final;
+    const uint8_t* bitbufferbytes = (const uint8_t*) bitbuffer;
 
     for(size_t j = 0; j < (len-i); j++) {
         crc = crc_table[(crc ^ final_bytes[j] ^ bitbufferbytes[(j+i) % bitbuffersizebytes]) & 0xff] ^ (crc >> 8);
