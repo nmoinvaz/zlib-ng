@@ -246,9 +246,7 @@ static size_t fold_16(__m128i *xmm_crc0, __m128i *xmm_crc1, __m128i *xmm_crc2, _
     // zmm register init
     zmm_crc0 = _mm512_setzero_si512();
     zmm_t0 = _mm512_loadu_si512((__m512i *)src);
-    if (!COPY) {
-        XOR_INITIAL512(zmm_t0);
-    }
+    XOR_INITIAL512(zmm_t0);
     zmm_crc1 = _mm512_loadu_si512((__m512i *)src + 1);
     zmm_crc2 = _mm512_loadu_si512((__m512i *)src + 2);
     zmm_crc3 = _mm512_loadu_si512((__m512i *)src + 3);
@@ -614,9 +612,8 @@ static inline void crc32_fold_copy(crc32_fold *crc, uint8_t *dst, const uint8_t 
             _mm_storeu_si128((__m128i *)dst + 6, chorba2);
             _mm_storeu_si128((__m128i *)dst + 7, chorba1);
             dst += 16*8;
-        } else {
-            XOR_INITIAL128(chorba8);
         }
+        XOR_INITIAL128(chorba8);
         chorba2 = _mm_xor_si128(chorba2, chorba8);
         chorba1 = _mm_xor_si128(chorba1, chorba7);
         src += 16*8;
