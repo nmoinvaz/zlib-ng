@@ -40,6 +40,7 @@ public:
         assert(random_ints_src != NULL);
         assert(random_ints_dst != NULL);
 
+        srand(42);  /* Fixed seed for reproducibility */
         for (int32_t i = 0; i < MAX_RANDOM_INTS; i++) {
             random_ints_src[i] = rand();
         }
