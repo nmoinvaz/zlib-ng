@@ -192,7 +192,7 @@ typedef unsigned bits_t;
 #define TRACE_END_OF_BLOCK() \
     Tracevv((stderr, "inflate:         end of block\n"))
 
-#define INFLATE_FAST_MIN_HAVE 15   /* max input bits per length/distance pair */
+#define INFLATE_FAST_MIN_HAVE 22   /* max input bytes per iteration incl. preloaded next symbol */
 #define INFLATE_FAST_MIN_LEFT 260  /* max output per token (258) + 2 */
 #define INFLATE_FAST_MIN_SAFE 3    /* max unchecked literal writes per iteration */
 
