@@ -14,6 +14,11 @@
 #else
 #  define Z_TARGET_CRC
 #endif
+#ifdef ARM_PMULL
+#  define Z_TARGET_PMULL Z_TARGET("+crc+crypto")
+#else
+#  define Z_TARGET_PMULL
+#endif
 #ifdef ARM_PMULL_EOR3
 #  define Z_TARGET_PMULL_EOR3 Z_TARGET("+crc+crypto+sha3")
 #else
