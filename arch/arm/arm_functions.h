@@ -26,6 +26,7 @@ uint32_t crc32_copy_armv8(uint32_t crc, uint8_t *dst, const uint8_t *src, size_t
 #ifdef ARM_PMULL
 uint32_t crc32_armv8_pmull_2acc(uint32_t crc, const uint8_t *buf, size_t len);
 uint32_t crc32_armv8_pmull_4acc(uint32_t crc, const uint8_t *buf, size_t len);
+uint32_t crc32_armv8_pmull_3s4x2e(uint32_t crc, const uint8_t *buf, size_t len);
 #endif
 #ifdef ARM_PMULL_EOR3
 uint32_t crc32_armv8_pmull_eor3(uint32_t crc, const uint8_t *buf, size_t len);
