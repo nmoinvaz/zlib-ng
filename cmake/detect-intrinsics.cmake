@@ -56,6 +56,28 @@ macro(check_armv8_compiler_flag)
     set(CMAKE_REQUIRED_FLAGS)
 endmacro()
 
+macro(check_armv8_pmull_compiler_flag)
+    if(NOT NATIVEFLAG)
+        if(CMAKE_C_COMPILER_ID MATCHES "GNU" OR CMAKE_C_COMPILER_ID MATCHES "Clang")
+            check_c_compiler_flag("-march=armv8-a+crc+crypto" HAVE_MARCH_ARMV8_CRYPTO)
+            if(HAVE_MARCH_ARMV8_CRYPTO)
+                set(PMULLFLAG "-march=armv8-a+crc+crypto" CACHE INTERNAL "Compiler option to enable ARMv8 crypto/PMULL support")
+            endif()
+        endif()
+    endif()
+    # Check whether compiler supports ARMv8 PMULL intrinsics
+    set(CMAKE_REQUIRED_FLAGS "${PMULLFLAG} ${NATIVEFLAG} ${ZNOLTOFLAG}")
+    check_c_source_compiles(
+        "#include <arm_neon.h>
+        poly128_t f(poly64_t a, poly64_t b) {
+            return vmull_p64(a, b);
+        }
+        int main(void) { return 0; }"
+        HAVE_ARMV8_PMULL_INTRIN
+    )
+    set(CMAKE_REQUIRED_FLAGS)
+endmacro()
+
 macro(check_armv8_pmull_eor3_compiler_flag)
     if(NOT NATIVEFLAG)
         if(CMAKE_C_COMPILER_ID MATCHES "GNU" OR CMAKE_C_COMPILER_ID MATCHES "Clang")

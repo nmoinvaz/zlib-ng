@@ -23,6 +23,9 @@ void inflate_fast_neon(PREFIX3(stream) *strm, uint32_t start);
 uint32_t crc32_armv8(uint32_t crc, const uint8_t *buf, size_t len);
 uint32_t crc32_copy_armv8(uint32_t crc, uint8_t *dst, const uint8_t *src, size_t len);
 #endif
+#ifdef ARM_PMULL
+uint32_t crc32_armv8_pmull(uint32_t crc, const uint8_t *buf, size_t len);
+#endif
 #ifdef ARM_PMULL_EOR3
 uint32_t crc32_armv8_pmull_eor3(uint32_t crc, const uint8_t *buf, size_t len);
 uint32_t crc32_copy_armv8_pmull_eor3(uint32_t crc, uint8_t *dst, const uint8_t *src, size_t len);
