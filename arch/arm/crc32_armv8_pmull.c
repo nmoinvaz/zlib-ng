@@ -434,7 +434,7 @@ Z_INTERNAL Z_TARGET_PMULL uint32_t crc32_armv8_pmull_3s4x2e(uint32_t crc, const 
         }
     }
 
-    /* Large buffer path: 4-way scalar CRC + 3-way PMULL folding (112 bytes/iter) */
+    /* 4-way scalar CRC + 3-way PMULL folding (112 bytes/iter) */
     if (len >= 112) {
         const uint8_t *end = buf + len;
         size_t blk = len / 112;               /* Number of 112-byte blocks */
@@ -454,19 +454,17 @@ Z_INTERNAL Z_TARGET_PMULL uint32_t crc32_armv8_pmull_3s4x2e(uint32_t crc, const 
         { static const uint64_t ALIGNED_(16) k_[] = {0x3db1ecdc, 0xaf449247}; k = vld1q_u64(k_); }
         buf2 += 48;
 
+        /* Prefetch first iteration's data */
+        uint64x2_t y3 = vld1q_u64((const uint64_t *)(buf2 + 0x00));
+        uint64x2_t y4 = vld1q_u64((const uint64_t *)(buf2 + 0x10));
+        uint64x2_t y5 = vld1q_u64((const uint64_t *)(buf2 + 0x20));
+
         /* Main loop: fold vectors + 4-way parallel scalar CRC */
         while (buf <= limit) {
-            uint64x2_t y3, y4, y5;
-
             /* Perform carryless multiplication on all 3 accumulators */
             y0 = pmull_lo(x0, k);
             y1 = pmull_lo(x1, k);
             y2 = pmull_lo(x2, k);
-
-            /* Load next 48 bytes */
-            y3 = vld1q_u64((const uint64_t *)(buf2 + 0x00));
-            y4 = vld1q_u64((const uint64_t *)(buf2 + 0x10));
-            y5 = vld1q_u64((const uint64_t *)(buf2 + 0x20));
 
             x0 = pmull_hi(x0, k);
             x1 = pmull_hi(x1, k);
@@ -477,7 +475,7 @@ Z_INTERNAL Z_TARGET_PMULL uint32_t crc32_armv8_pmull_3s4x2e(uint32_t crc, const 
             x1 = veorq_u64(x1, y1);
             x2 = veorq_u64(x2, y2);
 
-            /* XOR with loaded data */
+            /* XOR with loaded data (from previous iteration) */
             x0 = veorq_u64(x0, y3);
             x1 = veorq_u64(x1, y4);
             x2 = veorq_u64(x2, y5);
@@ -491,8 +489,14 @@ Z_INTERNAL Z_TARGET_PMULL uint32_t crc32_armv8_pmull_3s4x2e(uint32_t crc, const 
             crc1 = __crc32d(crc1, *(const uint64_t*)(buf + klen + 8));
             crc2 = __crc32d(crc2, *(const uint64_t*)(buf + klen * 2 + 8));
             crc3 = __crc32d(crc3, *(const uint64_t*)(buf + klen * 3 + 8));
+
             buf += 16;
             buf2 += 48;
+
+            /* Prefetch next 48 bytes early for next iteration */
+            y3 = vld1q_u64((const uint64_t *)(buf2 + 0x00));
+            y4 = vld1q_u64((const uint64_t *)(buf2 + 0x10));
+            y5 = vld1q_u64((const uint64_t *)(buf2 + 0x20));
         }
 
         /* Reduce 3 vectors to 1: x0 = fold(x0, x1), then x0 = fold(x0, x2) */
