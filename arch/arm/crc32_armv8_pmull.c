@@ -533,7 +533,7 @@ Z_INTERNAL Z_TARGET_PMULL uint32_t crc32_armv8_pmull_3s4x2e(uint32_t crc, const 
         buf = buf2;
         len = end - buf;
     }
-
+#if 0
     /* Medium buffer path: 2-way PMULL folding (32 bytes/iter) */
     if (len >= 32) {
         uint64x2_t x0 = vld1q_u64((const uint64_t*)buf), y0;
@@ -577,7 +577,7 @@ Z_INTERNAL Z_TARGET_PMULL uint32_t crc32_armv8_pmull_3s4x2e(uint32_t crc, const 
         crc0 = __crc32d(0, vgetq_lane_u64(x0, 0));
         crc0 = __crc32d(crc0, vgetq_lane_u64(x0, 1));
     }
-
+#endif
     /* Process remaining bytes */
     while (len >= sizeof(uint64_t)) {
         crc0 = __crc32d(crc0, *((uint64_t*)buf));
