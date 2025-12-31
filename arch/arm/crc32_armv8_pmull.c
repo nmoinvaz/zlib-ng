@@ -377,29 +377,12 @@ Z_INTERNAL Z_TARGET_PMULL uint32_t crc32_armv8_pmull_4acc(uint32_t crc, const ui
     return ~c;
 }
 
-/* Carryless multiply low 64 bits, XOR with c: (a[0] * b[0]) ^ c */
-static inline uint64x2_t clmul_lo_e(uint64x2_t a, uint64x2_t b, uint64x2_t c) {
-    uint64x2_t r;
-    __asm("pmull %0.1q, %2.1d, %3.1d\neor %0.16b, %0.16b, %1.16b\n"
-          : "=w"(r), "+w"(c) : "w"(a), "w"(b));
-    return r;
-}
-
-/* Carryless multiply high 64 bits, XOR with c: (a[1] * b[1]) ^ c */
-static inline uint64x2_t clmul_hi_e(uint64x2_t a, uint64x2_t b, uint64x2_t c) {
-    uint64x2_t r;
-    __asm("pmull2 %0.1q, %2.2d, %3.2d\neor %0.16b, %0.16b, %1.16b\n"
-          : "=w"(r), "+w"(c) : "w"(a), "w"(b));
-    return r;
-}
-
+/* Carryless multiply of two 32-bit scalars: a * b (returns 64-bit result in 128-bit vector) */
 static inline uint64x2_t clmul_scalar(uint32_t a, uint32_t b) {
-  uint64x2_t r;
-  __asm("pmull %0.1q, %1.1d, %2.1d\n" : "=w"(r) : "w"(vmovq_n_u64(a)), "w"(vmovq_n_u64(b)));
-  return r;
+  return vreinterpretq_u64_p128(vmull_p64((poly64_t)a, (poly64_t)b));
 }
 
-static uint32_t xnmodp(uint64_t n) /* x^n mod P, in log(n) time */ {
+static inline uint32_t xnmodp(uint64_t n) /* x^n mod P, in log(n) time */ {
   uint64_t stack = ~(uint64_t)1;
   uint32_t acc, low;
   for (; n > 191; n = (n >> 1) - 16) {
@@ -467,19 +450,37 @@ Z_INTERNAL Z_TARGET_PMULL uint32_t crc32_armv8_pmull_3s4x2e(uint32_t crc, const 
         uint64x2_t x1 = vld1q_u64((const uint64_t*)(buf2 + 16)), y1;
         uint64x2_t x2 = vld1q_u64((const uint64_t*)(buf2 + 32)), y2;
         uint64x2_t k;
-        /* k = {x^48 mod P, x^48+64 mod P} for 48-byte fold */
+        /* k = {x^384 mod P, x^384+64 mod P} for 48-byte fold */
         { static const uint64_t ALIGNED_(16) k_[] = {0x3db1ecdc, 0xaf449247}; k = vld1q_u64(k_); }
         buf2 += 48;
 
         /* Main loop: fold vectors + 4-way parallel scalar CRC */
         while (buf <= limit) {
-            /* Fold 3 vector lanes */
-            y0 = clmul_lo_e(x0, k, vld1q_u64((const uint64_t*)buf2));
-            x0 = clmul_hi_e(x0, k, y0);
-            y1 = clmul_lo_e(x1, k, vld1q_u64((const uint64_t*)(buf2 + 16)));
-            x1 = clmul_hi_e(x1, k, y1);
-            y2 = clmul_lo_e(x2, k, vld1q_u64((const uint64_t*)(buf2 + 32)));
-            x2 = clmul_hi_e(x2, k, y2);
+            uint64x2_t y3, y4, y5;
+
+            /* Perform carryless multiplication on all 3 accumulators */
+            y0 = pmull_lo(x0, k);
+            y1 = pmull_lo(x1, k);
+            y2 = pmull_lo(x2, k);
+
+            /* Load next 48 bytes */
+            y3 = vld1q_u64((const uint64_t *)(buf2 + 0x00));
+            y4 = vld1q_u64((const uint64_t *)(buf2 + 0x10));
+            y5 = vld1q_u64((const uint64_t *)(buf2 + 0x20));
+
+            x0 = pmull_hi(x0, k);
+            x1 = pmull_hi(x1, k);
+            x2 = pmull_hi(x2, k);
+
+            /* XOR the results together */
+            x0 = veorq_u64(x0, y0);
+            x1 = veorq_u64(x1, y1);
+            x2 = veorq_u64(x2, y2);
+
+            /* XOR with loaded data */
+            x0 = veorq_u64(x0, y3);
+            x1 = veorq_u64(x1, y4);
+            x2 = veorq_u64(x2, y5);
 
             /* 4-way parallel scalar CRC (16 bytes each) */
             crc0 = __crc32d(crc0, *(const uint64_t*)buf);
@@ -496,11 +497,18 @@ Z_INTERNAL Z_TARGET_PMULL uint32_t crc32_armv8_pmull_3s4x2e(uint32_t crc, const 
 
         /* Reduce 3 vectors to 1: x0 = fold(x0, x1), then x0 = fold(x0, x2) */
         { static const uint64_t ALIGNED_(16) k_[] = {0xae689191, 0xccaa009e}; k = vld1q_u64(k_); }
-        y0 = clmul_lo_e(x0, k, x1);
-        x0 = clmul_hi_e(x0, k, y0);
-        x1 = x2;
-        y0 = clmul_lo_e(x0, k, x1);
-        x0 = clmul_hi_e(x0, k, y0);
+
+        /* Fold x0 with x1 */
+        y0 = pmull_lo(x0, k);
+        x0 = pmull_hi(x0, k);
+        x0 = veorq_u64(x0, x1);
+        x0 = veorq_u64(x0, y0);
+
+        /* Fold x0 with x2 */
+        y0 = pmull_lo(x0, k);
+        x0 = pmull_hi(x0, k);
+        x0 = veorq_u64(x0, x2);
+        x0 = veorq_u64(x0, y0);
 
         /* Process final scalar chunk */
         crc0 = __crc32d(crc0, *(const uint64_t*)buf);
@@ -539,24 +547,36 @@ Z_INTERNAL Z_TARGET_PMULL uint32_t crc32_armv8_pmull_3s4x2e(uint32_t crc, const 
 
         /* Fold 32 bytes at a time */
         while (len >= 32) {
-            y0 = clmul_lo_e(x0, k, vld1q_u64((const uint64_t*)buf));
-            x0 = clmul_hi_e(x0, k, y0);
-            y1 = clmul_lo_e(x1, k, vld1q_u64((const uint64_t*)(buf + 16)));
-            x1 = clmul_hi_e(x1, k, y1);
+            uint64x2_t y2, y3;
+
+            y2 = vld1q_u64((const uint64_t*)buf);
+            y3 = vld1q_u64((const uint64_t*)(buf + 16));
+
+            y0 = pmull_lo(x0, k);
+            y1 = pmull_lo(x1, k);
+            x0 = pmull_hi(x0, k);
+            x1 = pmull_hi(x1, k);
+
+            x0 = veorq_u64(x0, y0);
+            x1 = veorq_u64(x1, y1);
+            x0 = veorq_u64(x0, y2);
+            x1 = veorq_u64(x1, y3);
+
             buf += 32;
             len -= 32;
         }
 
         /* Reduce 2 vectors to 1 */
         { static const uint64_t ALIGNED_(16) k_[] = {0xae689191, 0xccaa009e}; k = vld1q_u64(k_); }
-        y0 = clmul_lo_e(x0, k, x1);
-        x0 = clmul_hi_e(x0, k, y0);
+        y0 = pmull_lo(x0, k);
+        x0 = pmull_hi(x0, k);
+        x0 = veorq_u64(x0, x1);
+        x0 = veorq_u64(x0, y0);
 
         /* Final reduction: 128-bit -> 32-bit */
         crc0 = __crc32d(0, vgetq_lane_u64(x0, 0));
         crc0 = __crc32d(crc0, vgetq_lane_u64(x0, 1));
     }
-
 
     /* Process remaining bytes */
     while (len >= sizeof(uint64_t)) {
