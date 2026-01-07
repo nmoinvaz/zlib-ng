@@ -187,7 +187,7 @@ Z_INTERNAL Z_TARGET_PMULL uint32_t crc32_armv8_pmull_2acc(uint32_t crc, const ui
 }
 
 /* 4-accumulator version for CPUs with dual PMULL units */
-Z_INTERNAL Z_TARGET_PMULL uint32_t crc32_armv8_pmull_4acc(uint32_t crc, const uint8_t *buf, size_t len) {
+Z_INTERNAL Z_TARGET_PMULL uint32_t crc32_armv8_pmull_chromium(uint32_t crc, const uint8_t *buf, size_t len) {
     /* Folding constants for PMULL operations */
     /* k1k2: constants for 64-byte folding (x^512 mod P) */
     static const uint64_t ALIGNED_(16) k1k2[] = { 0x0154442bd4, 0x01c6e41596 };
