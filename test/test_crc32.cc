@@ -121,6 +121,7 @@ TEST_CRC32_ALIGN(armv8_align, crc32_armv8, test_cpu_features.arm.has_crc32)
 TEST_CRC32(armv8_pmull_2acc, crc32_armv8_pmull_2acc, test_cpu_features.arm.has_crc32 && test_cpu_features.arm.has_pmull)
 TEST_CRC32(armv8_pmull_4acc, crc32_armv8_pmull_4acc, test_cpu_features.arm.has_crc32 && test_cpu_features.arm.has_pmull)
 TEST_CRC32(armv8_pmull_3s4x2e, crc32_armv8_pmull_3s4x2e, test_cpu_features.arm.has_crc32 && test_cpu_features.arm.has_pmull)
+TEST_CRC32(armv8_pmull_scalar_pmull, crc32_armv8_pmull_scalar_pmull, test_cpu_features.arm.has_crc32 && test_cpu_features.arm.has_pmull)
 #endif
 #ifdef ARM_PMULL_EOR3
 TEST_CRC32(armv8_pmull_eor3, crc32_armv8_pmull_eor3, test_cpu_features.arm.has_crc32 && test_cpu_features.arm.has_pmull && test_cpu_features.arm.has_eor3)

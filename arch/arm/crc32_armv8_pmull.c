@@ -605,3 +605,81 @@ Z_INTERNAL Z_TARGET_PMULL uint32_t crc32_armv8_pmull_3s4x2e(uint32_t crc, const 
 
     return ~crc0;
 }
+
+/* Parallel scalar CRC with PMULL reduction - simplified version of 3s4x2e */
+Z_INTERNAL Z_TARGET_PMULL uint32_t crc32_armv8_pmull_scalar_pmull(uint32_t crc, const uint8_t *buf, size_t len) {
+    uint32_t crc0 = ~crc;
+
+    /* Align to 8-byte boundary for scalar path */
+    if ((ptrdiff_t)buf & (sizeof(uint64_t) - 1)) {
+        if (len && ((ptrdiff_t)buf & 1)) {
+            crc0 = __crc32b(crc0, *buf++);
+            len--;
+        }
+
+        if ((len >= sizeof(uint16_t)) && ((ptrdiff_t)buf & (sizeof(uint32_t) - 1))) {
+            crc0 = __crc32h(crc0, *((uint16_t*)buf));
+            buf += sizeof(uint16_t);
+            len -= sizeof(uint16_t);
+        }
+
+        if ((len >= sizeof(uint32_t)) && ((ptrdiff_t)buf & (sizeof(uint64_t) - 1))) {
+            crc0 = __crc32w(crc0, *((uint32_t*)buf));
+            len -= sizeof(uint32_t);
+            buf += sizeof(uint32_t);
+        }
+    }
+
+    /* 3-way parallel scalar CRC (24 bytes/iter) */
+    if (len >= 72) {
+        const uint8_t *end = buf + len;
+        size_t blk = len / 24;                  /* Number of 24-byte blocks */
+        size_t klen = blk * 8;                  /* Scalar stride per CRC lane (8 bytes) */
+        const uint8_t *limit = buf + klen - 8;
+        uint32_t crc1 = 0, crc2 = 0;
+        uint64x2_t vc0, vc1, vc2;
+        uint64_t vc;
+
+        /* Main loop: 3-way parallel scalar CRC (8 bytes per lane) */
+        while (buf <= limit) {
+            crc0 = __crc32d(crc0, *(const uint64_t*)buf);
+            crc1 = __crc32d(crc1, *(const uint64_t*)(buf + klen));
+            crc2 = __crc32d(crc2, *(const uint64_t*)(buf + klen * 2));
+            buf += 8;
+        }
+
+        /* Shift and combine 3 scalar CRCs using PMULL */
+        vc0 = crc_shift(crc0, klen * 2);
+        vc1 = crc_shift(crc1, klen);
+        vc2 = crc_shift(crc2, 0);
+        vc = vgetq_lane_u64(veorq_u64(veorq_u64(vc0, vc1), vc2), 0);
+
+        /* Final scalar CRC value */
+        crc0 = (uint32_t)vc;
+        buf = buf + klen * 2;
+        len = end - buf;
+    }
+
+    /* Process remaining bytes */
+    while (len >= sizeof(uint64_t)) {
+        crc0 = __crc32d(crc0, *((uint64_t*)buf));
+        len -= sizeof(uint64_t);
+        buf += sizeof(uint64_t);
+    }
+
+    if (len & sizeof(uint32_t)) {
+        crc0 = __crc32w(crc0, *((uint32_t*)buf));
+        buf += sizeof(uint32_t);
+    }
+
+    if (len & sizeof(uint16_t)) {
+        crc0 = __crc32h(crc0, *((uint16_t*)buf));
+        buf += sizeof(uint16_t);
+    }
+
+    if (len & sizeof(uint8_t)) {
+        crc0 = __crc32b(crc0, *buf);
+    }
+
+    return ~crc0;
+}
