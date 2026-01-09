@@ -84,6 +84,8 @@ TEST_COMPARE256(avx512, compare256_avx512, test_cpu_features.x86.has_avx512_comm
 #endif
 #if defined(ARM_NEON) && defined(HAVE_BUILTIN_CTZLL)
 TEST_COMPARE256(neon, compare256_neon, test_cpu_features.arm.has_neon)
+TEST_COMPARE256(neon_v2, compare256_v2_neon, test_cpu_features.arm.has_neon)
+TEST_COMPARE256(neon_v3, compare256_v3_neon, test_cpu_features.arm.has_neon)
 #endif
 #if defined(ARM_SVE)
 TEST_COMPARE256(sve, compare256_sve, test_cpu_features.arm.has_sve)

@@ -12,6 +12,8 @@ uint8_t* chunkmemset_safe_neon(uint8_t *out, uint8_t *from, unsigned len, unsign
 
 #  ifdef HAVE_BUILTIN_CTZLL
 uint32_t compare256_neon(const uint8_t *src0, const uint8_t *src1);
+uint32_t compare256_v2_neon(const uint8_t *src0, const uint8_t *src1);
+uint32_t compare256_v3_neon(const uint8_t *src0, const uint8_t *src1);
 uint32_t longest_match_neon(deflate_state *const s, uint32_t cur_match);
 uint32_t longest_match_slow_neon(deflate_state *const s, uint32_t cur_match);
 #  endif
