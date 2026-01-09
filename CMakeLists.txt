@@ -121,6 +121,7 @@ if(BASEARCH_ARM_FOUND)
     cmake_dependent_option(WITH_ARMV6 "Build with ARMv6 SIMD" ON ARCH_32BIT OFF)
     option(WITH_ARMV8 "Build with ARMv8 intrinsics" ON)
     option(WITH_NEON "Build with NEON intrinsics" ON)
+    option(WITH_SVE "Build with SVE intrinsics" ON)
 
     # Provided for backward compatibility
     if(DEFINED WITH_ACLE)
@@ -160,7 +161,7 @@ mark_as_advanced(FORCE
     WITH_REDUCED_MEM
     WITH_CRC32_CHORBA
     WITH_ALL_FALLBACKS
-    WITH_ARMV8 WITH_NEON
+    WITH_ARMV8 WITH_NEON WITH_SVE
     WITH_ARMV6
     WITH_DFLTCC_DEFLATE
     WITH_DFLTCC_INFLATE
@@ -893,6 +894,18 @@ if(WITH_OPTIM)
                 endif()
             else()
                 set(WITH_NEON OFF)
+            endif()
+        endif()
+        if(WITH_SVE)
+            check_sve_intrinsics()
+            if(HAVE_SVE_INTRIN)
+                add_definitions(-DARM_SVE)
+                set(SVE_SRCS ${ARCHDIR}/compare256_sve.c)
+                set_property(SOURCE ${SVE_SRCS} PROPERTY COMPILE_FLAGS "${SVEFLAG} ${NOLTOFLAG}")
+                list(APPEND ZLIB_ARCH_SRCS ${SVE_SRCS})
+                add_feature_info(SVE_COMPARE256 1 "Support SVE optimized compare256, using \"${SVEFLAG}\"")
+            else()
+                set(WITH_SVE OFF)
             endif()
         endif()
         if(WITH_ARMV6)
@@ -1698,6 +1711,7 @@ if(BASEARCH_ARM_FOUND)
     add_feature_info(WITH_ARMV6 WITH_ARMV6 "Build with ARMv6 SIMD")
     add_feature_info(WITH_ARMV8 WITH_ARMV8 "Build with ARMv8 intrinsics")
     add_feature_info(WITH_NEON WITH_NEON "Build with NEON intrinsics")
+    add_feature_info(WITH_SVE WITH_SVE "Build with SVE intrinsics")
 elseif(BASEARCH_PPC_FOUND)
     add_feature_info(WITH_ALTIVEC WITH_ALTIVEC "Build with AltiVec optimisations")
     add_feature_info(WITH_POWER8 WITH_POWER8 "Build with optimisations for POWER8")

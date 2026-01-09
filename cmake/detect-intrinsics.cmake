@@ -329,6 +329,29 @@ macro(check_neon_ld4_intrinsics)
     set(CMAKE_REQUIRED_FLAGS)
 endmacro()
 
+macro(check_sve_intrinsics)
+    if(NOT NATIVEFLAG)
+        if(CMAKE_C_COMPILER_ID MATCHES "GNU" OR CMAKE_C_COMPILER_ID MATCHES "Clang")
+            check_c_compiler_flag("-march=armv8-a+sve" HAVE_MARCH_SVE)
+            if(HAVE_MARCH_SVE)
+                set(SVEFLAG "-march=armv8-a+sve")
+            endif()
+        endif()
+    endif()
+    # Check whether compiler supports SVE intrinsics
+    set(CMAKE_REQUIRED_FLAGS "${SVEFLAG} ${NATIVEFLAG} ${ZNOLTOFLAG}")
+    check_c_source_compiles(
+        "#include <arm_sve.h>
+        int main() {
+            svbool_t pg = svptrue_b8();
+            svuint8_t v = svdup_u8(1);
+            return 0;
+        }"
+        HAVE_SVE_INTRIN
+    )
+    set(CMAKE_REQUIRED_FLAGS)
+endmacro()
+
 macro(check_pclmulqdq_intrinsics)
     if(NOT NATIVEFLAG)
         if(CMAKE_C_COMPILER_ID MATCHES "GNU" OR CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "IntelLLVM" OR CMAKE_C_COMPILER_ID MATCHES "NVHPC")

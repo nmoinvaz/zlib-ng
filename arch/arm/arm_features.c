@@ -309,6 +309,35 @@ static inline int arm_cpu_has_fast_pmull(void) {
     return 0;
 }
 
+static inline int arm_has_sve(void) {
+#if defined(__ARM_FEATURE_SVE)
+    return 1;
+#elif defined(__linux__) && defined(HAVE_SYS_AUXV_H)
+#  ifdef HWCAP_SVE
+    return (getauxval(AT_HWCAP) & HWCAP_SVE) != 0 ? 1 : 0;
+#  else
+    return 0;
+#  endif
+#elif defined(__APPLE__)
+#  if defined(__aarch64__) || defined(_M_ARM64)
+    int hassve = 0;
+    size_t size = sizeof(hassve);
+    if (sysctlbyname("hw.optional.arm.FEAT_SVE", &hassve, &size, NULL, 0) == 0 && hassve == 1)
+        return 1;
+#  endif
+    return 0;
+#elif defined(_WIN32)
+#  ifdef PF_ARM_SVE_INSTRUCTIONS_AVAILABLE
+    return IsProcessorFeaturePresent(PF_ARM_SVE_INSTRUCTIONS_AVAILABLE);
+#  else
+    return 0;
+#  endif
+#else
+    return 0;
+#endif
+    return 0;
+}
+
 void Z_INTERNAL arm_check_features(struct arm_cpu_features *features) {
 #if defined(__aarch64__) || defined(_M_ARM64) || defined(_M_ARM64EC)
     features->has_simd = 0; /* never available */
@@ -321,4 +350,5 @@ void Z_INTERNAL arm_check_features(struct arm_cpu_features *features) {
     features->has_pmull = arm_has_pmull();
     features->has_eor3 = arm_has_eor3();
     features->has_fast_pmull = features->has_pmull && arm_cpu_has_fast_pmull();
+    features->has_sve = arm_has_sve();
 }

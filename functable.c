@@ -237,6 +237,13 @@ static int init_functable(void) {
 #  endif
     }
 #endif
+#ifdef ARM_SVE
+    if (cf.arm.has_sve) {
+        ft.compare256 = &compare256_sve;
+        ft.longest_match = &longest_match_sve;
+        ft.longest_match_slow = &longest_match_slow_sve;
+    }
+#endif
     // ARM - CRC32
 #ifdef ARM_CRC32
     if (cf.arm.has_crc32) {
