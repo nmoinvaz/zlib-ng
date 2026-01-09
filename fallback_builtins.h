@@ -44,6 +44,12 @@ Z_FORCEINLINE static int __builtin_ctzll(unsigned long long value) {
 #endif // Microsoft AMD64/IA64/x86/ARM/ARM64 test
 #endif // _MSC_VER & !clang
 
+#ifdef __has_builtin
+#  if __has_builtin(__builtin_bitreverse16)
+#    define HAVE_BUILTIN_BITREVERSE16 1
+#  endif
+#endif
+
 #ifndef HAVE_BUILTIN_BITREVERSE16
 
 #ifdef __loongarch__
