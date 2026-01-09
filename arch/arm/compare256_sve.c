@@ -15,7 +15,7 @@ static inline uint32_t compare256_sve_static(const uint8_t *src0, const uint8_t 
     uint64_t vl = svcntb();
     svbool_t pg_all = svptrue_b8();
 
-    while (len + vl <= 256) {
+    while (len + 2 * vl <= 256) {
         svuint8_t v0 = svld1_u8(pg_all, src0);
         svuint8_t v1 = svld1_u8(pg_all, src1);
         svbool_t cmp = svcmpne_u8(pg_all, v0, v1);
@@ -28,7 +28,6 @@ static inline uint32_t compare256_sve_static(const uint8_t *src0, const uint8_t 
         src1 += vl;
         len += (uint32_t)vl;
 
-
         v0 = svld1_u8(pg_all, src0);
         v1 = svld1_u8(pg_all, src1);
         cmp = svcmpne_u8(pg_all, v0, v1);
@@ -40,7 +39,21 @@ static inline uint32_t compare256_sve_static(const uint8_t *src0, const uint8_t 
         src0 += vl;
         src1 += vl;
         len += (uint32_t)vl;
-    } while (len < 256);
+    }
+
+    while (len < 256) {
+        svbool_t pg = svwhilelt_b8_u32(len, 256);
+        svuint8_t v0 = svld1_u8(pg, src0);
+        svuint8_t v1 = svld1_u8(pg, src1);
+        svbool_t cmp = svcmpne_u8(pg, v0, v1);
+
+        if (svptest_any(pg, cmp)) {
+            return len + (uint32_t)svcntp_b8(pg, svbrkb_b_z(pg, cmp));
+        }
+        src0 += vl;
+        src1 += vl;
+        len += (uint32_t)vl;
+    }
 
     return 256;
 }
