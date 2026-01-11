@@ -147,6 +147,12 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start) {
 
     /* decode literals and length/distances until end-of-block or not enough
        input data or output space */
+
+    /* Prefetch first cache line of lencode table to minimize initial latency.
+       Entry 0 and entries around 'e' (101) are statistically common in text. */
+    __builtin_prefetch(&lcode[0], 0, 2);
+    __builtin_prefetch(&lcode[101], 0, 1);
+
     do {
         REFILL();
         here = lcode[hold & lmask];
@@ -179,6 +185,11 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start) {
             Tracevv((stderr, "inflate:         length %u\n", len));
             here = dcode[hold & dmask];
             Z_TOUCH(here);
+
+            /* Prefetch common short distance codes (1-16) while computing distance.
+               These are frequently used for repeated patterns in compressed data. */
+            __builtin_prefetch(&dcode[0], 0, 1);
+
             if (bits < MAX_BITS + MAX_DIST_EXTRA_BITS) {
                 REFILL();
             }
@@ -197,6 +208,13 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start) {
 #endif
                 DROPBITS(op);
                 Tracevv((stderr, "inflate:         distance %u\n", dist));
+
+                /* Prefetch likely next lencode entry while we're doing chunk copy.
+                   Low literal values (32-127, printable ASCII) and length code 257 are most common.
+                   This hides the table lookup latency behind the memory copy operation. */
+                __builtin_prefetch(&lcode[32], 0, 1);   /* Common literal range */
+                __builtin_prefetch(&lcode[256], 0, 1);  /* End-of-block / first length code */
+
                 op = (unsigned)(out - beg);     /* max distance in output */
                 if (dist > op) {                /* see if copy from window */
                     op = dist - op;             /* distance back in window */
