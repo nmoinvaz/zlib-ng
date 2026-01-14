@@ -61,7 +61,7 @@ public:
         } \
         Bench(state, fptr); \
     } \
-    BENCHMARK_REGISTER_F(adler32, name)->Arg(1)->Arg(8)->Arg(12)->Arg(16)->Arg(32)->Arg(64)->Arg(512)->Arg(4<<10)->Arg(32<<10)->Arg(256<<10)->Arg(4096<<10)
+    BENCHMARK_REGISTER_F(adler32, name)->Arg(1)->Arg(2)->Arg(3)->Arg(4)->Arg(8)->Arg(12)->Arg(15)->Arg(16)->Arg(17)->Arg(18)->Arg(19)->Arg(21)->Arg(24)->Arg(27)->Arg(31)->Arg(32)->Arg(64)->Arg(512)->Arg(4<<10)->Arg(32<<10)->Arg(256<<10)->Arg(4096<<10)
 
 BENCHMARK_ADLER32(c, adler32_c, 1);
 
@@ -85,6 +85,7 @@ BENCHMARK_ADLER32(rvv, adler32_rvv, test_cpu_features.riscv.has_rvv);
 #endif
 
 #ifdef X86_SSSE3
+BENCHMARK_ADLER32(ssse3_v2, adler32_ssse3_v2, test_cpu_features.x86.has_ssse3);
 BENCHMARK_ADLER32(ssse3, adler32_ssse3, test_cpu_features.x86.has_ssse3);
 #endif
 #ifdef X86_AVX2
