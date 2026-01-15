@@ -264,11 +264,11 @@ Z_FORCEINLINE static uint32_t adler32_copy_impl(uint32_t adler, uint8_t *dst, co
 
     /* in case user likes doing a byte at a time, keep it fast */
     if (UNLIKELY(len == 1))
-        return adler32_copy_small(adler, dst, src, 1, sum2, COPY);
+        return adler32_copy_small(adler, dst, src, 1, sum2, 1, COPY);
 
     /* in case short lengths are provided, keep it somewhat fast */
     if (UNLIKELY(len < 16))
-        return adler32_copy_small(adler, dst, src, len, sum2, COPY);
+        return adler32_copy_small(adler, dst, src, len, sum2, 16, COPY);
 
     uint32_t pair[2];
     int n = NMAX;
@@ -298,17 +298,7 @@ Z_FORCEINLINE static uint32_t adler32_copy_impl(uint32_t adler, uint8_t *dst, co
     unsigned int align_adj = (align_offset) ? 32 - align_offset : 0;
 
     if (align_offset && len >= (16 + align_adj)) {
-        adler32_copy_small_pair(pair, dst, src, align_adj, COPY);
-
-        if (COPY) {
-            const uint8_t* __restrict src_noalias = src;
-            uint8_t* __restrict dst_noalias = dst;
-            unsigned cpy_len = align_adj;
-
-            while (cpy_len--) {
-                *dst_noalias++ = *src_noalias++;
-            }
-        }
+        adler32_copy_small_pair(pair, dst, src, align_adj, 32, COPY);
 
         n -= align_adj;
         done += align_adj;
@@ -339,7 +329,7 @@ Z_FORCEINLINE static uint32_t adler32_copy_impl(uint32_t adler, uint8_t *dst, co
     }
 
     /* Process tail (len < 16).  */
-    return adler32_copy_small_pair(pair, dst, src + done, len - done, COPY);
+    return adler32_copy_small_pair(pair, dst, src + done, len - done, 16, COPY);
 }
 
 Z_INTERNAL uint32_t adler32_neon(uint32_t adler, const uint8_t *src, size_t len) {

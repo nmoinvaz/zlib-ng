@@ -127,16 +127,16 @@ Z_FORCEINLINE static uint32_t adler32_impl(uint32_t adler, const uint8_t *buf, s
 
     /* in case user likes doing a byte at a time, keep it fast */
     if (UNLIKELY(len == 1))
-        return adler32_copy_small(adler, NULL, buf, 1, sum2, 0);
+        return adler32_copy_small(adler, NULL, buf, 1, sum2, 1, 0);
 
     /* in case short lengths are provided, keep it somewhat fast */
     if (UNLIKELY(len < 16))
-        return adler32_copy_small(adler, NULL, buf, len, sum2, 0);
+        return adler32_copy_small(adler, NULL, buf, len, sum2, 16, 0);
 
     // Align buffer
     size_t align_len = (size_t)MIN(ALIGN_DIFF(buf, 16), len);
     if (align_len) {
-        adler32_copy_small_pair(pair, NULL, buf, align_len, 0);
+        adler32_copy_small_pair(pair, NULL, buf, align_len, 16, 0);
         done += align_len;
         /* Rather than rebasing, we can reduce the max sums for the
          * first round only */
@@ -156,7 +156,7 @@ Z_FORCEINLINE static uint32_t adler32_impl(uint32_t adler, const uint8_t *buf, s
     }
 
     /* Process tail (len < 16).  */
-    return adler32_copy_small_pair(pair, NULL, buf + done, len - done, 0);
+    return adler32_copy_small_pair(pair, NULL, buf + done, len - done, 16, 0);
 }
 
 Z_INTERNAL uint32_t adler32_vmx(uint32_t adler, const uint8_t *buf, size_t len) {
