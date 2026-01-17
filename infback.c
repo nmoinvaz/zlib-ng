@@ -374,6 +374,7 @@ int32_t Z_EXPORT PREFIX(inflateBack)(PREFIX3(stream) *strm, in_func in, void *in
             /* get a literal, length, or end-of-block code */
             for (;;) {
                 here = state->lencode[BITS(state->lenbits)];
+                FIXCODE(here);
                 if (here.bits <= bits)
                     break;
                 PULLBYTE();
@@ -382,6 +383,7 @@ int32_t Z_EXPORT PREFIX(inflateBack)(PREFIX3(stream) *strm, in_func in, void *in
                 last = here;
                 for (;;) {
                     here = state->lencode[last.val + (BITS(last.bits + last.op) >> last.bits)];
+                    FIXCODE(here);
                     if ((unsigned)last.bits + (unsigned)here.bits <= bits)
                         break;
                     PULLBYTE();
@@ -426,6 +428,7 @@ int32_t Z_EXPORT PREFIX(inflateBack)(PREFIX3(stream) *strm, in_func in, void *in
             /* get distance code */
             for (;;) {
                 here = state->distcode[BITS(state->distbits)];
+                FIXCODE(here);
                 if (here.bits <= bits)
                     break;
                 PULLBYTE();
@@ -434,6 +437,7 @@ int32_t Z_EXPORT PREFIX(inflateBack)(PREFIX3(stream) *strm, in_func in, void *in
                 last = here;
                 for (;;) {
                     here = state->distcode[last.val + (BITS(last.bits + last.op) >> last.bits)];
+                    FIXCODE(here);
                     if ((unsigned)last.bits + (unsigned)here.bits <= bits)
                         break;
                     PULLBYTE();

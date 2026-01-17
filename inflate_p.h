@@ -139,6 +139,15 @@ typedef unsigned bits_t;
         strm->msg = (char *)errmsg; \
     } while (0)
 
+/* Convert combined code format back to split format for slow path decoding. */
+#define FIXCODE(here) \
+    do { \
+        unsigned mask = (unsigned)(-(int)((here.op >> 4) & 1)); \
+        unsigned size = here.op & 15; \
+        here.op = (unsigned char)((here.op & ~mask) | ((16 | (here.bits - size)) & mask)); \
+        here.bits = (unsigned char)((here.bits & ~mask) | (size & mask)); \
+    } while (0)
+
 /* Trace macros for debugging */
 #define TRACE_LITERAL(val) \
     Tracevv((stderr, val >= 0x20 && val < 0x7f ? \

@@ -291,7 +291,8 @@ int Z_INTERNAL zng_inflate_table(codetype type, uint16_t *lens, unsigned codes,
         /* create table entry */
         here.bits = (unsigned char)(len - drop);
         if (LIKELY(work[sym] >= match)) {
-            here.op = (unsigned char)(extra[work[sym] - match]);
+            here.op = (unsigned char)(extra[work[sym] - match] & 16 ? here.bits | 16 : extra[work[sym] - match]);
+            here.bits += extra[work[sym] - match] & 15;
             here.val = base[work[sym] - match];
         } else if (work[sym] + 1U < match) {
             here.op = (unsigned char)0;
