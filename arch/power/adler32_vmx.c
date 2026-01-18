@@ -112,10 +112,8 @@ static void vmx_accum32(uint32_t *s, const uint8_t *buf, size_t len) {
 
 Z_FORCEINLINE static uint32_t adler32_impl(uint32_t adler, const uint8_t *buf, size_t len) {
     uint32_t sum2;
-    uint32_t pair[16] ALIGNED_(16);
-    memset(&pair[2], 0, 14);
-    int n = NMAX;
-    unsigned int done = 0;
+    uint32_t pair[4] ALIGNED_(16);
+    memset(&pair[2], 0, 8);
 
     /* Split Adler-32 into component sums, it can be supplied by
      * the caller sites (e.g. in a PNG file).
@@ -134,29 +132,39 @@ Z_FORCEINLINE static uint32_t adler32_impl(uint32_t adler, const uint8_t *buf, s
         return adler32_copy_small(adler, NULL, buf, len, sum2, 16, 0);
 
     // Align buffer
-    size_t align_len = (size_t)MIN(ALIGN_DIFF(buf, 16), len);
+    uintptr_t align_len = ALIGN_DIFF(buf, 16);
+    size_t cur_nmax = NMAX;
+
     if (align_len) {
         adler32_copy_small_pair(pair, NULL, buf, align_len, 16, 0);
-        done += align_len;
         /* Rather than rebasing, we can reduce the max sums for the
          * first round only */
-        n -= align_len;
+        buf += align_len;
+        len -= align_len;
+        cur_nmax -= align_len;
     }
-    for (size_t i = align_len; i < len; i += n) {
-        int remaining = (int)(len-i);
-        n = MIN(remaining, (i == align_len) ? n : NMAX);
-        if (n < 16)
-            break;
 
-        vmx_accum32(pair, buf + i, n / 16);
+    size_t n = MIN(len, cur_nmax) & ~15;  /* Round down to nearest 16 bytes */
+
+    while (len >= 16) {
+
+        vmx_accum32(pair, buf, n / 16);
         pair[0] %= BASE;
         pair[1] %= BASE;
 
-        done += (n / 16) * 16;
+        buf += n;
+        len -= n;
+        n = MIN(len, NMAX) & ~15;
     }
 
     /* Process tail (len < 16).  */
-    return adler32_copy_small_pair(pair, NULL, buf + done, len - done, 16, 0);
+    if (len) {
+        adler32_copy_small_pair(pair, NULL, buf, len, 16, 0);
+        pair[0] %= BASE;
+        pair[1] %= BASE;
+    }
+
+    return pair[0] | (pair[1] << 16);
 }
 
 Z_INTERNAL uint32_t adler32_vmx(uint32_t adler, const uint8_t *buf, size_t len) {

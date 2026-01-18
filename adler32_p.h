@@ -19,9 +19,6 @@
 #define ADLER_DO16(sum1, sum2, buf)    {ADLER_DO8(sum1, sum2, buf, 0); ADLER_DO8(sum1, sum2, buf, 8);}
 
 Z_FORCEINLINE static uint32_t adler32_copy_small(uint32_t adler, uint8_t *dst, const uint8_t *buf, size_t len, uint32_t sum2, const int MAX_LEN, const int COPY) {
-    if (len == 0)
-        return adler | (sum2 << 16);
-
     if (COPY) {
         memcpy(dst, buf, len);
     }
@@ -45,10 +42,7 @@ Z_FORCEINLINE static uint32_t adler32_copy_small(uint32_t adler, uint8_t *dst, c
     return (adler % BASE) | ((sum2 % BASE) << 16);
 }
 
-Z_FORCEINLINE static uint32_t adler32_copy_small_pair(uint32_t *pair, uint8_t *dst, const uint8_t *buf, size_t len, const int MAX_LEN, const int COPY) {
-    if (len == 0)
-        return pair[0] | (pair[1] << 16);
-
+Z_FORCEINLINE static void adler32_copy_small_pair(uint32_t *pair, uint8_t *dst, const uint8_t *buf, size_t len, const int MAX_LEN, const int COPY) {
     if (COPY) {
         memcpy(dst, buf, len);
     }
@@ -68,8 +62,6 @@ Z_FORCEINLINE static uint32_t adler32_copy_small_pair(uint32_t *pair, uint8_t *d
         ADLER_DO1(pair[0], pair[1], buf, 0);
         buf++;
     }
-    /* D = B * 65536 + A, see: https://en.wikipedia.org/wiki/Adler-32. */
-    return (pair[0] % BASE) | ((pair[1] % BASE) << 16);
 }
 
 #endif /* ADLER32_P_H */

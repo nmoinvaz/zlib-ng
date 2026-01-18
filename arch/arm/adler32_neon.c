@@ -329,7 +329,12 @@ Z_FORCEINLINE static uint32_t adler32_copy_impl(uint32_t adler, uint8_t *dst, co
     }
 
     /* Process tail (len < 16).  */
-    return adler32_copy_small_pair(pair, dst, src + done, len - done, 16, COPY);
+    if (len - done) {
+        adler32_copy_small_pair(pair, dst, src + done, len - done, 16, COPY);
+        pair[0] %= BASE;
+        pair[1] %= BASE;
+    }
+    return pair[0] | (pair[1] << 16);
 }
 
 Z_INTERNAL uint32_t adler32_neon(uint32_t adler, const uint8_t *src, size_t len) {
