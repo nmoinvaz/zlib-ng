@@ -121,11 +121,10 @@ static inline uint32_t zng_emit_dist(deflate_state *s, const ct_data *ltree, con
     match_bits = ltree[c].Code;
     match_bits_len = ltree[c].Len;
     extra = extra_lbits[code];
-    if (extra != 0) {
-        lc -= base_length[code];
-        match_bits |= ((uint64_t)lc << match_bits_len);
-        match_bits_len += extra;
-    }
+    /* Branchless: always compute extra bits, adds 0 when extra == 0 */
+    lc -= base_length[code];
+    match_bits |= ((uint64_t)(lc & ((1U << extra) - 1)) << match_bits_len);
+    match_bits_len += extra;
 
     dist--; /* dist is now the match distance - 1 */
     code = d_code(dist);
@@ -136,11 +135,10 @@ static inline uint32_t zng_emit_dist(deflate_state *s, const ct_data *ltree, con
     match_bits |= ((uint64_t)dtree[code].Code << match_bits_len);
     match_bits_len += dtree[code].Len;
     extra = extra_dbits[code];
-    if (extra != 0) {
-        dist -= base_dist[code];
-        match_bits |= ((uint64_t)dist << match_bits_len);
-        match_bits_len += extra;
-    }
+    /* Branchless: always compute extra bits, adds 0 when extra == 0 */
+    dist -= base_dist[code];
+    match_bits |= ((uint64_t)(dist & ((1U << extra) - 1)) << match_bits_len);
+    match_bits_len += extra;
 
     send_bits(s, match_bits, match_bits_len, *bi_buf, *bi_valid);
 
