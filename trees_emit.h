@@ -17,8 +17,9 @@ extern Z_INTERNAL const ct_data static_dtree[D_CODES];
 extern const unsigned char Z_INTERNAL zng_dist_code[DIST_CODE_LEN];
 extern const unsigned char Z_INTERNAL zng_length_code[STD_MAX_MATCH-STD_MIN_MATCH+1];
 
-extern Z_INTERNAL const int base_length[LENGTH_CODES];
-extern Z_INTERNAL const int base_dist[D_CODES];
+/* Combined base + extra_bits tables for single-lookup optimization */
+extern Z_INTERNAL const uint16_t lbase_extra[LENGTH_CODES];
+extern Z_INTERNAL const uint32_t dbase_extra[D_CODES];
 
 /* Bit buffer and deflate code stderr tracing */
 #ifdef ZLIB_DEBUG
@@ -107,7 +108,7 @@ static inline void zng_emit_lit(deflate_state *s, const ct_data *ltree, unsigned
  */
 static inline uint32_t zng_emit_dist(deflate_state *s, const ct_data *ltree, const ct_data *dtree,
                                      uint32_t lc, uint32_t dist, uint64_t *bi_buf, uint32_t *bi_valid) {
-    uint32_t c, extra;
+    uint32_t c, extra, lext;
     uint8_t code;
     uint64_t match_bits;
     uint32_t match_bits_len;
@@ -120,9 +121,10 @@ static inline uint32_t zng_emit_dist(deflate_state *s, const ct_data *ltree, con
 
     match_bits = ltree[c].Code;
     match_bits_len = ltree[c].Len;
-    extra = extra_lbits[code];
-    /* Branchless: always compute extra bits, adds 0 when extra == 0 */
-    lc -= base_length[code];
+    /* Single lookup for base_length and extra_lbits */
+    lext = lbase_extra[code];
+    extra = lext >> 8;
+    lc -= lext & 0xff;
     match_bits |= ((uint64_t)(lc & ((1U << extra) - 1)) << match_bits_len);
     match_bits_len += extra;
 
@@ -134,9 +136,10 @@ static inline uint32_t zng_emit_dist(deflate_state *s, const ct_data *ltree, con
     /* Send the distance code */
     match_bits |= ((uint64_t)dtree[code].Code << match_bits_len);
     match_bits_len += dtree[code].Len;
-    extra = extra_dbits[code];
-    /* Branchless: always compute extra bits, adds 0 when extra == 0 */
-    dist -= base_dist[code];
+    /* Single lookup for base_dist and extra_dbits */
+    lext = dbase_extra[code];
+    extra = lext >> 16;
+    dist -= lext & 0xffff;
     match_bits |= ((uint64_t)(dist & ((1U << extra) - 1)) << match_bits_len);
     match_bits_len += extra;
 
