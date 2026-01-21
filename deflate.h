@@ -226,7 +226,6 @@ struct ALIGNED_(64) internal_state {
     int strategy;               /* favor or force Huffman coding*/
     unsigned int good_match;    /* Use a faster search when the previous match is longer than this */
     int nice_match;             /* Stop searching when current match exceeds this */
-    unsigned int matches;       /* number of string matches in current block */
     unsigned int insert;        /* bytes at end of window left to insert */
 
     uint64_t bi_buf;            /* Output buffer.
@@ -240,7 +239,7 @@ struct ALIGNED_(64) internal_state {
     int32_t padding1[1];
 
                 /* Cacheline 3 */
-    uint8_t ALIGNED_(16) padding4[68];
+    uint8_t ALIGNED_(16) padding4[52];
 
                 /* used by trees.c: */
     /* Didn't use ct_data typedef below to suppress compiler warning */
@@ -295,9 +294,11 @@ struct ALIGNED_(64) internal_state {
 
     unsigned int sym_next;        /* running index in symbol buffer */
     unsigned int sym_end;         /* symbol table full when sym_next reaches this */
-
+    unsigned int matches;         /* number of string matches in current block */
     unsigned int opt_len;         /* bit length of current block with optimal trees */
     unsigned int static_len;      /* bit length of current block with static trees */
+
+    int32_t padding5[4];
 
     deflate_allocs *alloc_bufs;
 
