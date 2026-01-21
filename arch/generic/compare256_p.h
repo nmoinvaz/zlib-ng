@@ -7,117 +7,86 @@
 #include "deflate.h"
 #include "fallback_builtins.h"
 
-/* 8-bit integer comparison */
-static inline uint32_t compare256_8(const uint8_t *src0, const uint8_t *src1) {
-    uint32_t len = 0;
-
-    do {
-        if (*src0 != *src1)
-            return len;
-        src0 += 1, src1 += 1, len += 1;
-        if (*src0 != *src1)
-            return len;
-        src0 += 1, src1 += 1, len += 1;
-        if (*src0 != *src1)
-            return len;
-        src0 += 1, src1 += 1, len += 1;
-        if (*src0 != *src1)
-            return len;
-        src0 += 1, src1 += 1, len += 1;
-        if (*src0 != *src1)
-            return len;
-        src0 += 1, src1 += 1, len += 1;
-        if (*src0 != *src1)
-            return len;
-        src0 += 1, src1 += 1, len += 1;
-        if (*src0 != *src1)
-            return len;
-        src0 += 1, src1 += 1, len += 1;
-        if (*src0 != *src1)
-            return len;
-        src0 += 1, src1 += 1, len += 1;
-    } while (len < 256);
-
-    return 256;
-}
-
-/* 16-bit integer comparison */
-static inline uint32_t compare256_16(const uint8_t *src0, const uint8_t *src1) {
-    uint32_t len = 0;
-
-    do {
-        if (zng_memcmp_2(src0, src1) != 0)
-            return len + (*src0 == *src1);
-        src0 += 2, src1 += 2, len += 2;
-
-        if (zng_memcmp_2(src0, src1) != 0)
-            return len + (*src0 == *src1);
-        src0 += 2, src1 += 2, len += 2;
-
-        if (zng_memcmp_2(src0, src1) != 0)
-            return len + (*src0 == *src1);
-        src0 += 2, src1 += 2, len += 2;
-
-        if (zng_memcmp_2(src0, src1) != 0)
-            return len + (*src0 == *src1);
-        src0 += 2, src1 += 2, len += 2;
-    } while (len < 256);
-
-    return 256;
-}
-
-#ifdef HAVE_BUILTIN_CTZ
-/* 32-bit integer comparison */
-static inline uint32_t compare256_32(const uint8_t *src0, const uint8_t *src1) {
-    uint32_t len = 0;
-
-    do {
-        uint32_t sv, mv, diff;
-
-        sv = zng_memread_4(src0);
-        mv = zng_memread_4(src1);
-
-        diff = sv ^ mv;
-        if (diff) {
-#  if BYTE_ORDER == LITTLE_ENDIAN
-            uint32_t match_byte = __builtin_ctz(diff) / 8;
-#  else
-            uint32_t match_byte = __builtin_clz(diff) / 8;
-#  endif
-            return len + match_byte;
-        }
-
-        src0 += 4, src1 += 4, len += 4;
-    } while (len < 256);
-
-    return 256;
-}
-#endif
-
+/* Helper to find first differing byte in a 64-bit word using best available method */
+static inline uint32_t compare256_match_byte(uint64_t diff) {
 #ifdef HAVE_BUILTIN_CTZLL
-/* 64-bit integer comparison */
+    /* Best: use 64-bit ctzll directly */
+#  if BYTE_ORDER == LITTLE_ENDIAN
+    return __builtin_ctzll(diff) / 8;
+#  else
+    return __builtin_clzll(diff) / 8;
+#  endif
+#elif defined(HAVE_BUILTIN_CTZ)
+    /* Fallback: use 32-bit ctz on each half */
+    uint32_t lo = (uint32_t)diff;
+    if (lo) {
+#  if BYTE_ORDER == LITTLE_ENDIAN
+        return __builtin_ctz(lo) / 8;
+#  else
+        return __builtin_clz(lo) / 8;
+#  endif
+    }
+    uint32_t hi = (uint32_t)(diff >> 32);
+#  if BYTE_ORDER == LITTLE_ENDIAN
+    return 4 + __builtin_ctz(hi) / 8;
+#  else
+    return 4 + __builtin_clz(hi) / 8;
+#  endif
+#else
+    /* Fallback: byte-by-byte extraction */
+    uint32_t lo_diff = (uint32_t)diff;
+    if (lo_diff) {
+        if (lo_diff & 0xFF)
+            return 0;
+        if (lo_diff & 0xFF00)
+            return 1;
+        if (lo_diff & 0xFF0000)
+            return 2;
+        return 3;
+    }
+    uint32_t hi_diff = (uint32_t)(diff >> 32);
+    if (hi_diff & 0xFF)
+        return 4;
+    if (hi_diff & 0xFF00)
+        return 5;
+    if (hi_diff & 0xFF0000)
+        return 6;
+    return 7;
+#endif
+}
+
+/* 64-bit integer comparison - uses 64-bit loads with best available mismatch detection */
 static inline uint32_t compare256_64(const uint8_t *src0, const uint8_t *src1) {
     uint32_t len = 0;
 
     do {
-        uint64_t sv, mv, diff;
+        uint64_t sv = zng_memread_8(src0);
+        uint64_t mv = zng_memread_8(src1);
+        uint64_t diff = sv ^ mv;
+        if (diff)
+            return len + compare256_match_byte(diff);
+        src0 += 8, src1 += 8, len += 8;
 
         sv = zng_memread_8(src0);
         mv = zng_memread_8(src1);
-
         diff = sv ^ mv;
-        if (diff) {
-#  if BYTE_ORDER == LITTLE_ENDIAN
-            uint64_t match_byte = __builtin_ctzll(diff) / 8;
-#  else
-            uint64_t match_byte = __builtin_clzll(diff) / 8;
-#  endif
-            return len + (uint32_t)match_byte;
-        }
-
+        if (diff)
+            return len + compare256_match_byte(diff);
         src0 += 8, src1 += 8, len += 8;
     } while (len < 256);
 
     return 256;
 }
-#endif
+
+/* Provide legacy function names that all use the unified 64-bit implementation */
+static inline uint32_t compare256_8(const uint8_t *src0, const uint8_t *src1) {
+    return compare256_64(src0, src1);
+}
+
+static inline uint32_t compare256_16(const uint8_t *src0, const uint8_t *src1) {
+    return compare256_64(src0, src1);
+}
+
+static inline uint32_t compare256_32(const uint8_t *src0, const uint8_t *src1) {
+    return compare256_64(src0, src1);
+}
