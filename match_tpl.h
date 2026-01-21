@@ -14,8 +14,19 @@
 
 #ifndef MATCH_HELPERS
 #define MATCH_HELPERS
-#ifndef MATCH_HELPER
-#define MATCH_HELPER
+/* Find minimum of 4 values and its index using CTZ.
+ * Returns the minimum value and sets *out_idx to the index (0-3) of the first minimum.
+ */
+static inline uint32_t find_min4_idx(uint32_t p0, uint32_t p1, uint32_t p2, uint32_t p3,
+                                     uint32_t *out_idx) {
+    uint32_t min01 = MIN(p0, p1);
+    uint32_t min23 = MIN(p2, p3);
+    uint32_t min_val = MIN(min01, min23);
+    uint32_t idx_mask = ((p0 == min_val) << 0) | ((p1 == min_val) << 1) |
+                        ((p2 == min_val) << 2) | ((p3 == min_val) << 3);
+    *out_idx = __builtin_ctz(idx_mask);
+    return min_val;
+}
 
 /* Calculate the read offset for scan_end based on best_len.
  * This optimizes comparison by reading fewer bytes at the end when possible.
@@ -110,10 +121,38 @@ Z_INTERNAL uint32_t LONGEST_MATCH(deflate_state *const s, uint32_t cur_match) {
         hash = update_hash_roll(0, scan[1]);
         hash = update_hash_roll(hash, scan[2]);
 
-        for (uint32_t i = 3; i <= best_len; i++) {
-            // use update_hash_roll for deflate_slow
+        uint32_t i = 3;
+        /* Process 4 positions at a time */
+        for (; i + 3 <= best_len; i += 4) {
+            uint32_t h0, h1, h2, h3;
+            uint32_t p0, p1, p2, p3;
+
+            /* Compute 4 consecutive hashes */
+            h0 = update_hash_roll(hash, scan[i]);
+            h1 = update_hash_roll(h0, scan[i+1]);
+            h2 = update_hash_roll(h1, scan[i+2]);
+            h3 = update_hash_roll(h2, scan[i+3]);
+            hash = h3;
+
+            /* Look up all 4 head positions */
+            p0 = head[h0];
+            p1 = head[h1];
+            p2 = head[h2];
+            p3 = head[h3];
+
+            /* Find minimum of the 4 positions and its index */
+            uint32_t idx;
+            uint32_t min_pos = find_min4_idx(p0, p1, p2, p3, &idx);
+
+            /* Only update if we found a better (older) position */
+            if (min_pos < cur_match) {
+                match_offset = i - 2 + idx;
+                cur_match = min_pos;
+            }
+        }
+        /* Handle remaining 0-3 positions */
+        for (; i <= best_len; i++) {
             hash = update_hash_roll(hash, scan[i]);
-            /* If we're starting with best_len >= 3, we can use offset search. */
             pos = head[hash];
             if (pos < cur_match) {
                 match_offset = i - 2;
@@ -195,10 +234,30 @@ Z_INTERNAL uint32_t LONGEST_MATCH(deflate_state *const s, uint32_t cur_match) {
                 cur_match -= match_offset;
                 match_offset = 0;
                 next_pos = cur_match;
-                for (uint32_t i = 0; i <= len - STD_MIN_MATCH; i++) {
+                uint32_t i = 0;
+                uint32_t max_i = len - STD_MIN_MATCH;
+                /* Process 4 positions at a time */
+                for (; i + 3 <= max_i; i += 4) {
+                    uint32_t p0 = prev[(cur_match + i) & wmask];
+                    uint32_t p1 = prev[(cur_match + i + 1) & wmask];
+                    uint32_t p2 = prev[(cur_match + i + 2) & wmask];
+                    uint32_t p3 = prev[(cur_match + i + 3) & wmask];
+
+                    uint32_t idx;
+                    uint32_t min_pos = find_min4_idx(p0, p1, p2, p3, &idx);
+
+                    if (min_pos < next_pos) {
+                        /* Check limit before updating */
+                        if (min_pos <= limit_base + i + idx)
+                            goto break_matching;
+                        next_pos = min_pos;
+                        match_offset = i + idx;
+                    }
+                }
+                /* Handle remaining 0-3 positions */
+                for (; i <= max_i; i++) {
                     pos = prev[(cur_match + i) & wmask];
                     if (pos < next_pos) {
-                        /* Hash chain is more distant, use it */
                         if (pos <= limit_base + i)
                             goto break_matching;
                         next_pos = pos;
