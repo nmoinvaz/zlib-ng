@@ -40,6 +40,21 @@ static inline uint32_t calc_scan_end_offset(uint32_t best_len) {
     }
     return offset;
 }
+
+/* Compute up to 4 consecutive rolling hashes from a 32-bit word.
+ * len specifies how many bytes/hashes to compute (2, 3, or 4).
+ * Returns the intermediate hashes in h[0..len-1] and the final hash value.
+ * When len is a compile-time constant, unused branches are optimized out.
+ */
+static inline uint32_t update_hash_roll_n(uint32_t hash, uint32_t word, uint32_t h[4], const int LEN) {
+    h[0] = update_hash_roll(hash, word & 0xFF);
+    h[1] = update_hash_roll(h[0], (word >> 8) & 0xFF);
+    if (LEN > 2)
+        h[2] = update_hash_roll(h[1], (word >> 16) & 0xFF);
+    if (LEN > 3)
+        h[3] = update_hash_roll(h[2], word >> 24);
+    return h[LEN - 1];
+}
 #endif
 
 #define GOTO_NEXT_CHAIN \
@@ -117,28 +132,24 @@ Z_INTERNAL uint32_t LONGEST_MATCH(deflate_state *const s, uint32_t cur_match) {
          * to cur_match). We cannot use s->prev[strstart+1,...] immediately, because
          * these strings are not yet inserted into the hash table.
          */
-        // use update_hash_roll for deflate_slow
-        hash = update_hash_roll(0, scan[1]);
-        hash = update_hash_roll(hash, scan[2]);
+        /* Initialize rolling hash with bytes at scan[1] and scan[2] */
+        uint32_t h[4];
+        hash = update_hash_roll_n(0, zng_memread_2(scan + 1), h, 2);
 
         uint32_t i = 3;
         /* Process 4 positions at a time */
         for (; i + 3 <= best_len; i += 4) {
-            uint32_t h0, h1, h2, h3;
             uint32_t p0, p1, p2, p3;
 
-            /* Compute 4 consecutive hashes */
-            h0 = update_hash_roll(hash, scan[i]);
-            h1 = update_hash_roll(h0, scan[i+1]);
-            h2 = update_hash_roll(h1, scan[i+2]);
-            h3 = update_hash_roll(h2, scan[i+3]);
-            hash = h3;
+            /* Load 4 bytes at once and compute 4 consecutive hashes */
+            uint32_t scan_word = zng_memread_4(scan + i);
+            hash = update_hash_roll_n(hash, scan_word, h, 4);
 
             /* Look up all 4 head positions */
-            p0 = head[h0];
-            p1 = head[h1];
-            p2 = head[h2];
-            p3 = head[h3];
+            p0 = head[h[0]];
+            p1 = head[h[1]];
+            p2 = head[h[2]];
+            p3 = head[h[3]];
 
             /* Find minimum of the 4 positions and its index */
             uint32_t idx;
@@ -272,10 +283,10 @@ Z_INTERNAL uint32_t LONGEST_MATCH(deflate_state *const s, uint32_t cur_match) {
                  */
                 scan_endstr = scan + len - (STD_MIN_MATCH+1);
 
-                // use update_hash_roll for deflate_slow
-                hash = update_hash_roll(0, scan_endstr[0]);
-                hash = update_hash_roll(hash, scan_endstr[1]);
-                hash = update_hash_roll(hash, scan_endstr[2]);
+                {
+                    uint32_t h_tmp[4];
+                    hash = update_hash_roll_n(0, zng_memread_4(scan_endstr), h_tmp, 3);
+                }
 
                 pos = head[hash];
                 if (pos < cur_match) {
