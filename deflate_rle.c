@@ -46,7 +46,13 @@ Z_INTERNAL block_state deflate_rle(deflate_state *s, int flush) {
         /* See how many times the previous byte repeats */
         if (s->lookahead >= STD_MIN_MATCH && s->strstart > 0) {
             scan = s->window + s->strstart - 1;
-            if (scan[0] == scan[1] && scan[1] == scan[2]) {
+            /* Load 3 bytes at once and check if they're all equal:
+             * For bytes ABC, check if A==B and B==C by testing (A^B)|(B^C)==0 */
+            uint32_t scan_word = zng_memread_4(scan);
+            uint8_t b0 = scan_word & 0xFF;
+            uint8_t b1 = (scan_word >> 8) & 0xFF;
+            uint8_t b2 = (scan_word >> 16) & 0xFF;
+            if ((b0 ^ b1) == 0 && (b1 ^ b2) == 0) {
                 match_len = compare256_rle(scan, scan+3)+2;
                 match_len = MIN(match_len, s->lookahead);
                 match_len = MIN(match_len, STD_MAX_MATCH);
