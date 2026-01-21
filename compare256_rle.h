@@ -9,125 +9,75 @@
 
 typedef uint32_t (*compare256_rle_func)(const uint8_t* src0, const uint8_t* src1);
 
-/* 8-bit integer comparison */
-static inline uint32_t compare256_rle_8(const uint8_t *src0, const uint8_t *src1) {
-    uint32_t len = 0;
-
-    do {
-        if (*src0 != *src1)
-            return len;
-        src1 += 1, len += 1;
-        if (*src0 != *src1)
-            return len;
-        src1 += 1, len += 1;
-        if (*src0 != *src1)
-            return len;
-        src1 += 1, len += 1;
-        if (*src0 != *src1)
-            return len;
-        src1 += 1, len += 1;
-        if (*src0 != *src1)
-            return len;
-        src1 += 1, len += 1;
-        if (*src0 != *src1)
-            return len;
-        src1 += 1, len += 1;
-        if (*src0 != *src1)
-            return len;
-        src1 += 1, len += 1;
-        if (*src0 != *src1)
-            return len;
-        src1 += 1, len += 1;
-    } while (len < 256);
-
-    return 256;
-}
-
-/* 16-bit integer comparison */
-static inline uint32_t compare256_rle_16(const uint8_t *src0, const uint8_t *src1) {
-    uint32_t len = 0;
-    uint16_t src0_cmp;
-
-    src0_cmp = zng_memread_2(src0);
-
-    do {
-        if (src0_cmp != zng_memread_2(src1))
-            return len + (*src0 == *src1);
-        src1 += 2, len += 2;
-        if (src0_cmp != zng_memread_2(src1))
-            return len + (*src0 == *src1);
-        src1 += 2, len += 2;
-        if (src0_cmp != zng_memread_2(src1))
-            return len + (*src0 == *src1);
-        src1 += 2, len += 2;
-        if (src0_cmp != zng_memread_2(src1))
-            return len + (*src0 == *src1);
-        src1 += 2, len += 2;
-    } while (len < 256);
-
-    return 256;
-}
-
-#ifdef HAVE_BUILTIN_CTZ
-/* 32-bit integer comparison */
-static inline uint32_t compare256_rle_32(const uint8_t *src0, const uint8_t *src1) {
-    uint32_t sv, len = 0;
-    uint16_t src0_cmp;
-
-    src0_cmp = zng_memread_2(src0);
-    sv = ((uint32_t)src0_cmp << 16) | src0_cmp;
-
-    do {
-        uint32_t mv, diff;
-
-        mv = zng_memread_4(src1);
-
-        diff = sv ^ mv;
-        if (diff) {
-#if BYTE_ORDER == LITTLE_ENDIAN
-            uint32_t match_byte = __builtin_ctz(diff) / 8;
-#else
-            uint32_t match_byte = __builtin_clz(diff) / 8;
-#endif
-            return len + match_byte;
-        }
-
-        src1 += 4, len += 4;
-    } while (len < 256);
-
-    return 256;
-}
-#endif
-
+/* Helper to find first differing byte in a 64-bit word using best available method */
+static inline uint32_t compare256_rle_match_byte(uint64_t diff) {
 #ifdef HAVE_BUILTIN_CTZLL
-/* 64-bit integer comparison */
+#  if BYTE_ORDER == LITTLE_ENDIAN
+    return __builtin_ctzll(diff) / 8;
+#  else
+    return __builtin_clzll(diff) / 8;
+#  endif
+#elif defined(HAVE_BUILTIN_CTZ)
+    uint32_t lo = (uint32_t)diff;
+    if (lo) {
+#  if BYTE_ORDER == LITTLE_ENDIAN
+        return __builtin_ctz(lo) / 8;
+#  else
+        return __builtin_clz(lo) / 8;
+#  endif
+    }
+    uint32_t hi = (uint32_t)(diff >> 32);
+#  if BYTE_ORDER == LITTLE_ENDIAN
+    return 4 + __builtin_ctz(hi) / 8;
+#  else
+    return 4 + __builtin_clz(hi) / 8;
+#  endif
+#else
+    uint32_t lo_diff = (uint32_t)diff;
+    if (lo_diff) {
+        if (lo_diff & 0xFF) return 0;
+        if (lo_diff & 0xFF00) return 1;
+        if (lo_diff & 0xFF0000) return 2;
+        return 3;
+    }
+    uint32_t hi_diff = (uint32_t)(diff >> 32);
+    if (hi_diff & 0xFF) return 4;
+    if (hi_diff & 0xFF00) return 5;
+    if (hi_diff & 0xFF0000) return 6;
+    return 7;
+#endif
+}
+
+/* 64-bit RLE comparison - uses 64-bit loads */
 static inline uint32_t compare256_rle_64(const uint8_t *src0, const uint8_t *src1) {
     uint32_t src0_cmp32, len = 0;
     uint16_t src0_cmp;
-    uint64_t sv;
+    uint64_t sv, mv, diff;
 
     src0_cmp = zng_memread_2(src0);
     src0_cmp32 = ((uint32_t)src0_cmp << 16) | src0_cmp;
     sv = ((uint64_t)src0_cmp32 << 32) | src0_cmp32;
 
     do {
-        uint64_t mv, diff;
-
         mv = zng_memread_8(src1);
-
         diff = sv ^ mv;
-        if (diff) {
-#if BYTE_ORDER == LITTLE_ENDIAN
-            uint64_t match_byte = __builtin_ctzll(diff) / 8;
-#else
-            uint64_t match_byte = __builtin_clzll(diff) / 8;
-#endif
-            return len + (uint32_t)match_byte;
-        }
-
+        if (diff)
+            return len + compare256_rle_match_byte(diff);
         src1 += 8, len += 8;
     } while (len < 256);
 
     return 256;
 }
-#endif
+
+/* Legacy function names - all use the unified 64-bit implementation */
+static inline uint32_t compare256_rle_8(const uint8_t *src0, const uint8_t *src1) {
+    return compare256_rle_64(src0, src1);
+}
+
+static inline uint32_t compare256_rle_16(const uint8_t *src0, const uint8_t *src1) {
+    return compare256_rle_64(src0, src1);
+}
+
+static inline uint32_t compare256_rle_32(const uint8_t *src0, const uint8_t *src1) {
+    return compare256_rle_64(src0, src1);
+}
