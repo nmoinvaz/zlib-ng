@@ -40,10 +40,9 @@ public:
         str2[match_len] = 0;
         for (auto _ : state) {
             len = compare256((const uint8_t *)str1, (const uint8_t *)str2);
+            benchmark::DoNotOptimize(len);
         }
         str2[match_len] = 'a';
-
-        benchmark::DoNotOptimize(len);
     }
 
     void TearDown(const ::benchmark::State&) {
