@@ -1222,7 +1222,8 @@ void Z_INTERNAL PREFIX(fill_window)(deflate_state *s) {
         if (s->lookahead + s->insert >= STD_MIN_MATCH) {
             unsigned int str = s->strstart - s->insert;
             if (UNLIKELY(level >= 9)) {
-                s->ins_h = update_hash_roll(window[str], window[str+1]);
+                uint16_t w = zng_memread_2(window + str);
+                s->ins_h = update_hash_roll(w & 0xFF, w >> 8);
             } else if (str >= 1) {
                 quick_insert_string(s, str + 2 - STD_MIN_MATCH);
             }
