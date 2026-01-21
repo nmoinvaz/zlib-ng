@@ -139,6 +139,25 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start) {
        window is overwritten then future matches with far distances will fail to copy correctly. */
     extra_safe = (wsize != 0 && out >= window && out + INFLATE_FAST_MIN_LEFT <= window + state->wbufsize);
 
+    /* Hook for extra local variables (e.g., pool for 128-bit refill) */
+#ifdef INFLATE_FAST_EXTRA_LOCALS
+    INFLATE_FAST_EXTRA_LOCALS
+#endif
+
+    /* Hook for initialization (e.g., pool = 0) */
+#ifdef INFLATE_FAST_INIT
+    INFLATE_FAST_INIT
+#endif
+
+    /* REFILL can be overridden by arch-specific code (e.g., 128-bit pooled refill) */
+#ifndef REFILL
+#define REFILL() do { \
+        hold |= load_64_bits(in, bits); \
+        in += (63 ^ bits) >> 3; \
+        bits |= 56; \
+    } while (0)
+#endif
+
     /* decode literals and length/distances until end-of-block or not enough
        input data or output space */
     do {
@@ -296,6 +315,10 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start) {
         }
     } while (in < last && out < end);
 
+#ifdef REFILL
+#undef REFILL
+#endif
+
     /* return unused bytes (on entry, bits < 8, so in won't go too far back) */
     len = bits >> 3;
     in -= len;
@@ -315,6 +338,13 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start) {
     state->bits = bits;
     return;
 }
+
+#ifdef INFLATE_FAST_EXTRA_LOCALS
+#undef INFLATE_FAST_EXTRA_LOCALS
+#endif
+#ifdef INFLATE_FAST_INIT
+#undef INFLATE_FAST_INIT
+#endif
 
 /*
    inflate_fast() speedups that turned out slower (on a PowerPC G3 750CXe):

@@ -75,6 +75,55 @@ static inline chunk_t GET_CHUNK_MAG(uint8_t *buf, uint32_t *chunk_rem, uint32_t 
 
 #define INFLATE_FAST     inflate_fast_neon
 
+/*
+ * 128-bit pooled refill implementation.
+ *
+ * This reduces memory loads by pre-loading the next 64 bits into a pool.
+ * When bits < 56 and pool has data, we use pool instead of loading from memory.
+ */
+
+#define INFLATE_FAST_EXTRA_LOCALS \
+    uint64_t pool; \
+    unsigned pool_bits;
+
+#define INFLATE_FAST_INIT \
+    pool = 0; \
+    pool_bits = 0;
+
+/*
+ * REFILL: Two-stage refill to reduce memory loads.
+ *
+ * Standard REFILL semantics:
+ *   hold |= load_64_bits(in, bits);
+ *   in += (63 ^ bits) >> 3;
+ *   bits |= 56;
+ *
+ * Our approach uses the SAME semantics, but with two data sources:
+ * 1. If bits >= 56: no-op (same as standard)
+ * 2. If bits < 56 and pool_bits > 0: use pool instead of loading from memory
+ * 3. If bits < 56 and pool_bits == 0: load from memory, pre-load pool
+ */
+#define REFILL() do { \
+        if (bits < 56) { \
+            if (pool_bits > 0) { \
+                /* Soft refill: use pre-loaded pool */ \
+                hold |= pool << bits; \
+                in += (63 ^ bits) >> 3; \
+                bits |= 56; \
+                pool_bits = 0; \
+            } else { \
+                /* Hard refill: standard load + pre-load pool */ \
+                hold |= load_64_bits(in, bits); \
+                in += (63 ^ bits) >> 3; \
+                bits |= 56; \
+                /* Pre-load next chunk into pool */ \
+                pool = zng_memread_8(in); \
+                pool = Z_U64_FROM_LE(pool); \
+                pool_bits = 64; \
+            } \
+        } \
+    } while (0)
+
 #include "inffast_tpl.h"
 
 #endif
