@@ -186,10 +186,16 @@ int Z_INTERNAL zng_inflate_table(codetype type, uint16_t *lens, unsigned codes,
 
     /* bound code lengths, force root to be within code lengths */
     root = *bits;
-    for (max = MAX_BITS; max >= 1; max--)
-        if (count[max] != 0) break;
-    root = MIN(root, max);
-    if (UNLIKELY(max == 0)) {           /* no symbols to code at all */
+
+    /* build a bitmask of non-zero counts using clz/ctz to find max (highest set bit)
+     * and min (lowest set bit). */
+    uint32_t count_mask = 0;
+    for (len = 1; len <= MAX_BITS; len++) {
+        if (count[len] != 0)
+            count_mask |= (1U << len);
+    }
+    if (UNLIKELY(count_mask == 0)) {
+        /* no symbols to code at all */
         here.op = (unsigned char)64;    /* invalid code marker */
         here.bits = (unsigned char)1;
         here.val = (uint16_t)0;
@@ -198,9 +204,9 @@ int Z_INTERNAL zng_inflate_table(codetype type, uint16_t *lens, unsigned codes,
         *bits = 1;
         return 0;     /* no symbols, but wait for decoding to report error */
     }
-    for (min = 1; min < max; min++)
-        if (count[min] != 0) break;
-    root = MAX(root, min);
+    max = 31 - __builtin_clz(count_mask);  /* highest set bit */
+    min = __builtin_ctz(count_mask);       /* lowest set bit */
+    root = MAX(MIN(root, max), min);
 
     /* check for an over-subscribed or incomplete set of lengths */
     left = 1;

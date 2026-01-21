@@ -28,6 +28,21 @@ Z_FORCEINLINE static int __builtin_ctz(unsigned int value) {
 }
 #  define HAVE_BUILTIN_CTZ
 
+/* This is not a general purpose replacement for __builtin_clz. The function expects that value is != 0.
+ * Because of that assumption leading_zero is not initialized and the return value is not checked.
+ */
+Z_FORCEINLINE static int __builtin_clz(unsigned int value) {
+    Assert(value != 0, "Invalid input value: 0");
+#  if defined(X86_FEATURES) && !(_MSC_VER < 1700)
+    return (int)_lzcnt_u32(value);
+#  else
+    unsigned long leading_zero;
+    _BitScanReverse(&leading_zero, value);
+    return 31 - (int)leading_zero;
+#  endif
+}
+#  define HAVE_BUILTIN_CLZ
+
 #  ifdef ARCH_64BIT
 /* This is not a general purpose replacement for __builtin_ctzll. The function expects that value is != 0.
  * Because of that assumption trailing_zero is not initialized and the return value is not checked.
