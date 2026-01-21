@@ -7,6 +7,33 @@
 #include "deflate.h"
 #include "fallback_builtins.h"
 
+/* 8-bit integer comparison for hardware without unaligned loads */
+static inline uint32_t compare256_8(const uint8_t *src0, const uint8_t *src1) {
+    uint32_t len = 0;
+
+    do {
+        if (src0[0] != src1[0])
+            return len;
+        if (src0[1] != src1[1])
+            return len + 1;
+        if (src0[2] != src1[2])
+            return len + 2;
+        if (src0[3] != src1[3])
+            return len + 3;
+        if (src0[4] != src1[4])
+            return len + 4;
+        if (src0[5] != src1[5])
+            return len + 5;
+        if (src0[6] != src1[6])
+            return len + 6;
+        if (src0[7] != src1[7])
+            return len + 7;
+        src0 += 8, src1 += 8, len += 8;
+    } while (len < 256);
+
+    return 256;
+}
+
 /* Helper to find first differing byte in a 64-bit word using best available method */
 static inline uint32_t compare256_match_byte(uint64_t diff) {
 #ifdef HAVE_BUILTIN_CTZLL
@@ -55,7 +82,7 @@ static inline uint32_t compare256_match_byte(uint64_t diff) {
 #endif
 }
 
-/* 64-bit integer comparison - uses 64-bit loads with best available mismatch detection */
+/* 64-bit integer comparison for hardware with unaligned loads */
 static inline uint32_t compare256_64(const uint8_t *src0, const uint8_t *src1) {
     uint32_t len = 0;
 
@@ -76,11 +103,6 @@ static inline uint32_t compare256_64(const uint8_t *src0, const uint8_t *src1) {
     } while (len < 256);
 
     return 256;
-}
-
-/* Provide legacy function names that all use the unified 64-bit implementation */
-static inline uint32_t compare256_8(const uint8_t *src0, const uint8_t *src1) {
-    return compare256_64(src0, src1);
 }
 
 static inline uint32_t compare256_16(const uint8_t *src0, const uint8_t *src1) {

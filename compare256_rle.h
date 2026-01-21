@@ -69,9 +69,32 @@ static inline uint32_t compare256_rle_64(const uint8_t *src0, const uint8_t *src
     return 256;
 }
 
-/* Legacy function names - all use the unified 64-bit implementation */
+/* 8-bit RLE comparison for hardware without unaligned loads */
 static inline uint32_t compare256_rle_8(const uint8_t *src0, const uint8_t *src1) {
-    return compare256_rle_64(src0, src1);
+    uint32_t len = 0;
+    uint8_t val = *src0;
+
+    do {
+        if (val != src1[0])
+            return len;
+        if (val != src1[1])
+            return len + 1;
+        if (val != src1[2])
+            return len + 2;
+        if (val != src1[3])
+            return len + 3;
+        if (val != src1[4])
+            return len + 4;
+        if (val != src1[5])
+            return len + 5;
+        if (val != src1[6])
+            return len + 6;
+        if (val != src1[7])
+            return len + 7;
+        src1 += 8, len += 8;
+    } while (len < 256);
+
+    return 256;
 }
 
 static inline uint32_t compare256_rle_16(const uint8_t *src0, const uint8_t *src1) {
