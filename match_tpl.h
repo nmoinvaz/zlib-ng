@@ -12,6 +12,25 @@
 
 #define EARLY_EXIT_TRIGGER_LEVEL 5
 
+#ifndef MATCH_HELPERS
+#define MATCH_HELPERS
+#ifndef MATCH_HELPER
+#define MATCH_HELPER
+
+/* Calculate the read offset for scan_end based on best_len.
+ * This optimizes comparison by reading fewer bytes at the end when possible.
+ */
+static inline uint32_t calc_scan_end_offset(uint32_t best_len) {
+    uint32_t offset = best_len - 1;
+    if (best_len >= sizeof(uint32_t)) {
+        offset -= 2;
+        if (best_len >= sizeof(uint64_t))
+            offset -= 4;
+    }
+    return offset;
+}
+#endif
+
 #define GOTO_NEXT_CHAIN \
     if (--chain_length && (cur_match = prev[cur_match & wmask]) > limit) \
         continue; \
@@ -62,12 +81,7 @@ Z_INTERNAL uint32_t LONGEST_MATCH(deflate_state *const s, uint32_t cur_match) {
     /* Calculate read offset which should only extend an extra byte
      * to find the next best match length.
      */
-    offset = best_len-1;
-    if (best_len >= sizeof(uint32_t)) {
-        offset -= 2;
-        if (best_len >= sizeof(uint64_t))
-            offset -= 4;
-    }
+    offset = calc_scan_end_offset(best_len);
 
     scan_start = zng_memread_8(scan);
     scan_end = zng_memread_8(scan+offset);
@@ -167,14 +181,7 @@ Z_INTERNAL uint32_t LONGEST_MATCH(deflate_state *const s, uint32_t cur_match) {
                 return len;
 
             best_len = len;
-
-            offset = best_len-1;
-            if (best_len >= sizeof(uint32_t)) {
-                offset -= 2;
-                if (best_len >= sizeof(uint64_t))
-                    offset -= 4;
-            }
-
+            offset = calc_scan_end_offset(best_len);
             scan_end = zng_memread_8(scan+offset);
 
 #ifdef LONGEST_MATCH_SLOW
