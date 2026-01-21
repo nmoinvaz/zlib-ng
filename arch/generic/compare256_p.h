@@ -7,60 +7,64 @@
 #include "deflate.h"
 #include "fallback_builtins.h"
 
-/* 8-bit integer comparison */
+/* 8-bit integer comparison - uses 32-bit loads with byte extraction on mismatch */
 static inline uint32_t compare256_8(const uint8_t *src0, const uint8_t *src1) {
     uint32_t len = 0;
 
     do {
-        if (*src0 != *src1)
-            return len;
-        src0 += 1, src1 += 1, len += 1;
-        if (*src0 != *src1)
-            return len;
-        src0 += 1, src1 += 1, len += 1;
-        if (*src0 != *src1)
-            return len;
-        src0 += 1, src1 += 1, len += 1;
-        if (*src0 != *src1)
-            return len;
-        src0 += 1, src1 += 1, len += 1;
-        if (*src0 != *src1)
-            return len;
-        src0 += 1, src1 += 1, len += 1;
-        if (*src0 != *src1)
-            return len;
-        src0 += 1, src1 += 1, len += 1;
-        if (*src0 != *src1)
-            return len;
-        src0 += 1, src1 += 1, len += 1;
-        if (*src0 != *src1)
-            return len;
-        src0 += 1, src1 += 1, len += 1;
+        uint32_t sv = zng_memread_4(src0);
+        uint32_t mv = zng_memread_4(src1);
+        if (sv != mv) {
+            /* Find first differing byte by checking each byte */
+            if ((sv & 0xFF) != (mv & 0xFF))
+                return len;
+            if (((sv >> 8) & 0xFF) != ((mv >> 8) & 0xFF))
+                return len + 1;
+            if (((sv >> 16) & 0xFF) != ((mv >> 16) & 0xFF))
+                return len + 2;
+            return len + 3;
+        }
+        src0 += 4, src1 += 4, len += 4;
+
+        sv = zng_memread_4(src0);
+        mv = zng_memread_4(src1);
+        if (sv != mv) {
+            if ((sv & 0xFF) != (mv & 0xFF))
+                return len;
+            if (((sv >> 8) & 0xFF) != ((mv >> 8) & 0xFF))
+                return len + 1;
+            if (((sv >> 16) & 0xFF) != ((mv >> 16) & 0xFF))
+                return len + 2;
+            return len + 3;
+        }
+        src0 += 4, src1 += 4, len += 4;
     } while (len < 256);
 
     return 256;
 }
 
-/* 16-bit integer comparison */
+/* 16-bit integer comparison - uses 32-bit loads with 16-bit checks on mismatch */
 static inline uint32_t compare256_16(const uint8_t *src0, const uint8_t *src1) {
     uint32_t len = 0;
 
     do {
-        if (zng_memcmp_2(src0, src1) != 0)
-            return len + (*src0 == *src1);
-        src0 += 2, src1 += 2, len += 2;
+        uint32_t sv = zng_memread_4(src0);
+        uint32_t mv = zng_memread_4(src1);
+        if (sv != mv) {
+            if ((sv & 0xFFFF) != (mv & 0xFFFF))
+                return len + ((sv & 0xFF) == (mv & 0xFF));
+            return len + 2 + (((sv >> 16) & 0xFF) == ((mv >> 16) & 0xFF));
+        }
+        src0 += 4, src1 += 4, len += 4;
 
-        if (zng_memcmp_2(src0, src1) != 0)
-            return len + (*src0 == *src1);
-        src0 += 2, src1 += 2, len += 2;
-
-        if (zng_memcmp_2(src0, src1) != 0)
-            return len + (*src0 == *src1);
-        src0 += 2, src1 += 2, len += 2;
-
-        if (zng_memcmp_2(src0, src1) != 0)
-            return len + (*src0 == *src1);
-        src0 += 2, src1 += 2, len += 2;
+        sv = zng_memread_4(src0);
+        mv = zng_memread_4(src1);
+        if (sv != mv) {
+            if ((sv & 0xFFFF) != (mv & 0xFFFF))
+                return len + ((sv & 0xFF) == (mv & 0xFF));
+            return len + 2 + (((sv >> 16) & 0xFF) == ((mv >> 16) & 0xFF));
+        }
+        src0 += 4, src1 += 4, len += 4;
     } while (len < 256);
 
     return 256;
