@@ -148,6 +148,14 @@ typedef unsigned bits_t;
         here.bits = (unsigned char)((here.bits & ~mask) | (size & mask)); \
     } while (0)
 
+/* Build combined op field: preserves extra if not len/dist, else combines with code_bits */
+#define COMBINE_OP(extra, code_bits) \
+    ((unsigned char)((extra) & 16 ? (code_bits) | 16 : (extra)))
+
+/* Build combined bits field: code_bits + extra_bits from extra's low nibble */
+#define COMBINE_BITS(code_bits, extra) \
+    ((unsigned char)((code_bits) + ((extra) & 15)))
+
 /* Trace macros for debugging */
 #define TRACE_LITERAL(val) \
     Tracevv((stderr, val >= 0x20 && val < 0x7f ? \
