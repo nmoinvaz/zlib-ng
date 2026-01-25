@@ -110,7 +110,8 @@ typedef unsigned bits_t;
    not enough available input to do that, then return from inflate()/inflateBack(). */
 #define NEEDBITS(n) \
     do { \
-        while (bits < (bits_t)(n)) \
+        unsigned u = (unsigned)(n); \
+        while (bits < (bits_t)u) \
             PULLBYTE(); \
     } while (0)
 
@@ -121,8 +122,9 @@ typedef unsigned bits_t;
 /* Remove n bits from the bit accumulator */
 #define DROPBITS(n) \
     do { \
-        hold >>= (n); \
-        bits -= (bits_t)(n); \
+        unsigned u = (unsigned)(n); \
+        hold >>= u; \
+        bits -= (bits_t)u; \
     } while (0)
 
 /* Remove zero to seven bits as needed to go to a byte boundary */
@@ -139,14 +141,21 @@ typedef unsigned bits_t;
         strm->msg = (char *)errmsg; \
     } while (0)
 
-/* Convert combined code format back to split format for slow path decoding. */
-#define FIXCODE(here) \
-    do { \
-        unsigned mask = (unsigned)(-(int)((here.op >> 4) & 1)); \
-        unsigned size = here.op & 15; \
-        here.op = (unsigned char)((here.op & ~mask) | ((16 | (here.bits - size)) & mask)); \
-        here.bits = (unsigned char)((here.bits & ~mask) | (size & mask)); \
-    } while (0)
+/* Huffman code table entry format for length/distance codes (op & 16 set):
+ *   bits = code_bits + extra_bits (combined for single-shift decode)
+ *   op   = 16 | code_bits
+ *   val  = base value
+ *
+ * For literals (op == 0): bits = code_bits, val = literal byte
+ */
+
+/* Extract code size from a Huffman table entry */
+#define CODE_BITS(here) \
+    ((unsigned)((here.op & 16) ? (here.op & 15) : here.bits))
+
+/* Extract extra bits count from a length/distance code entry */
+#define CODE_EXTRA(here) \
+    ((unsigned)((here.op & 16) ? (here.bits - (here.op & 15)) : 0))
 
 /* Build combined op field: preserves extra if not len/dist, else combines with code_bits */
 #define COMBINE_OP(extra, code_bits) \
