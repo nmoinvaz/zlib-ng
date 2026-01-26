@@ -46,6 +46,7 @@ add_executable(benchmark_zlib
     benchmark_inflate.cc
     benchmark_main.cc
     benchmark_slidehash.cc
+    benchmark_tailcopy.cc
     benchmark_uncompress.cc
     )
 
