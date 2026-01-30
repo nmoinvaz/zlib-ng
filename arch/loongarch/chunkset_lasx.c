@@ -112,7 +112,6 @@ static inline halfchunk_t GET_HALFCHUNK_MAG(uint8_t *buf, uint32_t *chunk_rem, u
 
 #define CHUNKSIZE        chunksize_lasx
 #define CHUNKCOPY        chunkcopy_lasx
-#define CHUNKUNROLL      chunkunroll_lasx
 #define CHUNKMEMSET      chunkmemset_lasx
 #define CHUNKMEMSET_SAFE chunkmemset_safe_lasx
 

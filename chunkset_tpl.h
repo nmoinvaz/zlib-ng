@@ -10,16 +10,8 @@ static inline size_t CHUNKSIZE(void) {
     return sizeof(chunk_t);
 }
 
-/* Behave like memcpy, but assume that it's OK to overwrite at least
-   chunk_t bytes of output even if the length is shorter than this,
-   that the length is non-zero, and that `from` lags `out` by at least
-   sizeof chunk_t bytes (or that they don't overlap at all or simply that
-   the distance is less than the length of the copy).
-
-   Aside from better memory bus utilization, this means that short copies
-   (chunk_t bytes or fewer) will fall straight through the loop
-   without iteration, which will hopefully make the branch prediction more
-   reliable. */
+/* Fast copy for when distance >= chunk size. Used internally by CHUNKMEMSET.
+   Assumes no overlap issues and that overwriting beyond len is safe. */
 #ifndef HAVE_CHUNKCOPY
 static inline uint8_t* CHUNKCOPY(uint8_t *out, uint8_t const *from, unsigned len) {
     Assert(len > 0, "chunkcopy should never have a length 0");
@@ -40,27 +32,6 @@ static inline uint8_t* CHUNKCOPY(uint8_t *out, uint8_t const *from, unsigned len
     return out;
 }
 #endif
-
-/* Perform short copies until distance can be rewritten as being at least
-   sizeof chunk_t.
-
-   This assumes that it's OK to overwrite at least the first
-   2*sizeof(chunk_t) bytes of output even if the copy is shorter than this.
-   This assumption holds because inflate_fast() starts every iteration with at
-   least 258 bytes of output space available (258 being the maximum length
-   output from a single token; see inflate_fast()'s assumptions below). */
-static inline uint8_t* CHUNKUNROLL(uint8_t *out, unsigned *dist, unsigned *len) {
-    unsigned char const *from = out - *dist;
-    chunk_t chunk;
-    while (*dist < *len && *dist < sizeof(chunk_t)) {
-        loadchunk(from, &chunk);
-        storechunk(out, &chunk);
-        out += *dist;
-        *len -= *dist;
-        *dist += *dist;
-    }
-    return out;
-}
 
 #ifndef HAVE_CHUNK_MAG
 /* Loads a magazine to feed into memory of the pattern */
@@ -107,7 +78,7 @@ static inline uint8_t* HALFCHUNKCOPY(uint8_t *out, uint8_t const *from, unsigned
 
 /* Copy DIST bytes from OUT - DIST into OUT + DIST * k, for 0 <= k < LEN/DIST.
    Return OUT + LEN. */
-static inline uint8_t* CHUNKMEMSET(uint8_t *out, uint8_t *from, unsigned len) {
+static Z_FORCEINLINE uint8_t* CHUNKMEMSET(uint8_t *out, uint8_t *from, unsigned len) {
     /* Debug performance related issues when len < sizeof(uint64_t):
        Assert(len >= sizeof(uint64_t), "chunkmemset should be called on larger chunks"); */
     Assert(from != out, "chunkmemset cannot have a distance 0");
@@ -232,6 +203,7 @@ Z_INTERNAL uint8_t* CHUNKMEMSET_SAFE(uint8_t *out, uint8_t *from, unsigned len, 
 #endif
 
     len = MIN(len, left);
+    Assert(len > 0, "chunkmemset_safe should never have a length 0");
 
 #if OPTIMAL_CMP < 64
     while (((uintptr_t)out & align_mask) && (len > 0)) {
@@ -239,6 +211,8 @@ Z_INTERNAL uint8_t* CHUNKMEMSET_SAFE(uint8_t *out, uint8_t *from, unsigned len, 
         --len;
         --left;
     }
+    if (len == 0)
+        return out;
 #endif
 
 #ifndef HAVE_MASKED_READWRITE
@@ -252,14 +226,13 @@ Z_INTERNAL uint8_t* CHUNKMEMSET_SAFE(uint8_t *out, uint8_t *from, unsigned len, 
     }
 #endif
 
-    if (len)
-        out = CHUNKMEMSET(out, from, len);
-
-    return out;
+    return CHUNKMEMSET(out, from, len);
 }
 
-static inline uint8_t *CHUNKCOPY_SAFE(uint8_t *out, uint8_t *from, uint64_t len, uint8_t *safe)
-{
+/* Main entry point for chunk copies. Handles boundary safety and all distance cases. */
+Z_FORCEINLINE static uint8_t *CHUNKCOPY_SAFE(uint8_t *out, uint8_t *from, uint64_t len, uint8_t *safe) {
+    Assert(len > 0, "chunkcopy_safe should never have a length 0");
+
     if (out == from)
         return out + len;
 

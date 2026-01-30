@@ -37,7 +37,6 @@ static inline void storechunk(uint8_t *out, chunk_t *chunk) {
 
 #define CHUNKSIZE        chunksize_sse2
 #define CHUNKCOPY        chunkcopy_sse2
-#define CHUNKUNROLL      chunkunroll_sse2
 #define CHUNKMEMSET      chunkmemset_sse2
 #define CHUNKMEMSET_SAFE chunkmemset_safe_sse2
 

@@ -480,9 +480,7 @@ int32_t Z_EXPORT PREFIX(inflateBack)(PREFIX3(stream) *strm, in_func in, void *in
                 copy = MIN(copy, state->length);
                 state->length -= copy;
                 left -= copy;
-                do {
-                    *put++ = *from++;
-                } while (--copy);
+                put = FUNCTABLE_CALL(chunkmemset_safe)(put, from, copy, left + copy);
             } while (state->length != 0);
             break;
 

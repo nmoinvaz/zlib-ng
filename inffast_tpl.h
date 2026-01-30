@@ -112,8 +112,7 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start) {
     unsigned len;               /* match length, unused bytes */
     unsigned char *from;        /* where to copy match from */
     unsigned dist;              /* match distance */
-    unsigned extra_safe;        /* copy chunks safely in all cases */
-    uint64_t old;               /* look-behind buffer for extra bits */
+    uint64_t old;               /* old hold value for unused bits */
 
     /* copy state to local variables */
     state = (struct inflate_state *)strm->state;
@@ -133,11 +132,6 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start) {
     dcode = state->distcode;
     lmask = (1U << state->lenbits) - 1;
     dmask = (1U << state->distbits) - 1;
-
-    /* Detect if out and window point to the same memory allocation. In this instance it is
-       necessary to use safe chunk copy functions to prevent overwriting the window. If the
-       window is overwritten then future matches with far distances will fail to copy correctly. */
-    extra_safe = (wsize != 0 && out >= window && out + INFLATE_FAST_MIN_LEFT <= window + state->wbufsize);
 
     /* Hook for extra local variables (e.g., pool for 128-bit refill) */
 #ifdef INFLATE_FAST_EXTRA_LOCALS
@@ -249,44 +243,18 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start) {
                             out = CHUNKCOPY_SAFE(out, from, op, safe);
                             from = window;      /* more from start of window */
                             op = wnext;
-                            /* This (rare) case can create a situation where
-                               the first chunkcopy below must be checked.
-                             */
                         }
                     }
                     if (op < len) {             /* still need some from output */
+                        out = CHUNKCOPY_SAFE(out, from, op, safe);
                         len -= op;
-                        if (!extra_safe) {
-                            out = CHUNKCOPY_SAFE(out, from, op, safe);
-                            out = CHUNKUNROLL(out, &dist, &len);
-                            out = CHUNKCOPY_SAFE(out, out - dist, len, safe);
-                        } else {
-                            out = chunkcopy_safe(out, from, op, safe);
-                            out = chunkcopy_safe(out, out - dist, len, safe);
-                        }
+                        out = CHUNKCOPY_SAFE(out, out - dist, len, safe);
                     } else {
-#ifndef HAVE_MASKED_READWRITE
-                        if (extra_safe)
-                            out = chunkcopy_safe(out, from, len, safe);
-                        else
-#endif
-                            out = CHUNKCOPY_SAFE(out, from, len, safe);
+                        out = CHUNKCOPY_SAFE(out, from, len, safe);
                     }
-#ifndef HAVE_MASKED_READWRITE
-                } else if (extra_safe) {
-                    /* Whole reference is in range of current output. */
-                        out = chunkcopy_safe(out, out - dist, len, safe);
-#endif
                 } else {
-                    /* Whole reference is in range of current output.  No range checks are
-                       necessary because we start with room for at least 258 bytes of output,
-                       so unroll and roundoff operations can write beyond `out+len` so long
-                       as they stay within 258 bytes of `out`.
-                    */
-                    if (dist >= len || dist >= CHUNKSIZE())
-                        out = CHUNKCOPY(out, out - dist, len);
-                    else
-                        out = CHUNKMEMSET(out, out - dist, len);
+                    /* Whole reference is in range of current output. */
+                    out = CHUNKCOPY_SAFE(out, out - dist, len, safe);
                 }
             } else if ((op & 64) == 0) {          /* 2nd level distance code */
                 here = dcode[here.val + BITS(op)];

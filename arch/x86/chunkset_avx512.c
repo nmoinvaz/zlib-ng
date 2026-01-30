@@ -173,7 +173,6 @@ static inline uint8_t* HALFCHUNKCOPY(uint8_t *out, uint8_t const *from, unsigned
 }
 
 #define CHUNKSIZE        chunksize_avx512
-#define CHUNKUNROLL      chunkunroll_avx512
 #define CHUNKMEMSET      chunkmemset_avx512
 #define CHUNKMEMSET_SAFE chunkmemset_safe_avx512
 

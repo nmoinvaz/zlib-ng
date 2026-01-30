@@ -115,7 +115,6 @@ static inline halfchunk_t GET_HALFCHUNK_MAG(uint8_t *buf, uint32_t *chunk_rem, u
 
 #define CHUNKSIZE        chunksize_avx2
 #define CHUNKCOPY        chunkcopy_avx2
-#define CHUNKUNROLL      chunkunroll_avx2
 #define CHUNKMEMSET      chunkmemset_avx2
 #define CHUNKMEMSET_SAFE chunkmemset_safe_avx2
 

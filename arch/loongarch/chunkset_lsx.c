@@ -62,7 +62,6 @@ static inline chunk_t GET_CHUNK_MAG(uint8_t *buf, uint32_t *chunk_rem, uint32_t 
 #define CHUNKMEMSET      chunkmemset_lsx
 #define CHUNKMEMSET_SAFE chunkmemset_safe_lsx
 #define CHUNKCOPY        chunkcopy_lsx
-#define CHUNKUNROLL      chunkunroll_lsx
 
 #include "chunkset_tpl.h"
 
