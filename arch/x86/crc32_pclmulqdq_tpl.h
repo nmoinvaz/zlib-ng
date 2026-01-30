@@ -138,23 +138,19 @@ static inline void fold_16(__m512i *zmm_crc0, __m512i *zmm_crc1, __m512i *zmm_cr
 #endif
 
 Z_FORCEINLINE static uint32_t crc32_copy_impl(uint32_t crc, uint8_t *dst, const uint8_t *src, size_t len, const int COPY) {
-    size_t copy_len = len;
-    if (len >= 16) {
-        /* Calculate 16-byte alignment offset */
-        uintptr_t align_diff = ALIGN_DIFF(src, 16);
+    /* Calculate 16-byte alignment offset */
+    uintptr_t align_diff = ALIGN_DIFF(src, 16);
 
-        /* If total length is less than (alignment bytes + 16), use the faster small method.
-         * Handles both initially small buffers and cases where alignment would leave < 16 bytes */
-        copy_len = len < align_diff + 16 ? len : align_diff;
-    }
+    /* SIMD requires at least 16 bytes beyond the alignment boundary to load a full vector
+     * and XOR the initial crc. Use scalar for alignment bytes or the entire buffer if too small. */
+    size_t small_len = len >= align_diff + 16 ? align_diff : len;
 
-    if (copy_len > 0) {
-        crc = ~crc32_copy_small(~crc, dst, src, copy_len, 31, COPY);
-        src += copy_len;
-        len -= copy_len;
-        if (COPY) {
-            dst += copy_len;
-        }
+    if (small_len > 0) {
+        crc = ~crc32_copy_small(~crc, dst, src, small_len, 31, COPY);
+        src += small_len;
+        len -= small_len;
+        if (COPY)
+            dst += small_len;
     }
 
     if (len == 0)
