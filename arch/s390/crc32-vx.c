@@ -217,10 +217,10 @@ uint32_t Z_INTERNAL crc32_s390_vx(uint32_t crc, const unsigned char *buf, size_t
 
     crc = ~crc32_le_vgfm_16(~crc, buf, aligned);
 
-    if (remaining)
-        crc = crc32_braid(crc, buf + aligned, remaining);
+    if (remaining == 0)
+        return crc;
 
-    return crc;
+    return crc32_braid(crc, buf + aligned, remaining);
 }
 
 Z_INTERNAL uint32_t crc32_copy_s390_vx(uint32_t crc, uint8_t *dst, const uint8_t *src, size_t len) {
