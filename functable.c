@@ -66,6 +66,7 @@ static int force_init_empty(void) {
 
 /* Set up generic C code fallbacks */
 static inline void init_functable_c(struct functable_s *ft) {
+    int needs_all_fallbacks = 0;
 #ifndef WITH_ALL_FALLBACKS
     // Only use necessary generic functions when no suitable simd versions are available.
 #  ifdef X86_SSE2_NATIVE
@@ -108,19 +109,25 @@ static inline void init_functable_c(struct functable_s *ft) {
     ft->longest_match = &longest_match_c;
     ft->longest_match_slow = &longest_match_slow_c;
     ft->slide_hash = &slide_hash_c;
+#  else
+    needs_all_fallbacks = 1;
 #  endif
 #else // WITH_ALL_FALLBACKS
-    ft->adler32 = &adler32_c;
-    ft->adler32_copy = &adler32_copy_c;
-    ft->chunkmemset_safe = &chunkmemset_safe_c;
-    ft->compare256 = &compare256_c;
-    ft->crc32 = &crc32_braid;
-    ft->crc32_copy = &crc32_copy_braid;
-    ft->inflate_fast = &inflate_fast_c;
-    ft->longest_match = &longest_match_c;
-    ft->longest_match_slow = &longest_match_slow_c;
-    ft->slide_hash = &slide_hash_c;
+    needs_all_fallbacks = 1;
 #endif
+
+    if (needs_all_fallbacks) {
+        ft->adler32 = &adler32_c;
+        ft->adler32_copy = &adler32_copy_c;
+        ft->chunkmemset_safe = &chunkmemset_safe_c;
+        ft->compare256 = &compare256_c;
+        ft->crc32 = &crc32_braid;
+        ft->crc32_copy = &crc32_copy_braid;
+        ft->inflate_fast = &inflate_fast_c;
+        ft->longest_match = &longest_match_c;
+        ft->longest_match_slow = &longest_match_slow_c;
+        ft->slide_hash = &slide_hash_c;
+    }
 
     // Chorba generic C fallback
 #if defined(WITH_OPTIM) && !defined(WITHOUT_CHORBA)
