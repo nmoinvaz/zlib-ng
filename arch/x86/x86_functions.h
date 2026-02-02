@@ -78,9 +78,38 @@ uint32_t crc32_vpclmulqdq(uint32_t crc, const uint8_t *buf, size_t len);
 uint32_t crc32_copy_vpclmulqdq(uint32_t crc, uint8_t *dst, const uint8_t *src, size_t len);
 #endif
 
+/* Compile-time feature detection macros */
+#if defined(X86_SSE2) && (defined(__SSE2__) || (defined(ARCH_X86) && defined(ARCH_64BIT)))
+#  define X86_SSE2_NATIVE
+#endif
+#if defined(X86_SSSE3) && defined(__SSSE3__)
+#  define X86_SSSE3_NATIVE
+#endif
+#if defined(X86_SSE41) && defined(__SSE4_1__)
+#  define X86_SSE41_NATIVE
+#endif
+#if defined(X86_SSE42) && defined(__SSE4_2__)
+#  define X86_SSE42_NATIVE
+#endif
+#if defined(X86_PCLMULQDQ_CRC) && defined(__PCLMUL__)
+#  define X86_PCLMULQDQ_NATIVE
+#endif
+#if defined(X86_AVX2) && defined(__AVX2__)
+#  define X86_AVX2_NATIVE
+#endif
+#if defined(X86_AVX512) && defined(__AVX512F__) && defined(__AVX512DQ__) && defined(__AVX512BW__) && defined(__AVX512VL__)
+#  define X86_AVX512_NATIVE
+#endif
+#if defined(X86_AVX512VNNI) && defined(__AVX512VNNI__)
+#  define X86_AVX512VNNI_NATIVE
+#endif
+#if defined(__PCLMUL__) && defined(__AVX512F__) && defined(__VPCLMULQDQ__)
+#  define X86_VPCLMULQDQ_NATIVE
+#endif
+
 #ifdef DISABLE_RUNTIME_CPU_DETECTION
 // X86 - SSE2
-#  if (defined(X86_SSE2) && defined(__SSE2__)) || (defined(ARCH_X86) && defined(ARCH_64BIT))
+#  ifdef X86_SSE2_NATIVE
 #    undef native_chunkmemset_safe
 #    define native_chunkmemset_safe chunkmemset_safe_sse2
 #    undef native_compare256
@@ -99,7 +128,7 @@ uint32_t crc32_copy_vpclmulqdq(uint32_t crc, uint8_t *dst, const uint8_t *src, s
 #    define native_slide_hash slide_hash_sse2
 #  endif
 // X86 - SSSE3
-#  if defined(X86_SSSE3) && defined(__SSSE3__)
+#  ifdef X86_SSSE3_NATIVE
 #    undef native_adler32
 #    define native_adler32 adler32_ssse3
 #    undef native_adler32_copy
@@ -110,26 +139,26 @@ uint32_t crc32_copy_vpclmulqdq(uint32_t crc, uint8_t *dst, const uint8_t *src, s
 #    define native_inflate_fast inflate_fast_ssse3
 #  endif
 // X86 - SSE4.1
-#  if defined(X86_SSE41) && defined(__SSE4_1__) && !defined(WITHOUT_CHORBA_SSE)
-#   undef native_crc32
-#   define native_crc32 crc32_chorba_sse41
-#   undef native_crc32_copy
-#   define native_crc32_copy crc32_copy_chorba_sse41
+#  if defined(X86_SSE41_NATIVE) && !defined(WITHOUT_CHORBA_SSE)
+#    undef native_crc32
+#    define native_crc32 crc32_chorba_sse41
+#    undef native_crc32_copy
+#    define native_crc32_copy crc32_copy_chorba_sse41
 #  endif
 // X86 - SSE4.2
-#  if defined(X86_SSE42) && defined(__SSE4_2__)
+#  ifdef X86_SSE42_NATIVE
 #    undef native_adler32_copy
 #    define native_adler32_copy adler32_copy_sse42
 #  endif
 // X86 - PCLMUL
-#  if defined(X86_PCLMULQDQ_CRC) && defined(__PCLMUL__)
+#  ifdef X86_PCLMULQDQ_NATIVE
 #    undef native_crc32
 #    define native_crc32 crc32_pclmulqdq
 #    undef native_crc32_copy
 #    define native_crc32_copy crc32_copy_pclmulqdq
 #  endif
 // X86 - AVX2
-#  if defined(X86_AVX2) && defined(__AVX2__)
+#  ifdef X86_AVX2_NATIVE
 #    undef native_adler32
 #    define native_adler32 adler32_avx2
 #    undef native_adler32_copy
@@ -148,7 +177,7 @@ uint32_t crc32_copy_vpclmulqdq(uint32_t crc, uint8_t *dst, const uint8_t *src, s
 #    define native_slide_hash slide_hash_avx2
 #  endif
 // X86 - AVX512 (F,DQ,BW,Vl)
-#  if defined(X86_AVX512) && defined(__AVX512F__) && defined(__AVX512DQ__) && defined(__AVX512BW__) && defined(__AVX512VL__)
+#  ifdef X86_AVX512_NATIVE
 #    undef native_adler32
 #    define native_adler32 adler32_avx512
 #    undef native_adler32_copy
@@ -164,14 +193,14 @@ uint32_t crc32_copy_vpclmulqdq(uint32_t crc, uint8_t *dst, const uint8_t *src, s
 #    undef native_longest_match_slow
 #    define native_longest_match_slow longest_match_slow_avx512
 // X86 - AVX512 (VNNI)
-#    if defined(X86_AVX512VNNI) && defined(__AVX512VNNI__)
+#    ifdef X86_AVX512VNNI_NATIVE
 #      undef native_adler32
 #      define native_adler32 adler32_avx512_vnni
 #      undef native_adler32_copy
 #      define native_adler32_copy adler32_copy_avx512_vnni
 #    endif
 // X86 - VPCLMULQDQ
-#    if defined(__PCLMUL__) && defined(__AVX512F__) && defined(__VPCLMULQDQ__)
+#    ifdef X86_VPCLMULQDQ_NATIVE
 #      undef native_crc32
 #      define native_crc32 crc32_vpclmulqdq
 #      undef native_crc32_copy

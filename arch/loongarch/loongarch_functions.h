@@ -35,15 +35,23 @@ uint32_t longest_match_slow_lasx(deflate_state *const s, uint32_t cur_match);
 void slide_hash_lasx(deflate_state *s);
 #endif
 
+/* Compile-time feature detection macros */
+#if defined(LOONGARCH_LSX) && defined(__loongarch_sx)
+#  define LOONGARCH_LSX_NATIVE
+#endif
+#if defined(LOONGARCH_LASX) && defined(__loongarch_asx)
+#  define LOONGARCH_LASX_NATIVE
+#endif
+
 #ifdef DISABLE_RUNTIME_CPU_DETECTION
-// LOONGARCH - CRC32 - All known CPUs has crc instructions
-#  if defined(LOONGARCH_CRC)
+// LOONGARCH - CRC32
+#  ifdef LOONGARCH_CRC
 #    undef native_crc32
 #    define native_crc32 crc32_loongarch64
 #    undef native_crc32_copy
 #    define native_crc32_copy crc32_copy_loongarch64
 #  endif
-#  if defined(LOONGARCH_LSX) && defined(__loongarch_sx)
+#  ifdef LOONGARCH_LSX_NATIVE
 #    undef native_adler32
 #    define native_adler32 adler32_lsx
 #    undef native_adler32_copy
@@ -61,7 +69,7 @@ void slide_hash_lasx(deflate_state *s);
 #    undef native_slide_hash
 #    define native_slide_hash slide_hash_lsx
 #  endif
-#  if defined(LOONGARCH_LASX) && defined(__loongarch_asx)
+#  ifdef LOONGARCH_LASX_NATIVE
 #    undef native_adler32
 #    define native_adler32 adler32_lasx
 #    undef native_adler32_copy

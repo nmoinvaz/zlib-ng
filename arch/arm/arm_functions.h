@@ -29,15 +29,30 @@ uint32_t crc32_copy_armv8_pmull_eor3(uint32_t crc, uint8_t *dst, const uint8_t *
 void slide_hash_armv6(deflate_state *s);
 #endif
 
+/* Compile-time feature detection macros */
+#if defined(ARM_SIMD) && defined(__ARM_FEATURE_SIMD32)
+#  define ARM_SIMD_NATIVE
+#endif
+/* NEON is guaranteed on ARM64 (like SSE2 on x86-64) */
+#if defined(ARM_NEON) && (defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(ARCH_64BIT))
+#  define ARM_NEON_NATIVE
+#endif
+/* CRC32 is optional in ARMv8.0, mandatory in ARMv8.1+ */
+#if defined(ARM_CRC32) && (defined(__ARM_FEATURE_CRC32) || (defined(__ARM_ARCH) && __ARM_ARCH >= 801))
+#  define ARM_CRC32_NATIVE
+#endif
+#if defined(ARM_PMULL_EOR3) && defined(__ARM_FEATURE_CRC32) && defined(__ARM_FEATURE_CRYPTO) && defined(__ARM_FEATURE_SHA3)
+#  define ARM_PMULL_EOR3_NATIVE
+#endif
 
 #ifdef DISABLE_RUNTIME_CPU_DETECTION
 // ARM - SIMD
-#  if (defined(ARM_SIMD) && defined(__ARM_FEATURE_SIMD32)) || defined(ARM_NOCHECK_SIMD)
+#  ifdef ARM_SIMD_NATIVE
 #    undef native_slide_hash
 #    define native_slide_hash slide_hash_armv6
 #  endif
 // ARM - NEON
-#  if (defined(ARM_NEON) && (defined(__ARM_NEON__) || defined(__ARM_NEON))) || ARM_NOCHECK_NEON
+#  ifdef ARM_NEON_NATIVE
 #    undef native_adler32
 #    define native_adler32 adler32_neon
 #    undef native_adler32_copy
@@ -56,14 +71,14 @@ void slide_hash_armv6(deflate_state *s);
 #    define native_slide_hash slide_hash_neon
 #  endif
 // ARM - CRC32
-#  if (defined(ARM_CRC32) && defined(__ARM_FEATURE_CRC32))
+#  ifdef ARM_CRC32_NATIVE
 #    undef native_crc32
 #    define native_crc32 crc32_armv8
 #    undef native_crc32_copy
 #    define native_crc32_copy crc32_copy_armv8
 #  endif
 // ARM - PMULL EOR3
-#  if (defined(ARM_PMULL_EOR3) && defined(__ARM_FEATURE_CRC32) && defined(__ARM_FEATURE_CRYPTO) && defined(__ARM_FEATURE_SHA3))
+#  ifdef ARM_PMULL_EOR3_NATIVE
 #    undef native_crc32
 #    define native_crc32 crc32_armv8_pmull_eor3
 #    undef native_crc32_copy
