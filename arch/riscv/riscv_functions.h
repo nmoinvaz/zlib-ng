@@ -9,6 +9,8 @@
 #ifndef RISCV_FUNCTIONS_H_
 #define RISCV_FUNCTIONS_H_
 
+#include "riscv_natives.h"
+
 #ifdef RISCV_RVV
 uint32_t adler32_rvv(uint32_t adler, const uint8_t *buf, size_t len);
 uint32_t adler32_copy_rvv(uint32_t adler, uint8_t *dst, const uint8_t *src, size_t len);
@@ -24,14 +26,6 @@ void inflate_fast_rvv(PREFIX3(stream) *strm, uint32_t start);
 #ifdef RISCV_CRC32_ZBC
 uint32_t crc32_riscv64_zbc(uint32_t crc, const uint8_t *buf, size_t len);
 uint32_t crc32_copy_riscv64_zbc(uint32_t crc, uint8_t *dst, const uint8_t *src, size_t len);
-#endif
-
-/* Compile-time feature detection macros */
-#if defined(RISCV_RVV) && defined(__riscv_v) && defined(__linux__)
-#  define RISCV_RVV_NATIVE
-#endif
-#if defined(RISCV_CRC32_ZBC) && defined(__riscv_zbc)
-#  define RISCV_ZBC_NATIVE
 #endif
 
 #ifdef DISABLE_RUNTIME_CPU_DETECTION

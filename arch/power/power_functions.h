@@ -7,6 +7,8 @@
 #ifndef POWER_FUNCTIONS_H_
 #define POWER_FUNCTIONS_H_
 
+#include "power_natives.h"
+
 #ifdef PPC_VMX
 uint32_t adler32_vmx(uint32_t adler, const uint8_t *buf, size_t len);
 uint32_t adler32_copy_vmx(uint32_t adler, uint8_t *dst, const uint8_t *src, size_t len);
@@ -27,20 +29,6 @@ void inflate_fast_power8(PREFIX3(stream) *strm, uint32_t start);
 uint32_t compare256_power9(const uint8_t *src0, const uint8_t *src1);
 uint32_t longest_match_power9(deflate_state *const s, uint32_t cur_match);
 uint32_t longest_match_slow_power9(deflate_state *const s, uint32_t cur_match);
-#endif
-
-/* Compile-time feature detection macros */
-#if defined(PPC_VMX) && defined(__ALTIVEC__)
-#  define PPC_VMX_NATIVE
-#endif
-#if defined(POWER8_VSX) && defined(_ARCH_PWR8) && defined(__VSX__)
-#  define POWER8_VSX_NATIVE
-#endif
-#if defined(POWER8_VSX_CRC32) && defined(_ARCH_PWR8) && defined(__VSX__)
-#  define POWER8_VSX_CRC32_NATIVE
-#endif
-#if defined(POWER9) && defined(_ARCH_PWR9)
-#  define POWER9_NATIVE
 #endif
 
 #ifdef DISABLE_RUNTIME_CPU_DETECTION

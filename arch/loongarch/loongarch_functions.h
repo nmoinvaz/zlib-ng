@@ -8,6 +8,8 @@
 #ifndef LOONGARCH_FUNCTIONS_H_
 #define LOONGARCH_FUNCTIONS_H_
 
+#include "loongarch_natives.h"
+
 #ifdef LOONGARCH_CRC
 uint32_t crc32_loongarch64(uint32_t crc, const uint8_t *buf, size_t len);
 uint32_t crc32_copy_loongarch64(uint32_t crc, uint8_t *dst, const uint8_t *src, size_t len);
@@ -33,14 +35,6 @@ void inflate_fast_lasx(PREFIX3(stream) *strm, uint32_t start);
 uint32_t longest_match_lasx(deflate_state *const s, uint32_t cur_match);
 uint32_t longest_match_slow_lasx(deflate_state *const s, uint32_t cur_match);
 void slide_hash_lasx(deflate_state *s);
-#endif
-
-/* Compile-time feature detection macros */
-#if defined(LOONGARCH_LSX) && defined(__loongarch_sx)
-#  define LOONGARCH_LSX_NATIVE
-#endif
-#if defined(LOONGARCH_LASX) && defined(__loongarch_asx)
-#  define LOONGARCH_LASX_NATIVE
 #endif
 
 #ifdef DISABLE_RUNTIME_CPU_DETECTION
