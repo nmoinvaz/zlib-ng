@@ -4,6 +4,10 @@
  */
 
 #include "zbuild.h"
+#include "arch_functions.h"
+
+#ifdef COMPARE256_FALLBACK
+
 #include "zendian.h"
 #include "deflate.h"
 #include "fallback_builtins.h"
@@ -84,3 +88,5 @@ Z_INTERNAL uint32_t compare256_c(const uint8_t *src0, const uint8_t *src1) {
 #define LONGEST_MATCH_SLOW
 #define LONGEST_MATCH       longest_match_slow_c
 #include "match_tpl.h"
+
+#endif /* COMPARE256_FALLBACK */

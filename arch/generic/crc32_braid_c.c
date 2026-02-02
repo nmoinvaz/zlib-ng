@@ -8,6 +8,11 @@
  */
 
 #include "zbuild.h"
+#include "arch_functions.h"
+
+/* crc32_braid_internal is needed by both braid fallback and chorba */
+#if defined(CRC32_BRAID_FALLBACK) || !defined(WITHOUT_CHORBA)
+
 #include "crc32_braid_p.h"
 #include "crc32_braid_tbl.h"
 #include "crc32_p.h"
@@ -206,8 +211,15 @@ Z_INTERNAL uint32_t crc32_braid(uint32_t crc, const uint8_t *buf, size_t len) {
     return ~crc32_copy_small(crc, NULL, buf, len, (BRAID_N * BRAID_W) - 1, 0);
 }
 
+#endif /* CRC32_BRAID_FALLBACK || !WITHOUT_CHORBA */
+
+/* Public braid functions only compiled when braid fallback is needed */
+#ifdef CRC32_BRAID_FALLBACK
+
 Z_INTERNAL uint32_t crc32_copy_braid(uint32_t crc, uint8_t *dst, const uint8_t *src, size_t len) {
     crc = crc32_braid(crc, src, len);
     memcpy(dst, src, len);
     return crc;
 }
+
+#endif /* CRC32_BRAID_FALLBACK */

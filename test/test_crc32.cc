@@ -76,7 +76,9 @@ INSTANTIATE_TEST_SUITE_P(crc32, crc32_variant, testing::ValuesIn(hash_tests));
         hash(func); \
     }
 
+#ifdef CRC32_BRAID_FALLBACK
 TEST_CRC32(braid, crc32_braid, 1)
+#endif
 
 #ifdef DISABLE_RUNTIME_CPU_DETECTION
 TEST_CRC32(native, native_crc32, 1)

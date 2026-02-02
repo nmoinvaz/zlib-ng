@@ -77,7 +77,9 @@ public:
     BENCHMARK_CRC32_MISALIGNED(name, hashfunc, support_flag); \
     BENCHMARK_CRC32_ALIGNED(name, hashfunc, support_flag);
 
+#ifdef CRC32_BRAID_FALLBACK
 BENCHMARK_CRC32(braid, crc32_braid, 1);
+#endif
 
 #ifdef DISABLE_RUNTIME_CPU_DETECTION
 BENCHMARK_CRC32(native, native_crc32, 1);

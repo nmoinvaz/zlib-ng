@@ -1,4 +1,8 @@
 #include "zbuild.h"
+#include "arch_functions.h"
+
+#if !defined(WITHOUT_CHORBA)
+
 #if defined(__EMSCRIPTEN__)
 #  include "zutil_p.h"
 #endif
@@ -1263,3 +1267,5 @@ uint32_t crc32_copy_chorba(uint32_t crc, uint8_t *dst, const uint8_t *src, size_
     memcpy(dst, src, len);
     return crc;
 }
+
+#endif /* !WITHOUT_CHORBA */

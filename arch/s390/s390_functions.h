@@ -7,6 +7,11 @@
 
 #include "s390_natives.h"
 
+#define ADLER32_FALLBACK
+#define CHUNKSET_FALLBACK
+#define COMPARE256_FALLBACK
+#define SLIDE_HASH_FALLBACK
+
 #ifdef S390_CRC32_VX
 uint32_t crc32_s390_vx(uint32_t crc, const uint8_t *buf, size_t len);
 uint32_t crc32_copy_s390_vx(uint32_t crc, uint8_t *dst, const uint8_t *src, size_t len);
@@ -18,6 +23,10 @@ uint32_t crc32_copy_s390_vx(uint32_t crc, uint8_t *dst, const uint8_t *src, size
 #  endif
 #endif
 
+#endif
+
+#ifndef S390_CRC32_VX_NATIVE
+#  define CRC32_BRAID_FALLBACK
 #endif
 
 #ifdef DISABLE_RUNTIME_CPU_DETECTION

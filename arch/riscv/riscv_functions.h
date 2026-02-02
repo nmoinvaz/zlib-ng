@@ -23,9 +23,20 @@ void slide_hash_rvv(deflate_state *s);
 void inflate_fast_rvv(PREFIX3(stream) *strm, uint32_t start);
 #endif
 
+#ifndef RISCV_RVV_NATIVE
+#  define ADLER32_FALLBACK
+#  define CHUNKSET_FALLBACK
+#  define COMPARE256_FALLBACK
+#  define SLIDE_HASH_FALLBACK
+#endif
+
 #ifdef RISCV_CRC32_ZBC
 uint32_t crc32_riscv64_zbc(uint32_t crc, const uint8_t *buf, size_t len);
 uint32_t crc32_copy_riscv64_zbc(uint32_t crc, uint8_t *dst, const uint8_t *src, size_t len);
+#endif
+
+#ifndef RISCV_ZBC_NATIVE
+#  define CRC32_BRAID_FALLBACK
 #endif
 
 #ifdef DISABLE_RUNTIME_CPU_DETECTION

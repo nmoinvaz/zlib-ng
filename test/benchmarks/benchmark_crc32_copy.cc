@@ -128,7 +128,9 @@ public:
 #endif
 
 // Base test
+#ifdef CRC32_BRAID_FALLBACK
 BENCHMARK_CRC32_COPY(braid, crc32_braid, crc32_copy_braid, 1);
+#endif
 
 #ifdef DISABLE_RUNTIME_CPU_DETECTION
     // Native

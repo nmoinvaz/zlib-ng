@@ -31,11 +31,21 @@ void slide_hash_sse2(deflate_state *s);
 #  endif
 #endif
 
+#ifndef X86_SSE2_NATIVE
+#  define CHUNKSET_FALLBACK
+#  define COMPARE256_FALLBACK
+#  define SLIDE_HASH_FALLBACK
+#endif
+
 #ifdef X86_SSSE3
 uint32_t adler32_ssse3(uint32_t adler, const uint8_t *buf, size_t len);
 uint32_t adler32_copy_ssse3(uint32_t adler, uint8_t *dst, const uint8_t *src, size_t len);
 uint8_t* chunkmemset_safe_ssse3(uint8_t *out, uint8_t *from, unsigned len, unsigned left);
 void inflate_fast_ssse3(PREFIX3(stream) *strm, uint32_t start);
+#endif
+
+#ifndef X86_SSSE3_NATIVE
+#  define ADLER32_FALLBACK
 #endif
 
 #if defined(X86_SSE41) && !defined(WITHOUT_CHORBA_SSE)
@@ -78,6 +88,10 @@ uint32_t crc32_copy_pclmulqdq(uint32_t crc, uint8_t *dst, const uint8_t *src, si
 #ifdef X86_VPCLMULQDQ_CRC
 uint32_t crc32_vpclmulqdq(uint32_t crc, const uint8_t *buf, size_t len);
 uint32_t crc32_copy_vpclmulqdq(uint32_t crc, uint8_t *dst, const uint8_t *src, size_t len);
+#endif
+
+#if !defined(X86_PCLMULQDQ_NATIVE) && !defined(X86_VPCLMULQDQ_NATIVE)
+#  define CRC32_BRAID_FALLBACK
 #endif
 
 #ifdef DISABLE_RUNTIME_CPU_DETECTION

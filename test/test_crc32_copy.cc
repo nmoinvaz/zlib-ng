@@ -40,7 +40,9 @@ INSTANTIATE_TEST_SUITE_P(crc32_copy, crc32_copy_variant, testing::ValuesIn(hash_
     }
 
 // Base test
+#ifdef CRC32_BRAID_FALLBACK
 TEST_CRC32_COPY(braid, crc32_copy_braid, 1)
+#endif
 
 #ifdef DISABLE_RUNTIME_CPU_DETECTION
     // Native test

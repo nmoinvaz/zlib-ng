@@ -26,6 +26,27 @@
 #  include "arch/riscv/riscv_functions.h"
 #elif defined(LOONGARCH_FEATURES)
 #  include "arch/loongarch/loongarch_functions.h"
+#else
+/* No architecture detected - all fallbacks needed */
+#  define WITH_ALL_FALLBACKS
+#endif
+
+#ifdef WITH_ALL_FALLBACKS
+#  ifndef ADLER32_FALLBACK
+#    define ADLER32_FALLBACK
+#  endif
+#  ifndef CHUNKSET_FALLBACK
+#    define CHUNKSET_FALLBACK
+#  endif
+#  ifndef COMPARE256_FALLBACK
+#    define COMPARE256_FALLBACK
+#  endif
+#  ifndef CRC32_BRAID_FALLBACK
+#    define CRC32_BRAID_FALLBACK
+#  endif
+#  ifndef SLIDE_HASH_FALLBACK
+#    define SLIDE_HASH_FALLBACK
+#  endif
 #endif
 
 #endif
