@@ -1,19 +1,4 @@
-/*
- * Compute the CRC32 using a parallelized folding approach with the PCLMULQDQ
- * instruction.
- *
- * A white paper describing this algorithm can be found at:
- *     doc/crc-pclmulqdq.pdf
- *
- * Copyright (C) 2013 Intel Corporation. All rights reserved.
- * Copyright (C) 2016 Marian Beermann (support for initial value)
- * Authors:
- *     Wajdi Feghali   <wajdi.k.feghali@intel.com>
- *     Jim Guilford    <james.guilford@intel.com>
- *     Vinodh Gopal    <vinodh.gopal@intel.com>
- *     Erdinc Ozturk   <erdinc.ozturk@intel.com>
- *     Jim Kukunas     <james.t.kukunas@linux.intel.com>
- *
+/* crc32_pclmulqdq.c -- PCLMULQDQ-based CRC32.
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 
