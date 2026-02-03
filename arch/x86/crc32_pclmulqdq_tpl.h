@@ -339,10 +339,9 @@ static inline void fold_block_8(const uint8_t **src, uint8_t **dst, size_t *len,
 #endif
 
 /* Chorba folding block: implements algorithm from https://arxiv.org/abs/2412.16398
- * We interleave the PCLMUL-based folds with 8x scaled generator
- * polynomial copies; we read 8x QWORDS and then XOR them into
- * the stream at the following offsets: 6, 9, 10, 16, 20, 22,
- * 24, 25, 27, 28, 30, 31, 32 - this is detailed in the paper
+ * We interleave the PCLMUL-based folds with 8x scaled generator polynomial copies;
+ * we read 8x QWORDS and then XOR them into the stream at the following offsets:
+ * 6, 9, 10, 16, 20, 22, 24, 25, 27, 28, 30, 31, 32 - this is detailed in the paper
  * as "generator_64_bits_unrolled_8" */
 #if !defined(X86_VPCLMULQDQ)
 static inline void fold_block_chorba(const uint8_t **src, uint8_t **dst, size_t *len,
@@ -350,6 +349,9 @@ static inline void fold_block_chorba(const uint8_t **src, uint8_t **dst, size_t 
     const __m128i xmm_fold4, const int COPY) {
     __m128i xmm_t0, xmm_t1, xmm_t2, xmm_t3;
 
+    /* Without AVX512VL, z128_xor3_epi64 requires two XOR instructions instead of
+     * one ternarylogic. This makes the Chorba algorithm slower than the standard
+     * 64-byte fold loop for the non-copy case, so skip it. */
 #ifndef __AVX512VL__
     if (!COPY)
         return;
