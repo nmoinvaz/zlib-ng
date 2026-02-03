@@ -96,6 +96,7 @@ static inline void init_functable_c(struct functable_s *ft) {
 
 #ifdef WITH_OPTIM
 
+#ifdef ARCH_X86
 /* X86 architecture optimized functions */
 static inline void init_functable_x86(struct functable_s *ft, struct cpu_features *cf) {
     Z_UNUSED(ft);
@@ -227,7 +228,9 @@ static inline void init_functable_x86(struct functable_s *ft, struct cpu_feature
     }
 #endif
 }
+#endif
 
+#ifdef ARCH_ARM
 /* ARM architecture optimized functions */
 static inline void init_functable_arm(struct functable_s *ft, struct cpu_features *cf) {
     Z_UNUSED(ft);
@@ -279,7 +282,9 @@ static inline void init_functable_arm(struct functable_s *ft, struct cpu_feature
     }
 #endif
 }
+#endif
 
+#ifdef ARCH_POWER
 /* Power architecture optimized functions */
 static inline void init_functable_power(struct functable_s *ft, struct cpu_features *cf) {
     Z_UNUSED(ft);
@@ -330,7 +335,9 @@ static inline void init_functable_power(struct functable_s *ft, struct cpu_featu
     }
 #endif
 }
+#endif
 
+#ifdef ARCH_RISCV
 /* RISC-V architecture optimized functions */
 static inline void init_functable_riscv(struct functable_s *ft, struct cpu_features *cf) {
     Z_UNUSED(ft);
@@ -364,7 +371,9 @@ static inline void init_functable_riscv(struct functable_s *ft, struct cpu_featu
     }
 #endif
 }
+#endif
 
+#ifdef ARCH_S390
 /* S390 architecture optimized functions */
 static inline void init_functable_s390(struct functable_s *ft, struct cpu_features *cf) {
     Z_UNUSED(ft);
@@ -380,7 +389,9 @@ static inline void init_functable_s390(struct functable_s *ft, struct cpu_featur
     }
 #endif
 }
+#endif
 
+#ifdef ARCH_LOONGARCH
 /* LoongArch architecture optimized functions */
 static inline void init_functable_loongarch(struct functable_s *ft, struct cpu_features *cf) {
     Z_UNUSED(ft);
@@ -423,6 +434,7 @@ static inline void init_functable_loongarch(struct functable_s *ft, struct cpu_f
     }
 #endif
 }
+#endif
 
 #endif // WITH_OPTIM
 
@@ -440,12 +452,24 @@ static int init_functable(void) {
     init_functable_c(&ft);
 
 #ifdef WITH_OPTIM
+#  ifdef ARCH_X86
     init_functable_x86(&ft, &cf);
+#  endif
+#  ifdef ARCH_ARM
     init_functable_arm(&ft, &cf);
+#  endif
+#  ifdef ARCH_POWER
     init_functable_power(&ft, &cf);
+#  endif
+#  ifdef ARCH_RISCV
     init_functable_riscv(&ft, &cf);
+#  endif
+#  ifdef ARCH_S390
     init_functable_s390(&ft, &cf);
+#  endif
+#  ifdef ARCH_LOONGARCH
     init_functable_loongarch(&ft, &cf);
+#  endif
 #endif
 
     // Assign function pointers individually for atomic operation
