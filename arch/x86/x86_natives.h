@@ -30,7 +30,10 @@
 #  ifdef X86_PCLMULQDQ_CRC
 #    define X86_PCLMULQDQ_NATIVE
 #  endif
-#  if defined(__AVX512F__) && defined(__VPCLMULQDQ__)
+#endif
+/* VPCLMULQDQ can work with 256-bit (AVX) or 512-bit (AVX-512F) vectors */
+#if defined(__VPCLMULQDQ__)
+#  ifdef X86_VPCLMULQDQ_CRC
 #    define X86_VPCLMULQDQ_NATIVE
 #  endif
 #endif

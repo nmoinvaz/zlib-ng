@@ -188,13 +188,13 @@ uint32_t crc32_copy_vpclmulqdq(uint32_t crc, uint8_t *dst, const uint8_t *src, s
 #      undef native_adler32_copy
 #      define native_adler32_copy adler32_copy_avx512_vnni
 #    endif
-// X86 - VPCLMULQDQ
-#    ifdef X86_VPCLMULQDQ_NATIVE
-#      undef native_crc32
-#      define native_crc32 crc32_vpclmulqdq
-#      undef native_crc32_copy
-#      define native_crc32_copy crc32_copy_vpclmulqdq
-#    endif
+#  endif
+// X86 - VPCLMULQDQ (works with AVX 256-bit or AVX-512 512-bit)
+#  ifdef X86_VPCLMULQDQ_NATIVE
+#    undef native_crc32
+#    define native_crc32 crc32_vpclmulqdq
+#    undef native_crc32_copy
+#    define native_crc32_copy crc32_copy_vpclmulqdq
 #  endif
 #endif
 

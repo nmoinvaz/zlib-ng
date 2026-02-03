@@ -122,7 +122,7 @@ ssse3flag="-mssse3"
 sse41flag="-msse4.1"
 sse42flag="-msse4.2"
 pclmulflag="-mpclmul"
-vpclmulflag="-mvpclmulqdq -mavx512f"
+vpclmulflag="-mvpclmulqdq -mavx2"
 xsaveflag="-mxsave"
 lsxflag="-mlsx"
 lasxflag="-mlasx"
@@ -1456,13 +1456,13 @@ EOF
 }
 
 check_vpclmulqdq_intrinsics() {
-    # Check whether compiler supports VPCLMULQDQ intrinsics
+    # Check whether compiler supports VPCLMULQDQ intrinsics (256-bit, doesn't require AVX-512)
     cat > $test.c << EOF
 #include <immintrin.h>
 #include <wmmintrin.h>
-__m512i f(__m512i a) {
-    __m512i b = _mm512_setzero_si512();
-    return _mm512_clmulepi64_epi128(a, b, 0x10);
+__m256i f(__m256i a) {
+    __m256i b = _mm256_setzero_si256();
+    return _mm256_clmulepi64_epi128(a, b, 0x10);
 }
 int main(void) { return 0; }
 EOF
@@ -1955,7 +1955,7 @@ case "${ARCH}" in
                 ARCH_SHARED_OBJS="${ARCH_SHARED_OBJS} adler32_avx512_vnni.lo"
             fi
 
-            if test $buildvpclmulqdq -eq 1 && test ${HAVE_PCLMULQDQ_INTRIN} -eq 1 && test ${HAVE_AVX512_INTRIN} -eq 1; then
+            if test $buildvpclmulqdq -eq 1 && test ${HAVE_PCLMULQDQ_INTRIN} -eq 1 && test ${HAVE_AVX2_INTRIN} -eq 1; then
                 check_vpclmulqdq_intrinsics
 
                 if test ${HAVE_VPCLMULQDQ_INTRIN} -eq 1; then
@@ -1963,6 +1963,10 @@ case "${ARCH}" in
                     SFLAGS="${SFLAGS} -DX86_VPCLMULQDQ_CRC"
                     ARCH_STATIC_OBJS="${ARCH_STATIC_OBJS} crc32_vpclmulqdq.o"
                     ARCH_SHARED_OBJS="${ARCH_SHARED_OBJS} crc32_vpclmulqdq.lo"
+                    # Use AVX512 flags if available for 512-bit path, otherwise 256-bit
+                    if test ${HAVE_AVX512_INTRIN} -eq 1; then
+                        vpclmulflag="-mvpclmulqdq ${avx512flag}"
+                    fi
                 fi
             fi
         fi
