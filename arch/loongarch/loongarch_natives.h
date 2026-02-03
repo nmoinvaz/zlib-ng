@@ -6,11 +6,15 @@
 #define LOONGARCH_NATIVES_H_
 
 /* Compile-time feature detection macros */
-#if defined(LOONGARCH_LSX) && defined(__loongarch_sx)
-#  define LOONGARCH_LSX_NATIVE
+#if defined(__loongarch_sx)
+#  ifdef LOONGARCH_LSX
+#    define LOONGARCH_LSX_NATIVE
+#  endif
 #endif
-#if defined(LOONGARCH_LASX) && defined(__loongarch_asx)
-#  define LOONGARCH_LASX_NATIVE
+#if defined(__loongarch_asx)
+#  ifdef LOONGARCH_LASX
+#    define LOONGARCH_LASX_NATIVE
+#  endif
 #endif
 
 #endif /* LOONGARCH_NATIVES_H_ */

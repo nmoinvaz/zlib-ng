@@ -6,17 +6,23 @@
 #define POWER_NATIVES_H_
 
 /* Compile-time feature detection macros */
-#if defined(PPC_VMX) && defined(__ALTIVEC__)
-#  define PPC_VMX_NATIVE
+#if defined(__ALTIVEC__)
+#  ifdef PPC_VMX
+#    define PPC_VMX_NATIVE
+#  endif
 #endif
-#if defined(POWER8_VSX) && defined(_ARCH_PWR8) && defined(__VSX__)
-#  define POWER8_VSX_NATIVE
+#if defined(_ARCH_PWR8) && defined(__VSX__)
+#  ifdef POWER8_VSX
+#    define POWER8_VSX_NATIVE
+#  endif
+#  ifdef POWER8_VSX_CRC32
+#    define POWER8_VSX_CRC32_NATIVE
+#  endif
 #endif
-#if defined(POWER8_VSX_CRC32) && defined(_ARCH_PWR8) && defined(__VSX__)
-#  define POWER8_VSX_CRC32_NATIVE
-#endif
-#if defined(POWER9) && defined(_ARCH_PWR9)
-#  define POWER9_NATIVE
+#if defined(_ARCH_PWR9)
+#  ifdef POWER9
+#    define POWER9_NATIVE
+#  endif
 #endif
 
 #endif /* POWER_NATIVES_H_ */

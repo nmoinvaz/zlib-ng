@@ -6,8 +6,10 @@
 #define S390_NATIVES_H_
 
 /* Compile-time feature detection macros */
-#if defined(S390_CRC32_VX) && defined(__zarch__) && __ARCH__ >= 11 && defined(__VX__)
-#  define S390_CRC32_VX_NATIVE
+#if defined(__zarch__) && __ARCH__ >= 11 && defined(__VX__)
+#  ifdef S390_CRC32_VX
+#    define S390_CRC32_VX_NATIVE
+#  endif
 #endif
 
 #endif /* S390_NATIVES_H_ */

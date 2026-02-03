@@ -6,11 +6,15 @@
 #define RISCV_NATIVES_H_
 
 /* Compile-time feature detection macros */
-#if defined(RISCV_RVV) && defined(__riscv_v) && defined(__linux__)
-#  define RISCV_RVV_NATIVE
+#if defined(__riscv_v) && defined(__linux__)
+#  ifdef RISCV_RVV
+#    define RISCV_RVV_NATIVE
+#  endif
 #endif
-#if defined(RISCV_CRC32_ZBC) && defined(__riscv_zbc)
-#  define RISCV_ZBC_NATIVE
+#if defined(__riscv_zbc)
+#  ifdef RISCV_CRC32_ZBC
+#    define RISCV_ZBC_NATIVE
+#  endif
 #endif
 
 #endif /* RISCV_NATIVES_H_ */
