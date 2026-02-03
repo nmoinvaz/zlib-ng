@@ -54,6 +54,8 @@
 #  define z128_xor3_epi64(a, b, c)    _mm_xor_si128(_mm_xor_si128(a, b), c)
 #endif
 
+#define PCLMULQDQ_CHORBA_MIN_LEN (512 + 64 + 16*8)
+
 static inline void fold_state_1(__m128i *xmm_crc0, __m128i *xmm_crc1, __m128i *xmm_crc2, __m128i *xmm_crc3, const __m128i xmm_fold4) {
     __m128i x_low  = _mm_clmulepi64_si128(*xmm_crc0, xmm_fold4, 0x01);
     __m128i x_high = _mm_clmulepi64_si128(*xmm_crc0, xmm_fold4, 0x10);
@@ -336,6 +338,206 @@ static inline void fold_block_8(const uint8_t **src, uint8_t **dst, size_t *len,
 }
 #endif
 
+/* Chorba folding block: implements algorithm from https://arxiv.org/abs/2412.16398
+ * We interleave the PCLMUL-based folds with 8x scaled generator
+ * polynomial copies; we read 8x QWORDS and then XOR them into
+ * the stream at the following offsets: 6, 9, 10, 16, 20, 22,
+ * 24, 25, 27, 28, 30, 31, 32 - this is detailed in the paper
+ * as "generator_64_bits_unrolled_8" */
+#if !defined(X86_VPCLMULQDQ)
+static inline void fold_block_chorba(const uint8_t **src, uint8_t **dst, size_t *len,
+    __m128i *xmm_crc0, __m128i *xmm_crc1, __m128i *xmm_crc2, __m128i *xmm_crc3,
+    const __m128i xmm_fold4, const int COPY) {
+    __m128i xmm_t0, xmm_t1, xmm_t2, xmm_t3;
+
+#ifndef __AVX512VL__
+    if (!COPY)
+        return;
+#endif
+    while (*len >= PCLMULQDQ_CHORBA_MIN_LEN) {
+        __m128i chorba8 = _mm_load_si128((__m128i *)*src);
+        __m128i chorba7 = _mm_load_si128((__m128i *)*src + 1);
+        __m128i chorba6 = _mm_load_si128((__m128i *)*src + 2);
+        __m128i chorba5 = _mm_load_si128((__m128i *)*src + 3);
+        __m128i chorba4 = _mm_load_si128((__m128i *)*src + 4);
+        __m128i chorba3 = _mm_load_si128((__m128i *)*src + 5);
+        __m128i chorba2 = _mm_load_si128((__m128i *)*src + 6);
+        __m128i chorba1 = _mm_load_si128((__m128i *)*src + 7);
+        if (COPY) {
+            _mm_storeu_si128((__m128i *)*dst, chorba8);
+            _mm_storeu_si128((__m128i *)*dst + 1, chorba7);
+            _mm_storeu_si128((__m128i *)*dst + 2, chorba6);
+            _mm_storeu_si128((__m128i *)*dst + 3, chorba5);
+            _mm_storeu_si128((__m128i *)*dst + 4, chorba4);
+            _mm_storeu_si128((__m128i *)*dst + 5, chorba3);
+            _mm_storeu_si128((__m128i *)*dst + 6, chorba2);
+            _mm_storeu_si128((__m128i *)*dst + 7, chorba1);
+            *dst += 16*8;
+        }
+
+        chorba2 = _mm_xor_si128(chorba2, chorba8);
+        chorba1 = _mm_xor_si128(chorba1, chorba7);
+        *src += 16*8;
+        *len -= 16*8;
+
+        xmm_t0 = _mm_load_si128((__m128i *)*src);
+        xmm_t1 = _mm_load_si128((__m128i *)*src + 1);
+        xmm_t2 = _mm_load_si128((__m128i *)*src + 2);
+        xmm_t3 = _mm_load_si128((__m128i *)*src + 3);
+
+        fold_state_12(xmm_crc0, xmm_crc1, xmm_crc2, xmm_crc3);
+        if (COPY) {
+            _mm_storeu_si128((__m128i *)*dst, xmm_t0);
+            _mm_storeu_si128((__m128i *)*dst + 1, xmm_t1);
+            _mm_storeu_si128((__m128i *)*dst + 2, xmm_t2);
+            _mm_storeu_si128((__m128i *)*dst + 3, xmm_t3);
+            *dst += 64;
+        }
+
+        *xmm_crc0 = z128_xor3_epi64(xmm_t0, chorba6, *xmm_crc0);
+        *xmm_crc1 = _mm_xor_si128(z128_xor3_epi64(xmm_t1, chorba5, chorba8), *xmm_crc1);
+        *xmm_crc2 = z128_xor3_epi64(z128_xor3_epi64(xmm_t2, chorba4, chorba8), chorba7, *xmm_crc2);
+        *xmm_crc3 = z128_xor3_epi64(z128_xor3_epi64(xmm_t3, chorba3, chorba7), chorba6, *xmm_crc3);
+
+        xmm_t0 = _mm_load_si128((__m128i *)*src + 4);
+        xmm_t1 = _mm_load_si128((__m128i *)*src + 5);
+        xmm_t2 = _mm_load_si128((__m128i *)*src + 6);
+        xmm_t3 = _mm_load_si128((__m128i *)*src + 7);
+
+        fold_state_4(xmm_crc0, xmm_crc1, xmm_crc2, xmm_crc3, xmm_fold4);
+        if (COPY) {
+            _mm_storeu_si128((__m128i *)*dst, xmm_t0);
+            _mm_storeu_si128((__m128i *)*dst + 1, xmm_t1);
+            _mm_storeu_si128((__m128i *)*dst + 2, xmm_t2);
+            _mm_storeu_si128((__m128i *)*dst + 3, xmm_t3);
+            *dst += 64;
+        }
+
+        *xmm_crc0 = z128_xor3_epi64(z128_xor3_epi64(xmm_t0, chorba2, chorba6), chorba5, *xmm_crc0);
+        *xmm_crc1 = z128_xor3_epi64(z128_xor3_epi64(xmm_t1, chorba1, chorba4), chorba5, *xmm_crc1);
+        *xmm_crc2 = _mm_xor_si128(z128_xor3_epi64(xmm_t2, chorba3, chorba4), *xmm_crc2);
+        *xmm_crc3 = _mm_xor_si128(z128_xor3_epi64(xmm_t3, chorba2, chorba3), *xmm_crc3);
+
+        xmm_t0 = _mm_load_si128((__m128i *)*src + 8);
+        xmm_t1 = _mm_load_si128((__m128i *)*src + 9);
+        xmm_t2 = _mm_load_si128((__m128i *)*src + 10);
+        xmm_t3 = _mm_load_si128((__m128i *)*src + 11);
+
+        fold_state_4(xmm_crc0, xmm_crc1, xmm_crc2, xmm_crc3, xmm_fold4);
+        if (COPY) {
+            _mm_storeu_si128((__m128i *)*dst, xmm_t0);
+            _mm_storeu_si128((__m128i *)*dst + 1, xmm_t1);
+            _mm_storeu_si128((__m128i *)*dst + 2, xmm_t2);
+            _mm_storeu_si128((__m128i *)*dst + 3, xmm_t3);
+            *dst += 64;
+        }
+
+        *xmm_crc0 = z128_xor3_epi64(z128_xor3_epi64(xmm_t0, chorba1, chorba2), chorba8, *xmm_crc0);
+        *xmm_crc1 = _mm_xor_si128(z128_xor3_epi64(xmm_t1, chorba1, chorba7), *xmm_crc1);
+        *xmm_crc2 = z128_xor3_epi64(xmm_t2, chorba6, *xmm_crc2);
+        *xmm_crc3 = z128_xor3_epi64(xmm_t3, chorba5, *xmm_crc3);
+
+        xmm_t0 = _mm_load_si128((__m128i *)*src + 12);
+        xmm_t1 = _mm_load_si128((__m128i *)*src + 13);
+        xmm_t2 = _mm_load_si128((__m128i *)*src + 14);
+        xmm_t3 = _mm_load_si128((__m128i *)*src + 15);
+
+        fold_state_4(xmm_crc0, xmm_crc1, xmm_crc2, xmm_crc3, xmm_fold4);
+        if (COPY) {
+            _mm_storeu_si128((__m128i *)*dst, xmm_t0);
+            _mm_storeu_si128((__m128i *)*dst + 1, xmm_t1);
+            _mm_storeu_si128((__m128i *)*dst + 2, xmm_t2);
+            _mm_storeu_si128((__m128i *)*dst + 3, xmm_t3);
+            *dst += 64;
+        }
+
+        *xmm_crc0 = _mm_xor_si128(z128_xor3_epi64(xmm_t0, chorba4, chorba8), *xmm_crc0);
+        *xmm_crc1 = z128_xor3_epi64(z128_xor3_epi64(xmm_t1, chorba3, chorba8), chorba7, *xmm_crc1);
+        *xmm_crc2 = _mm_xor_si128(z128_xor3_epi64(z128_xor3_epi64(xmm_t2, chorba2, chorba8), chorba7, chorba6), *xmm_crc2);
+        *xmm_crc3 = _mm_xor_si128(z128_xor3_epi64(z128_xor3_epi64(xmm_t3, chorba1, chorba7), chorba6, chorba5), *xmm_crc3);
+
+        xmm_t0 = _mm_load_si128((__m128i *)*src + 16);
+        xmm_t1 = _mm_load_si128((__m128i *)*src + 17);
+        xmm_t2 = _mm_load_si128((__m128i *)*src + 18);
+        xmm_t3 = _mm_load_si128((__m128i *)*src + 19);
+
+        fold_state_4(xmm_crc0, xmm_crc1, xmm_crc2, xmm_crc3, xmm_fold4);
+        if (COPY) {
+            _mm_storeu_si128((__m128i *)*dst, xmm_t0);
+            _mm_storeu_si128((__m128i *)*dst + 1, xmm_t1);
+            _mm_storeu_si128((__m128i *)*dst + 2, xmm_t2);
+            _mm_storeu_si128((__m128i *)*dst + 3, xmm_t3);
+            *dst += 64;
+        }
+
+        *xmm_crc0 = _mm_xor_si128(z128_xor3_epi64(z128_xor3_epi64(xmm_t0, chorba4, chorba8), chorba6, chorba5), *xmm_crc0);
+        *xmm_crc1 = z128_xor3_epi64(z128_xor3_epi64(z128_xor3_epi64(xmm_t1, chorba3, chorba4), chorba8, chorba7), chorba5, *xmm_crc1);
+        *xmm_crc2 = z128_xor3_epi64(z128_xor3_epi64(z128_xor3_epi64(xmm_t2, chorba2, chorba3), chorba4, chorba7), chorba6, *xmm_crc2);
+        *xmm_crc3 = _mm_xor_si128(z128_xor3_epi64(z128_xor3_epi64(z128_xor3_epi64(xmm_t3, chorba1, chorba2), chorba3, chorba8), chorba6, chorba5), *xmm_crc3);
+
+        xmm_t0 = _mm_load_si128((__m128i *)*src + 20);
+        xmm_t1 = _mm_load_si128((__m128i *)*src + 21);
+        xmm_t2 = _mm_load_si128((__m128i *)*src + 22);
+        xmm_t3 = _mm_load_si128((__m128i *)*src + 23);
+
+        fold_state_4(xmm_crc0, xmm_crc1, xmm_crc2, xmm_crc3, xmm_fold4);
+        if (COPY) {
+            _mm_storeu_si128((__m128i *)*dst, xmm_t0);
+            _mm_storeu_si128((__m128i *)*dst + 1, xmm_t1);
+            _mm_storeu_si128((__m128i *)*dst + 2, xmm_t2);
+            _mm_storeu_si128((__m128i *)*dst + 3, xmm_t3);
+            *dst += 64;
+        }
+
+        *xmm_crc0 = _mm_xor_si128(z128_xor3_epi64(z128_xor3_epi64(z128_xor3_epi64(xmm_t0, chorba1, chorba2), chorba4, chorba8), chorba7, chorba5), *xmm_crc0);
+        *xmm_crc1 = z128_xor3_epi64(z128_xor3_epi64(z128_xor3_epi64(xmm_t1, chorba1, chorba3), chorba4, chorba7), chorba6, *xmm_crc1);
+        *xmm_crc2 = z128_xor3_epi64(z128_xor3_epi64(z128_xor3_epi64(xmm_t2, chorba2, chorba3), chorba8, chorba6), chorba5, *xmm_crc2);
+        *xmm_crc3 = _mm_xor_si128(z128_xor3_epi64(z128_xor3_epi64(z128_xor3_epi64(xmm_t3, chorba1, chorba2), chorba4, chorba8), chorba7, chorba5), *xmm_crc3);
+
+        xmm_t0 = _mm_load_si128((__m128i *)*src + 24);
+        xmm_t1 = _mm_load_si128((__m128i *)*src + 25);
+        xmm_t2 = _mm_load_si128((__m128i *)*src + 26);
+        xmm_t3 = _mm_load_si128((__m128i *)*src + 27);
+
+        fold_state_4(xmm_crc0, xmm_crc1, xmm_crc2, xmm_crc3, xmm_fold4);
+        if (COPY) {
+            _mm_storeu_si128((__m128i *)*dst, xmm_t0);
+            _mm_storeu_si128((__m128i *)*dst + 1, xmm_t1);
+            _mm_storeu_si128((__m128i *)*dst + 2, xmm_t2);
+            _mm_storeu_si128((__m128i *)*dst + 3, xmm_t3);
+            *dst += 64;
+        }
+
+        *xmm_crc0 = _mm_xor_si128(z128_xor3_epi64(z128_xor3_epi64(z128_xor3_epi64(xmm_t0, chorba1, chorba3), chorba4, chorba8), chorba7, chorba6), *xmm_crc0);
+        *xmm_crc1 = z128_xor3_epi64(z128_xor3_epi64(z128_xor3_epi64(xmm_t1, chorba2, chorba3), chorba7, chorba6), chorba5, *xmm_crc1);
+        *xmm_crc2 = z128_xor3_epi64(z128_xor3_epi64(z128_xor3_epi64(xmm_t2, chorba1, chorba2), chorba4, chorba6), chorba5, *xmm_crc2);
+        *xmm_crc3 = _mm_xor_si128(z128_xor3_epi64(z128_xor3_epi64(xmm_t3, chorba1, chorba3), chorba4, chorba5), *xmm_crc3);
+
+        xmm_t0 = _mm_load_si128((__m128i *)*src + 28);
+        xmm_t1 = _mm_load_si128((__m128i *)*src + 29);
+        xmm_t2 = _mm_load_si128((__m128i *)*src + 30);
+        xmm_t3 = _mm_load_si128((__m128i *)*src + 31);
+
+        fold_state_4(xmm_crc0, xmm_crc1, xmm_crc2, xmm_crc3, xmm_fold4);
+        if (COPY) {
+            _mm_storeu_si128((__m128i *)*dst, xmm_t0);
+            _mm_storeu_si128((__m128i *)*dst + 1, xmm_t1);
+            _mm_storeu_si128((__m128i *)*dst + 2, xmm_t2);
+            _mm_storeu_si128((__m128i *)*dst + 3, xmm_t3);
+            *dst += 64;
+        }
+
+        *xmm_crc0 = z128_xor3_epi64(z128_xor3_epi64(xmm_t0, chorba2, chorba3), chorba4, *xmm_crc0);
+        *xmm_crc1 = z128_xor3_epi64(z128_xor3_epi64(xmm_t1, chorba1, chorba2), chorba3, *xmm_crc1);
+        *xmm_crc2 = _mm_xor_si128(z128_xor3_epi64(xmm_t2, chorba1, chorba2), *xmm_crc2);
+        *xmm_crc3 = z128_xor3_epi64(xmm_t3, chorba1, *xmm_crc3);
+
+        *len -= 512;
+        *src += 512;
+    }
+}
+#endif
+
 Z_FORCEINLINE static uint32_t crc32_copy_impl(uint32_t crc, uint8_t *dst, const uint8_t *src, size_t len, const int COPY) {
     size_t copy_len = len;
     if (len >= 16) {
@@ -390,200 +592,8 @@ Z_FORCEINLINE static uint32_t crc32_copy_impl(uint32_t crc, uint8_t *dst, const 
     if (len >= 128)
         fold_block_8(&src, &dst, &len, &xmm_crc0, &xmm_crc1, &xmm_crc2, &xmm_crc3, xmm_fold4, COPY);
 #else
-    /* Implement Chorba algorithm from https://arxiv.org/abs/2412.16398
-     * We interleave the PCLMUL-base folds with 8x scaled generator
-     * polynomial copies; we read 8x QWORDS and then XOR them into
-     * the stream at the following offsets: 6, 9, 10, 16, 20, 22,
-     * 24, 25, 27, 28, 30, 31, 32 - this is detailed in the paper
-     * as "generator_64_bits_unrolled_8" */
-#ifndef __AVX512VL__
-    if (!COPY) {
-#endif
-    while (len >= 512 + 64 + 16*8) {
-        __m128i chorba8 = _mm_load_si128((__m128i *)src);
-        __m128i chorba7 = _mm_load_si128((__m128i *)src + 1);
-        __m128i chorba6 = _mm_load_si128((__m128i *)src + 2);
-        __m128i chorba5 = _mm_load_si128((__m128i *)src + 3);
-        __m128i chorba4 = _mm_load_si128((__m128i *)src + 4);
-        __m128i chorba3 = _mm_load_si128((__m128i *)src + 5);
-        __m128i chorba2 = _mm_load_si128((__m128i *)src + 6);
-        __m128i chorba1 = _mm_load_si128((__m128i *)src + 7);
-        if (COPY) {
-            _mm_storeu_si128((__m128i *)dst, chorba8);
-            _mm_storeu_si128((__m128i *)dst + 1, chorba7);
-            _mm_storeu_si128((__m128i *)dst + 2, chorba6);
-            _mm_storeu_si128((__m128i *)dst + 3, chorba5);
-            _mm_storeu_si128((__m128i *)dst + 4, chorba4);
-            _mm_storeu_si128((__m128i *)dst + 5, chorba3);
-            _mm_storeu_si128((__m128i *)dst + 6, chorba2);
-            _mm_storeu_si128((__m128i *)dst + 7, chorba1);
-            dst += 16*8;
-        }
-
-        chorba2 = _mm_xor_si128(chorba2, chorba8);
-        chorba1 = _mm_xor_si128(chorba1, chorba7);
-        src += 16*8;
-        len -= 16*8;
-
-        xmm_t0 = _mm_load_si128((__m128i *)src);
-        xmm_t1 = _mm_load_si128((__m128i *)src + 1);
-        xmm_t2 = _mm_load_si128((__m128i *)src + 2);
-        xmm_t3 = _mm_load_si128((__m128i *)src + 3);
-
-        fold_state_12(&xmm_crc0, &xmm_crc1, &xmm_crc2, &xmm_crc3);
-        if (COPY) {
-            _mm_storeu_si128((__m128i *)dst, xmm_t0);
-            _mm_storeu_si128((__m128i *)dst + 1, xmm_t1);
-            _mm_storeu_si128((__m128i *)dst + 2, xmm_t2);
-            _mm_storeu_si128((__m128i *)dst + 3, xmm_t3);
-            dst += 64;
-        }
-
-        xmm_crc0 = z128_xor3_epi64(xmm_t0, chorba6, xmm_crc0);
-        xmm_crc1 = _mm_xor_si128(z128_xor3_epi64(xmm_t1, chorba5, chorba8), xmm_crc1);
-        xmm_crc2 = z128_xor3_epi64(z128_xor3_epi64(xmm_t2, chorba4, chorba8), chorba7, xmm_crc2);
-        xmm_crc3 = z128_xor3_epi64(z128_xor3_epi64(xmm_t3, chorba3, chorba7), chorba6, xmm_crc3);
-
-        xmm_t0 = _mm_load_si128((__m128i *)src + 4);
-        xmm_t1 = _mm_load_si128((__m128i *)src + 5);
-        xmm_t2 = _mm_load_si128((__m128i *)src + 6);
-        xmm_t3 = _mm_load_si128((__m128i *)src + 7);
-
-        fold_state_4(&xmm_crc0, &xmm_crc1, &xmm_crc2, &xmm_crc3, xmm_fold4);
-        if (COPY) {
-            _mm_storeu_si128((__m128i *)dst, xmm_t0);
-            _mm_storeu_si128((__m128i *)dst + 1, xmm_t1);
-            _mm_storeu_si128((__m128i *)dst + 2, xmm_t2);
-            _mm_storeu_si128((__m128i *)dst + 3, xmm_t3);
-            dst += 64;
-        }
-
-        xmm_crc0 = z128_xor3_epi64(z128_xor3_epi64(xmm_t0, chorba2, chorba6), chorba5, xmm_crc0);
-        xmm_crc1 = z128_xor3_epi64(z128_xor3_epi64(xmm_t1, chorba1, chorba4), chorba5, xmm_crc1);
-        xmm_crc2 = _mm_xor_si128(z128_xor3_epi64(xmm_t2, chorba3, chorba4), xmm_crc2);
-        xmm_crc3 = _mm_xor_si128(z128_xor3_epi64(xmm_t3, chorba2, chorba3), xmm_crc3);
-
-        xmm_t0 = _mm_load_si128((__m128i *)src + 8);
-        xmm_t1 = _mm_load_si128((__m128i *)src + 9);
-        xmm_t2 = _mm_load_si128((__m128i *)src + 10);
-        xmm_t3 = _mm_load_si128((__m128i *)src + 11);
-
-        fold_state_4(&xmm_crc0, &xmm_crc1, &xmm_crc2, &xmm_crc3, xmm_fold4);
-        if (COPY) {
-            _mm_storeu_si128((__m128i *)dst, xmm_t0);
-            _mm_storeu_si128((__m128i *)dst + 1, xmm_t1);
-            _mm_storeu_si128((__m128i *)dst + 2, xmm_t2);
-            _mm_storeu_si128((__m128i *)dst + 3, xmm_t3);
-            dst += 64;
-        }
-
-        xmm_crc0 = z128_xor3_epi64(z128_xor3_epi64(xmm_t0, chorba1, chorba2), chorba8, xmm_crc0);
-        xmm_crc1 = _mm_xor_si128(z128_xor3_epi64(xmm_t1, chorba1, chorba7), xmm_crc1);
-        xmm_crc2 = z128_xor3_epi64(xmm_t2, chorba6, xmm_crc2);
-        xmm_crc3 = z128_xor3_epi64(xmm_t3, chorba5, xmm_crc3);
-
-        xmm_t0 = _mm_load_si128((__m128i *)src + 12);
-        xmm_t1 = _mm_load_si128((__m128i *)src + 13);
-        xmm_t2 = _mm_load_si128((__m128i *)src + 14);
-        xmm_t3 = _mm_load_si128((__m128i *)src + 15);
-
-        fold_state_4(&xmm_crc0, &xmm_crc1, &xmm_crc2, &xmm_crc3, xmm_fold4);
-        if (COPY) {
-            _mm_storeu_si128((__m128i *)dst, xmm_t0);
-            _mm_storeu_si128((__m128i *)dst + 1, xmm_t1);
-            _mm_storeu_si128((__m128i *)dst + 2, xmm_t2);
-            _mm_storeu_si128((__m128i *)dst + 3, xmm_t3);
-            dst += 64;
-        }
-
-        xmm_crc0 = _mm_xor_si128(z128_xor3_epi64(xmm_t0, chorba4, chorba8), xmm_crc0);
-        xmm_crc1 = z128_xor3_epi64(z128_xor3_epi64(xmm_t1, chorba3, chorba8), chorba7, xmm_crc1);
-        xmm_crc2 = _mm_xor_si128(z128_xor3_epi64(z128_xor3_epi64(xmm_t2, chorba2, chorba8), chorba7, chorba6), xmm_crc2);
-        xmm_crc3 = _mm_xor_si128(z128_xor3_epi64(z128_xor3_epi64(xmm_t3, chorba1, chorba7), chorba6, chorba5), xmm_crc3);
-
-        xmm_t0 = _mm_load_si128((__m128i *)src + 16);
-        xmm_t1 = _mm_load_si128((__m128i *)src + 17);
-        xmm_t2 = _mm_load_si128((__m128i *)src + 18);
-        xmm_t3 = _mm_load_si128((__m128i *)src + 19);
-
-        fold_state_4(&xmm_crc0, &xmm_crc1, &xmm_crc2, &xmm_crc3, xmm_fold4);
-        if (COPY) {
-            _mm_storeu_si128((__m128i *)dst, xmm_t0);
-            _mm_storeu_si128((__m128i *)dst + 1, xmm_t1);
-            _mm_storeu_si128((__m128i *)dst + 2, xmm_t2);
-            _mm_storeu_si128((__m128i *)dst + 3, xmm_t3);
-            dst += 64;
-        }
-
-        xmm_crc0 = _mm_xor_si128(z128_xor3_epi64(z128_xor3_epi64(xmm_t0, chorba4, chorba8), chorba6, chorba5), xmm_crc0);
-        xmm_crc1 = z128_xor3_epi64(z128_xor3_epi64(z128_xor3_epi64(xmm_t1, chorba3, chorba4), chorba8, chorba7), chorba5, xmm_crc1);
-        xmm_crc2 = z128_xor3_epi64(z128_xor3_epi64(z128_xor3_epi64(xmm_t2, chorba2, chorba3), chorba4, chorba7), chorba6, xmm_crc2);
-        xmm_crc3 = _mm_xor_si128(z128_xor3_epi64(z128_xor3_epi64(z128_xor3_epi64(xmm_t3, chorba1, chorba2), chorba3, chorba8), chorba6, chorba5), xmm_crc3);
-
-        xmm_t0 = _mm_load_si128((__m128i *)src + 20);
-        xmm_t1 = _mm_load_si128((__m128i *)src + 21);
-        xmm_t2 = _mm_load_si128((__m128i *)src + 22);
-        xmm_t3 = _mm_load_si128((__m128i *)src + 23);
-
-        fold_state_4(&xmm_crc0, &xmm_crc1, &xmm_crc2, &xmm_crc3, xmm_fold4);
-        if (COPY) {
-            _mm_storeu_si128((__m128i *)dst, xmm_t0);
-            _mm_storeu_si128((__m128i *)dst + 1, xmm_t1);
-            _mm_storeu_si128((__m128i *)dst + 2, xmm_t2);
-            _mm_storeu_si128((__m128i *)dst + 3, xmm_t3);
-            dst += 64;
-        }
-
-        xmm_crc0 = _mm_xor_si128(z128_xor3_epi64(z128_xor3_epi64(z128_xor3_epi64(xmm_t0, chorba1, chorba2), chorba4, chorba8), chorba7, chorba5), xmm_crc0);
-        xmm_crc1 = z128_xor3_epi64(z128_xor3_epi64(z128_xor3_epi64(xmm_t1, chorba1, chorba3), chorba4, chorba7), chorba6, xmm_crc1);
-        xmm_crc2 = z128_xor3_epi64(z128_xor3_epi64(z128_xor3_epi64(xmm_t2, chorba2, chorba3), chorba8, chorba6), chorba5, xmm_crc2);
-        xmm_crc3 = _mm_xor_si128(z128_xor3_epi64(z128_xor3_epi64(z128_xor3_epi64(xmm_t3, chorba1, chorba2), chorba4, chorba8), chorba7, chorba5), xmm_crc3);
-
-        xmm_t0 = _mm_load_si128((__m128i *)src + 24);
-        xmm_t1 = _mm_load_si128((__m128i *)src + 25);
-        xmm_t2 = _mm_load_si128((__m128i *)src + 26);
-        xmm_t3 = _mm_load_si128((__m128i *)src + 27);
-
-        fold_state_4(&xmm_crc0, &xmm_crc1, &xmm_crc2, &xmm_crc3, xmm_fold4);
-        if (COPY) {
-            _mm_storeu_si128((__m128i *)dst, xmm_t0);
-            _mm_storeu_si128((__m128i *)dst + 1, xmm_t1);
-            _mm_storeu_si128((__m128i *)dst + 2, xmm_t2);
-            _mm_storeu_si128((__m128i *)dst + 3, xmm_t3);
-            dst += 64;
-        }
-
-        xmm_crc0 = _mm_xor_si128(z128_xor3_epi64(z128_xor3_epi64(z128_xor3_epi64(xmm_t0, chorba1, chorba3), chorba4, chorba8), chorba7, chorba6), xmm_crc0);
-        xmm_crc1 = z128_xor3_epi64(z128_xor3_epi64(z128_xor3_epi64(xmm_t1, chorba2, chorba3), chorba7, chorba6), chorba5, xmm_crc1);
-        xmm_crc2 = z128_xor3_epi64(z128_xor3_epi64(z128_xor3_epi64(xmm_t2, chorba1, chorba2), chorba4, chorba6), chorba5, xmm_crc2);
-        xmm_crc3 = _mm_xor_si128(z128_xor3_epi64(z128_xor3_epi64(xmm_t3, chorba1, chorba3), chorba4, chorba5), xmm_crc3);
-
-        xmm_t0 = _mm_load_si128((__m128i *)src + 28);
-        xmm_t1 = _mm_load_si128((__m128i *)src + 29);
-        xmm_t2 = _mm_load_si128((__m128i *)src + 30);
-        xmm_t3 = _mm_load_si128((__m128i *)src + 31);
-
-        fold_state_4(&xmm_crc0, &xmm_crc1, &xmm_crc2, &xmm_crc3, xmm_fold4);
-        if (COPY) {
-            _mm_storeu_si128((__m128i *)dst, xmm_t0);
-            _mm_storeu_si128((__m128i *)dst + 1, xmm_t1);
-            _mm_storeu_si128((__m128i *)dst + 2, xmm_t2);
-            _mm_storeu_si128((__m128i *)dst + 3, xmm_t3);
-            dst += 64;
-        }
-
-        xmm_crc0 = z128_xor3_epi64(z128_xor3_epi64(xmm_t0, chorba2, chorba3), chorba4, xmm_crc0);
-        xmm_crc1 = z128_xor3_epi64(z128_xor3_epi64(xmm_t1, chorba1, chorba2), chorba3, xmm_crc1);
-        xmm_crc2 = _mm_xor_si128(z128_xor3_epi64(xmm_t2, chorba1, chorba2), xmm_crc2);
-        xmm_crc3 = z128_xor3_epi64(xmm_t3, chorba1, xmm_crc3);
-
-        len -= 512;
-        src += 512;
-    }
-#ifndef __AVX512VL__
-    }
-#endif
-
+    if (len >= PCLMULQDQ_CHORBA_MIN_LEN)
+        fold_block_chorba(&src, &dst, &len, &xmm_crc0, &xmm_crc1, &xmm_crc2, &xmm_crc3, xmm_fold4, COPY);
 #endif  /* X86_VPCLMULQDQ */
 
     while (len >= 64) {
