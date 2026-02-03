@@ -1961,11 +1961,13 @@ case "${ARCH}" in
                 if test ${HAVE_VPCLMULQDQ_INTRIN} -eq 1; then
                     CFLAGS="${CFLAGS} -DX86_VPCLMULQDQ_CRC"
                     SFLAGS="${SFLAGS} -DX86_VPCLMULQDQ_CRC"
-                    ARCH_STATIC_OBJS="${ARCH_STATIC_OBJS} crc32_vpclmulqdq.o"
-                    ARCH_SHARED_OBJS="${ARCH_SHARED_OBJS} crc32_vpclmulqdq.lo"
-                    # Use AVX512 flags if available for 512-bit path, otherwise 256-bit
+
+                    ARCH_STATIC_OBJS="${ARCH_STATIC_OBJS} crc32_vpclmulqdq_avx2.o"
+                    ARCH_SHARED_OBJS="${ARCH_SHARED_OBJS} crc32_vpclmulqdq_avx2.lo"
+
                     if test ${HAVE_AVX512_INTRIN} -eq 1; then
-                        vpclmulflag="-mvpclmulqdq ${avx512flag}"
+                        ARCH_STATIC_OBJS="${ARCH_STATIC_OBJS} crc32_vpclmulqdq_avx512.o"
+                        ARCH_SHARED_OBJS="${ARCH_SHARED_OBJS} crc32_vpclmulqdq_avx512.lo"
                     fi
                 fi
             fi

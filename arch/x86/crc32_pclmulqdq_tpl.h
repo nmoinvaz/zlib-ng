@@ -29,25 +29,24 @@
 #include "crc32_p.h"
 #include "x86_intrins.h"
 
-/* 512-bit VPCLMULQDQ path requires AVX-512F */
-#if defined(X86_VPCLMULQDQ) && defined(__AVX512F__)
-#  if defined(_MSC_VER) && _MSC_VER < 1920
-     /* Use epi32 variants for older MSVC toolchains (v141/v140) to avoid cast warnings */
-#    define z512_xor3_epi64(a, b, c)     _mm512_ternarylogic_epi32(a, b, c, 0x96)
-#    define z512_inserti64x2(a, b, imm)  _mm512_inserti32x4(a, b, imm)
-#    define z512_extracti64x2(a, imm)    _mm512_extracti32x4_epi32(a, imm)
+#if defined(X86_VPCLMULQDQ)
+#  if defined(__AVX512F__)
+#    if defined(_MSC_VER) && _MSC_VER < 1920
+       /* Use epi32 variants for older MSVC toolchains (v141/v140) to avoid cast warnings */
+#      define z512_xor3_epi64(a, b, c)     _mm512_ternarylogic_epi32(a, b, c, 0x96)
+#      define z512_inserti64x2(a, b, imm)  _mm512_inserti32x4(a, b, imm)
+#      define z512_extracti64x2(a, imm)    _mm512_extracti32x4_epi32(a, imm)
+#    else
+#      define z512_xor3_epi64(a, b, c)     _mm512_ternarylogic_epi64(a, b, c, 0x96)
+#      define z512_inserti64x2(a, b, imm)  _mm512_inserti64x2(a, b, imm)
+#      define z512_extracti64x2(a, imm)    _mm512_extracti64x2_epi64(a, imm)
+#    endif
+#    ifdef __AVX512VL__
+#      define z128_xor3_epi64(a, b, c)  _mm_ternarylogic_epi64(a, b, c, 0x96)
+#    endif
 #  else
-#    define z512_xor3_epi64(a, b, c)     _mm512_ternarylogic_epi64(a, b, c, 0x96)
-#    define z512_inserti64x2(a, b, imm)  _mm512_inserti64x2(a, b, imm)
-#    define z512_extracti64x2(a, imm)    _mm512_extracti64x2_epi64(a, imm)
+#    define z256_xor3_epi64(a, b, c)    _mm256_xor_si256(_mm256_xor_si256(a, b), c)
 #  endif
-#  ifdef __AVX512VL__
-#    define z128_xor3_epi64(a, b, c)  _mm_ternarylogic_epi64(a, b, c, 0x96)
-#  endif
-#endif
-/* 256-bit VPCLMULQDQ macros (doesn't require AVX-512) */
-#if defined(X86_VPCLMULQDQ) && !defined(__AVX512F__)
-#  define z256_xor3_epi64(a, b, c)    _mm256_xor_si256(_mm256_xor_si256(a, b), c)
 #endif
 
 #ifndef z128_xor3_epi64
@@ -585,18 +584,16 @@ Z_FORCEINLINE static uint32_t crc32_copy_impl(uint32_t crc, uint8_t *dst, const 
         xmm_crc3 = z128_xor3_epi64(xmm_crc3, xmm_t0, _mm_cvtsi32_si128(crc));
     }
 
-/* 512-bit VPCLMULQDQ path requires AVX-512F */
 #if defined(X86_VPCLMULQDQ) && defined(__AVX512F__)
     if (len >= 256)
         fold_block_16(&src, &dst, &len, &xmm_crc0, &xmm_crc1, &xmm_crc2, &xmm_crc3, COPY);
-/* 256-bit VPCLMULQDQ path (doesn't require AVX-512F) */
 #elif defined(X86_VPCLMULQDQ)
     if (len >= 128)
         fold_block_8(&src, &dst, &len, &xmm_crc0, &xmm_crc1, &xmm_crc2, &xmm_crc3, xmm_fold4, COPY);
 #else
     if (len >= PCLMULQDQ_CHORBA_MIN_LEN)
         fold_block_chorba(&src, &dst, &len, &xmm_crc0, &xmm_crc1, &xmm_crc2, &xmm_crc3, xmm_fold4, COPY);
-#endif  /* X86_VPCLMULQDQ */
+#endif
 
     while (len >= 64) {
         len -= 64;
