@@ -388,8 +388,8 @@ static inline void init_functable_loongarch(struct functable_s *ft, struct cpu_f
 
 #ifdef LOONGARCH_CRC
     if (cf->loongarch.has_crc) {
-        ft->crc32 = crc32_loongarch64;
-        ft->crc32_copy = crc32_copy_loongarch64;
+        ft->crc32 = &crc32_loongarch64;
+        ft->crc32_copy = &crc32_copy_loongarch64;
     }
 #endif
 #if defined(LOONGARCH_LSX) && !defined(LOONGARCH_LASX_NATIVE)
@@ -404,7 +404,7 @@ static inline void init_functable_loongarch(struct functable_s *ft, struct cpu_f
         ft->inflate_fast = &inflate_fast_lsx;
         ft->longest_match = &longest_match_lsx;
         ft->longest_match_slow = &longest_match_slow_lsx;
-        ft->slide_hash = slide_hash_lsx;
+        ft->slide_hash = &slide_hash_lsx;
     }
 #endif
 #ifdef LOONGARCH_LASX
@@ -419,7 +419,7 @@ static inline void init_functable_loongarch(struct functable_s *ft, struct cpu_f
         ft->inflate_fast = &inflate_fast_lasx;
         ft->longest_match = &longest_match_lasx;
         ft->longest_match_slow = &longest_match_slow_lasx;
-        ft->slide_hash = slide_hash_lasx;
+        ft->slide_hash = &slide_hash_lasx;
     }
 #endif
 }
