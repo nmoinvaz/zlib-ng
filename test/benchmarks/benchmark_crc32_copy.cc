@@ -170,7 +170,8 @@ BENCHMARK_CRC32_COPY(braid, crc32_braid, crc32_copy_braid, 1);
     BENCHMARK_CRC32_COPY(pclmulqdq, crc32_pclmulqdq, crc32_copy_pclmulqdq, test_cpu_features.x86.has_pclmulqdq)
 #  endif
 #  ifdef X86_VPCLMULQDQ_CRC
-    BENCHMARK_CRC32_COPY(vpclmulqdq, crc32_vpclmulqdq, crc32_copy_vpclmulqdq, (test_cpu_features.x86.has_pclmulqdq && test_cpu_features.x86.has_avx512_common && test_cpu_features.x86.has_vpclmulqdq))
+    BENCHMARK_CRC32_COPY(vpclmulqdq_avx2, crc32_vpclmulqdq_avx2, crc32_copy_vpclmulqdq_avx2, (test_cpu_features.x86.has_pclmulqdq && test_cpu_features.x86.has_avx2 && test_cpu_features.x86.has_vpclmulqdq))
+    BENCHMARK_CRC32_COPY(vpclmulqdq_avx512, crc32_vpclmulqdq_avx512, crc32_copy_vpclmulqdq_avx512, (test_cpu_features.x86.has_pclmulqdq && test_cpu_features.x86.has_avx512_common && test_cpu_features.x86.has_vpclmulqdq))
 #  endif
 
 #endif

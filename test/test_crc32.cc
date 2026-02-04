@@ -125,7 +125,8 @@ TEST_CRC32(vx, crc32_s390_vx, test_cpu_features.s390.has_vx)
 TEST_CRC32(pclmulqdq, crc32_pclmulqdq, test_cpu_features.x86.has_pclmulqdq)
 #endif
 #ifdef X86_VPCLMULQDQ_CRC
-TEST_CRC32(vpclmulqdq, crc32_vpclmulqdq, (test_cpu_features.x86.has_pclmulqdq && test_cpu_features.x86.has_avx512_common && test_cpu_features.x86.has_vpclmulqdq))
+TEST_CRC32(vpclmulqdq_avx2, crc32_vpclmulqdq_avx2, (test_cpu_features.x86.has_pclmulqdq && test_cpu_features.x86.has_avx2 && test_cpu_features.x86.has_vpclmulqdq))
+TEST_CRC32(vpclmulqdq_avx512, crc32_vpclmulqdq_avx512, (test_cpu_features.x86.has_pclmulqdq && test_cpu_features.x86.has_avx512_common && test_cpu_features.x86.has_vpclmulqdq))
 #endif
 #ifndef WITHOUT_CHORBA_SSE
 #   ifdef X86_SSE2
