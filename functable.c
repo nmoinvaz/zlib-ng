@@ -217,16 +217,23 @@ static inline void init_functable_x86(struct functable_s *ft, struct cpu_feature
         ft->adler32_copy = &adler32_copy_avx512_vnni;
     }
 #endif
-    // X86 - VPCLMULQDQ with AVX-512 (512-bit vectors)
+    // X86 - VPCLMULQDQ
 #ifdef X86_VPCLMULQDQ_CRC
-    if (cf->x86.has_pclmulqdq && cf->x86.has_avx512_common && cf->x86.has_vpclmulqdq) {
-        ft->crc32 = &crc32_vpclmulqdq_avx512;
-        ft->crc32_copy = &crc32_copy_vpclmulqdq_avx512;
-    }
-    // X86 - VPCLMULQDQ with AVX2 (256-bit vectors)
-    else if (cf->x86.has_pclmulqdq && cf->x86.has_avx2 && cf->x86.has_vpclmulqdq) {
+#  ifndef X86_AVX512_NATIVE
+#    ifndef X86_VPCLMULQDQ_NATIVE
+    if (cf->x86.has_pclmulqdq && cf->x86.has_avx2 && cf->x86.has_vpclmulqdq)
+#    endif
+    {
         ft->crc32 = &crc32_vpclmulqdq_avx2;
         ft->crc32_copy = &crc32_copy_vpclmulqdq_avx2;
+    }
+#  endif
+#  if !defined(X86_VPCLMULQDQ_NATIVE) || !defined(X86_AVX512_NATIVE)
+    if (cf->x86.has_pclmulqdq && cf->x86.has_avx512_common && cf->x86.has_vpclmulqdq)
+#  endif
+    {
+        ft->crc32 = &crc32_vpclmulqdq_avx512;
+        ft->crc32_copy = &crc32_copy_vpclmulqdq_avx512;
     }
 #endif
 }
