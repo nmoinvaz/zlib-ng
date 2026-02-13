@@ -20,6 +20,20 @@
 
 Z_FORCEINLINE static void adler32_copy_small(uint32_t *Z_RESTRICT adler, uint8_t *dst, const uint8_t *buf, size_t len,
                                              uint32_t *Z_RESTRICT sum2, const int MAX_LEN, const int COPY) {
+    /* GCC at -O2 on x86 hoists all byte loads in DO8/DO16 simultaneously, requiring 12+ GPRs
+     * which overflows x86-64's 9 caller-saved registers and forces callee-saved spills.
+     * Clang handles this fine, so only GCC is restricted to a DO4 loop. */
+#if defined(ARCH_X86) && defined(__GNUC__) && !defined(__clang__)
+    while (len >= 4) {
+        if (COPY) {
+            memcpy(dst, buf, 4);
+            dst += 4;
+        }
+        len -= 4;
+        ADLER_DO4(*adler, *sum2, buf, 0);
+        buf += 4;
+    }
+#else
     if (MAX_LEN >= 16) {
         while (len >= 16) {
             if (COPY) {
@@ -57,6 +71,7 @@ Z_FORCEINLINE static void adler32_copy_small(uint32_t *Z_RESTRICT adler, uint8_t
         ADLER_DO4(*adler, *sum2, buf, 0);
         buf += 4;
     }
+#endif
     if (len & 2) {
         if (COPY) {
             memcpy(dst, buf, 2);
