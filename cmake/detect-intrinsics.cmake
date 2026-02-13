@@ -702,6 +702,31 @@ macro(check_vgfma_intrinsics)
     set(CMAKE_REQUIRED_FLAGS)
 endmacro()
 
+macro(check_s390_vx_intrinsics)
+    if(NOT NATIVEFLAG)
+        set(S390VXFLAG "-march=z13")
+        if(CMAKE_C_COMPILER_ID MATCHES "GNU")
+            set(S390VXFLAG "${S390VXFLAG} -mzarch")
+        endif()
+        if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+            set(S390VXFLAG "${S390VXFLAG} -fzvector")
+        endif()
+    endif()
+    # Check whether compiler supports S390 VX (Vector Extension) intrinsics
+    set(CMAKE_REQUIRED_FLAGS "${S390VXFLAG} ${NATIVEFLAG} ${ZNOLTOFLAG}")
+    check_c_source_compiles(
+        "#include <vecintrin.h>
+        int main(void) {
+            unsigned char a __attribute__((vector_size(16))) = { 0 };
+            unsigned char b __attribute__((vector_size(16))) = { 0 };
+            a = vec_sub(a, b);
+            a = vec_xl(0, (unsigned char *)0);
+            return a[0];
+        }"
+        HAVE_S390_VX_INTRIN FAIL_REGEX "not supported")
+    set(CMAKE_REQUIRED_FLAGS)
+endmacro()
+
 macro(check_xsave_intrinsics)
     if(NOT NATIVEFLAG AND NOT MSVC AND NOT CMAKE_C_COMPILER_ID MATCHES "Intel")
         set(XSAVEFLAG "-mxsave")

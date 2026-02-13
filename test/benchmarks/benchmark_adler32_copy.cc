@@ -149,6 +149,10 @@ BENCHMARK_ADLER32_COPY(power8, adler32_power8, adler32_copy_power8, test_cpu_fea
 BENCHMARK_ADLER32_COPY(rvv, adler32_rvv, adler32_copy_rvv, test_cpu_features.riscv.has_rvv);
 #endif
 
+#ifdef S390_VX
+BENCHMARK_ADLER32_COPY(s390_vx, adler32_s390_vx, adler32_copy_s390_vx, test_cpu_features.s390.has_vx);
+#endif
+
 #ifdef X86_SSSE3
 BENCHMARK_ADLER32_COPY(ssse3, adler32_ssse3, adler32_copy_ssse3, test_cpu_features.x86.has_ssse3);
 #endif

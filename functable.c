@@ -254,6 +254,9 @@ static int init_functable(void) {
         ft.adler32 = &adler32_power8;
         ft.adler32_copy = &adler32_copy_power8;
         ft.chunkmemset_safe = &chunkmemset_safe_power8;
+        ft.compare256 = &compare256_power8;
+        ft.longest_match = &longest_match_power8;
+        ft.longest_match_slow = &longest_match_slow_power8;
         ft.inflate_fast = &inflate_fast_power8;
         ft.slide_hash = &slide_hash_power8;
     }
@@ -297,6 +300,18 @@ static int init_functable(void) {
 #endif
 
     // S390
+#ifdef S390_VX
+    if (cf.s390.has_vx) {
+        ft.adler32 = &adler32_s390_vx;
+        ft.adler32_copy = &adler32_copy_s390_vx;
+        ft.chunkmemset_safe = &chunkmemset_safe_s390_vx;
+        ft.compare256 = &compare256_s390_vx;
+        ft.inflate_fast = &inflate_fast_s390_vx;
+        ft.longest_match = &longest_match_s390_vx;
+        ft.longest_match_slow = &longest_match_slow_s390_vx;
+        ft.slide_hash = &slide_hash_s390_vx;
+    }
+#endif
 #ifdef S390_CRC32_VX
     if (cf.s390.has_vx) {
         ft.crc32 = crc32_s390_vx;

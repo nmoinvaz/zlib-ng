@@ -8,6 +8,7 @@ SFLAGS=
 INCLUDES=
 SUFFIX=
 VGFMAFLAG=
+S390VXFLAG=
 NOLTOFLAG=
 
 SRCDIR=.
@@ -37,6 +38,30 @@ crc32-vx.o:
 
 crc32-vx.lo:
 	$(CC) $(SFLAGS) $(VGFMAFLAG) $(NOLTOFLAG) $(INCLUDES) -c -o $@ $(SRCDIR)/crc32-vx.c
+
+adler32_s390_vx.o:
+	$(CC) $(CFLAGS) $(S390VXFLAG) $(NOLTOFLAG) $(INCLUDES) -c -o $@ $(SRCDIR)/adler32_s390_vx.c
+
+adler32_s390_vx.lo:
+	$(CC) $(SFLAGS) $(S390VXFLAG) $(NOLTOFLAG) $(INCLUDES) -c -o $@ $(SRCDIR)/adler32_s390_vx.c
+
+chunkset_s390_vx.o:
+	$(CC) $(CFLAGS) $(S390VXFLAG) $(NOLTOFLAG) $(INCLUDES) -c -o $@ $(SRCDIR)/chunkset_s390_vx.c
+
+chunkset_s390_vx.lo:
+	$(CC) $(SFLAGS) $(S390VXFLAG) $(NOLTOFLAG) $(INCLUDES) -c -o $@ $(SRCDIR)/chunkset_s390_vx.c
+
+compare256_s390_vx.o:
+	$(CC) $(CFLAGS) $(S390VXFLAG) $(NOLTOFLAG) $(INCLUDES) -c -o $@ $(SRCDIR)/compare256_s390_vx.c
+
+compare256_s390_vx.lo:
+	$(CC) $(SFLAGS) $(S390VXFLAG) $(NOLTOFLAG) $(INCLUDES) -c -o $@ $(SRCDIR)/compare256_s390_vx.c
+
+slide_hash_s390_vx.o:
+	$(CC) $(CFLAGS) $(S390VXFLAG) $(NOLTOFLAG) $(INCLUDES) -c -o $@ $(SRCDIR)/slide_hash_s390_vx.c
+
+slide_hash_s390_vx.lo:
+	$(CC) $(SFLAGS) $(S390VXFLAG) $(NOLTOFLAG) $(INCLUDES) -c -o $@ $(SRCDIR)/slide_hash_s390_vx.c
 
 mostlyclean: clean
 clean:
