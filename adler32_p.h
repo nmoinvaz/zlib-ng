@@ -21,9 +21,8 @@
 Z_FORCEINLINE static void adler32_copy_small(uint32_t *Z_RESTRICT adler, uint8_t *dst, const uint8_t *buf, size_t len,
                                              uint32_t *Z_RESTRICT sum2, const int MAX_LEN, const int COPY) {
     /* DO16 loop for large remainders (scalar adler32_c, RISC-V tail).
-     * DO8 loop for medium lengths (NEON/VMX alignment, Power8 short path).
-     * DO4 loop for short SIMD tails — avoids GCC x86 register pressure
-     * from hoisted DO8/DO16 loads when inlined into SIMD functions. */
+     * DO4 loop handles all remaining bytes — avoids GCC x86 register
+     * pressure from hoisted DO8/DO16 loads when inlined into SIMD functions. */
     if (MAX_LEN > 64) {
         while (len >= 16) {
             if (COPY) {
@@ -34,49 +33,13 @@ Z_FORCEINLINE static void adler32_copy_small(uint32_t *Z_RESTRICT adler, uint8_t
             ADLER_DO16(*adler, *sum2, buf);
             buf += 16;
         }
-        if (len & 8) {
-            if (COPY) {
-                memcpy(dst, buf, 8);
-                dst += 8;
-            }
-            ADLER_DO8(*adler, *sum2, buf, 0);
-            buf += 8;
-        }
-    } else if (MAX_LEN > 32) {
-        while (len >= 8) {
-            if (COPY) {
-                memcpy(dst, buf, 8);
-                dst += 8;
-            }
-            len -= 8;
-            ADLER_DO8(*adler, *sum2, buf, 0);
-            buf += 8;
-        }
-    } else if (MAX_LEN > 16) {
-        while (len >= 4) {
-            if (COPY) {
-                memcpy(dst, buf, 4);
-                dst += 4;
-            }
-            len -= 4;
-            ADLER_DO4(*adler, *sum2, buf, 0);
-            buf += 4;
-        }
-    } else {
-        if (len & 8) {
-            if (COPY) {
-                memcpy(dst, buf, 8);
-                dst += 8;
-            }
-            ADLER_DO8(*adler, *sum2, buf, 0);
-            buf += 8;
-        }
     }
-    if (len & 4) {
+    while (len >= 4) {
         if (COPY) {
             memcpy(dst, buf, 4);
             dst += 4;
         }
+        len -= 4;
         ADLER_DO4(*adler, *sum2, buf, 0);
         buf += 4;
     }
