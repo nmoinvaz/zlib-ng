@@ -300,7 +300,7 @@ Z_FORCEINLINE static uint32_t adler32_copy_impl(uint32_t adler, uint8_t *dst, co
     unsigned int align_adj = (align_offset) ? 32 - align_offset : 0;
 
     if (align_offset && len >= (16 + align_adj)) {
-        adler32_copy_small(&pair[0], dst, src, align_adj, &pair[1], 31, COPY);
+        adler32_copy_align(&pair[0], dst, src, align_adj, &pair[1], 31, COPY);
 
         n -= align_adj;
         done += align_adj;

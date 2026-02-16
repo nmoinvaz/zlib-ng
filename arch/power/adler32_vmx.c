@@ -136,7 +136,7 @@ Z_INTERNAL uint32_t adler32_vmx(uint32_t adler, const uint8_t *buf, size_t len) 
     unsigned int done = 0;
     size_t align_len = (size_t)MIN(ALIGN_DIFF(buf, 16), len);
     if (align_len) {
-        adler32_copy_small(&pair[0], NULL, buf, align_len, &pair[1], 15, 0);
+        adler32_copy_align(&pair[0], NULL, buf, align_len, &pair[1], 15, 0);
         done += align_len;
         /* Rather than rebasing, we can reduce the max sums for the
          * first round only */

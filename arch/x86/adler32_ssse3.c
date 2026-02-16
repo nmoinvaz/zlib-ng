@@ -60,7 +60,7 @@ Z_INTERNAL uint32_t adler32_ssse3(uint32_t adler, const uint8_t *buf, size_t len
             goto unaligned_jmp;
         }
 
-        adler32_copy_small(&adler, NULL, buf, align_offset, &sum2, 15, 0);
+        adler32_copy_align(&adler, NULL, buf, align_offset, &sum2, 15, 0);
 
         /* lop off the max number of sums based on the scalar sums done
          * above */
