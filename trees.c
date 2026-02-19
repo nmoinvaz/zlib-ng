@@ -105,13 +105,12 @@ void Z_INTERNAL zng_tr_init(deflate_state *s) {
  * Initialize a new block.
  */
 static void init_block(deflate_state *s) {
-    /* Initialize the trees using memset for better vectorization.
-     * Zeroing both Freq and Len is safe because build_tree() sets
-     * Len=0 for all elements with Freq==0 anyway.
+    /* Zero all three Huffman trees with a single memset.  The arrays
+     * dyn_ltree, dyn_dtree, and bl_tree are contiguous in deflate_state.
+     * Zeroing internal (non-leaf) nodes is harmless because build_tree()
+     * overwrites them during tree construction.
      */
-    memset(s->dyn_ltree, 0, L_CODES * sizeof(ct_data));
-    memset(s->dyn_dtree, 0, D_CODES * sizeof(ct_data));
-    memset(s->bl_tree, 0, BL_CODES * sizeof(ct_data));
+    memset(s->dyn_ltree, 0, (TREE_SIZE(L_CODES) + TREE_SIZE(D_CODES) + BL_CODES) * sizeof(ct_data));
 
     s->dyn_ltree[END_BLOCK].Freq = 1;
     s->opt_len = s->static_len = 0;

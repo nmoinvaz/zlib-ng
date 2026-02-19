@@ -54,8 +54,11 @@
 #define BL_CODES  19
 /* number of codes used to transfer the bit lengths */
 
-#define HEAP_SIZE (2*L_CODES+1)
-/* maximum heap size */
+#define TREE_SIZE(codes) (2*(codes)+1)
+/* full Huffman tree size: leaves + internal nodes */
+
+#define HEAP_SIZE TREE_SIZE(L_CODES)
+/* maximum heap size (largest tree determines heap bound) */
 
 #define BIT_BUF_SIZE 64
 /* size of bit buffer in bi_buf */
@@ -245,9 +248,9 @@ struct ALIGNED_(64) internal_state {
 
                 /* used by trees.c: */
     /* Didn't use ct_data typedef below to suppress compiler warning */
-    struct ct_data_s dyn_ltree[HEAP_SIZE];   /* literal and length tree */
-    struct ct_data_s dyn_dtree[2*D_CODES+1]; /* distance tree */
-    struct ct_data_s bl_tree[2*BL_CODES+1];  /* Huffman tree for bit lengths */
+    struct ct_data_s dyn_ltree[TREE_SIZE(L_CODES)];  /* literal and length tree */
+    struct ct_data_s dyn_dtree[TREE_SIZE(D_CODES)];  /* distance tree */
+    struct ct_data_s bl_tree[TREE_SIZE(BL_CODES)];   /* Huffman tree for bit lengths */
 
     struct tree_desc_s l_desc;               /* desc. for literal tree */
     struct tree_desc_s d_desc;               /* desc. for distance tree */
