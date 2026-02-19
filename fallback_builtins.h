@@ -41,6 +41,36 @@ Z_FORCEINLINE static uint32_t zng_ctz32(uint32_t value) {
 #endif
 }
 
+/* Count leading zeros (CLZ) functions with portable fallback.
+ *
+ * Predicate: Input must be non-zero. The result is undefined for zero input because
+ * __builtin_clz, BSR, and LZCNT all have undefined/different behavior for zero. LZCNT
+ * returns operand size for zero, BSR leaves destination undefined, and __builtin_clz
+ * is explicitly undefined per GCC/Clang docs. */
+
+Z_FORCEINLINE static uint32_t zng_clz32(uint32_t value) {
+    Assert(value != 0, "Invalid input value: 0");
+#if __has_builtin(__builtin_clz)
+    return (uint32_t)__builtin_clz(value);
+#elif defined(_MSC_VER) && !defined(__clang__)
+    unsigned long leading_zero;
+    _BitScanReverse(&leading_zero, value);
+    return (uint32_t)(31 - leading_zero);
+#else
+    /* De Bruijn CLZ for 32-bit values: smear MSB down then use lookup */
+    value |= value >> 1;
+    value |= value >> 2;
+    value |= value >> 4;
+    value |= value >> 8;
+    value |= value >> 16;
+    static const uint8_t debruijn_clz32[32] = {
+        31, 22, 30, 21, 18, 10, 29, 2, 20, 17, 15, 13, 9, 6, 28, 1,
+        23, 19, 11, 3, 16, 14, 7, 24, 12, 4, 8, 25, 5, 26, 27, 0
+    };
+    return debruijn_clz32[(value * 0x07C4ACDDU) >> 27];
+#endif
+}
+
 Z_FORCEINLINE static uint32_t zng_ctz64(uint64_t value) {
     Assert(value != 0, "Invalid input value: 0");
 #if __has_builtin(__builtin_ctzll)
