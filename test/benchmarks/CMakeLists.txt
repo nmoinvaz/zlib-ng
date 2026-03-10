@@ -38,6 +38,7 @@ endif()
 set(BENCH_PUBLIC_SRCS
     benchmark_compress.cc
     benchmark_inflate.cc
+    benchmark_inflate_small.cc
     benchmark_uncompress.cc
     benchmark_main.cc
     )
