@@ -16,19 +16,9 @@
  * no better match at the next window position.
  */
 Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
-    match_func longest_match;
-    insert_string_cb insert_string_func;
     unsigned char *window = s->window;
     int bflush;              /* set if current block must be flushed */
     int level = s->level;
-
-    if (level >= 9) {
-        longest_match = FUNCTABLE_FPTR(longest_match_slow);
-        insert_string_func = insert_string_roll;
-    } else {
-        longest_match = FUNCTABLE_FPTR(longest_match);
-        insert_string_func = insert_string;
-    }
 
     /* Process the input block. */
     for (;;) {
@@ -68,7 +58,10 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
              * of window index 0 (in particular we have to avoid a match
              * of the string with itself at the start of the input file).
              */
-            match_len = longest_match(s, hash_head);
+            if (level >= 9)
+                match_len = FUNCTABLE_CALL(longest_match_slow)(s, hash_head);
+            else
+                match_len = FUNCTABLE_CALL(longest_match)(s, hash_head);
             /* longest_match() sets match_start */
 
             if (match_len <= 5 && (s->strategy == Z_FILTERED)) {
@@ -103,7 +96,10 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
                 unsigned int insert_cnt = mov_fwd;
                 if (UNLIKELY(insert_cnt > max_insert - s->strstart))
                     insert_cnt = max_insert - s->strstart;
-                insert_string_func(s, s->strstart + 1, insert_cnt);
+                if (level >= 9)
+                    insert_string_roll_static(s, s->strstart + 1, insert_cnt);
+                else
+                    insert_string_static(s, s->strstart + 1, insert_cnt);
             }
             s->prev_length = 0;
             s->match_available = 0;
