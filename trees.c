@@ -105,15 +105,10 @@ void Z_INTERNAL zng_tr_init(deflate_state *s) {
  * Initialize a new block.
  */
 static void init_block(deflate_state *s) {
-    int n; /* iterates over tree elements */
-
     /* Initialize the trees. */
-    for (n = 0; n < L_CODES;  n++)
-        s->dyn_ltree[n].Freq = 0;
-    for (n = 0; n < D_CODES;  n++)
-        s->dyn_dtree[n].Freq = 0;
-    for (n = 0; n < BL_CODES; n++)
-        s->bl_tree[n].Freq = 0;
+    memset(s->dyn_ltree, 0, L_CODES * sizeof(s->dyn_ltree[0]));
+    memset(s->dyn_dtree, 0, D_CODES * sizeof(s->dyn_dtree[0]));
+    memset(s->bl_tree, 0, BL_CODES * sizeof(s->bl_tree[0]));
 
     s->dyn_ltree[END_BLOCK].Freq = 1;
     s->opt_len = s->static_len = 0;
