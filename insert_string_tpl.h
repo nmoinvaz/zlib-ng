@@ -52,6 +52,7 @@ Z_FORCEINLINE static uint32_t QUICK_INSERT_VALUE(deflate_state *const s, uint32_
         s->prev[str & W_MASK(s)] = (Pos)head;
         s->head[hm] = (Pos)str;
     }
+    HASH_CALC_VAR_FINI;
     return head;
 }
 
@@ -75,6 +76,7 @@ Z_FORCEINLINE static uint32_t QUICK_INSERT_STRING(deflate_state *const s, uint32
         s->prev[str & W_MASK(s)] = (Pos)head;
         s->head[hm] = (Pos)str;
     }
+    HASH_CALC_VAR_FINI;
     return head;
 }
 
@@ -95,10 +97,10 @@ Z_FORCEINLINE static void INSERT_STRING(deflate_state *const s, uint32_t str, ui
     Pos *prevp = s->prev;
     const unsigned int w_mask = W_MASK(s);
 
+    HASH_CALC_VAR_INIT;
     for (uint32_t idx = str; strstart < strend; idx++, strstart++) {
         uint32_t val, hm, head;
 
-        HASH_CALC_VAR_INIT;
         HASH_CALC_READ;
         HASH_CALC(HASH_CALC_VAR, val);
         HASH_CALC_VAR &= HASH_CALC_MASK;
@@ -110,6 +112,7 @@ Z_FORCEINLINE static void INSERT_STRING(deflate_state *const s, uint32_t str, ui
             headp[hm] = (Pos)idx;
         }
     }
+    HASH_CALC_VAR_FINI;
 }
 
 // Cleanup
@@ -120,6 +123,7 @@ Z_FORCEINLINE static void INSERT_STRING(deflate_state *const s, uint32_t str, ui
 #undef HASH_CALC_OFFSET
 #undef HASH_CALC_VAR
 #undef HASH_CALC_VAR_INIT
+#undef HASH_CALC_VAR_FINI
 #undef UPDATE_HASH
 #undef INSERT_STRING
 #undef QUICK_INSERT_STRING
