@@ -80,21 +80,24 @@ extern Z_INTERNAL const uint32_t dbase_extra[D_CODES];
  * Flush the bit buffer and align the output on a byte boundary
  */
 static inline void bi_windup(deflate_state *s) {
-    if (s->bi_valid > 56) {
-        put_uint64(s, s->bi_buf);
+    uint64_t bi_buf = s->bi_buf;
+    int32_t bi_valid = s->bi_valid;
+
+    if (bi_valid > 56) {
+        put_uint64(s, bi_buf);
     } else {
-        if (s->bi_valid > 24) {
-            put_uint32(s, (uint32_t)s->bi_buf);
-            s->bi_buf >>= 32;
-            s->bi_valid -= 32;
+        if (bi_valid > 24) {
+            put_uint32(s, (uint32_t)bi_buf);
+            bi_buf >>= 32;
+            bi_valid -= 32;
         }
-        if (s->bi_valid > 8) {
-            put_short(s, (uint16_t)s->bi_buf);
-            s->bi_buf >>= 16;
-            s->bi_valid -= 16;
+        if (bi_valid > 8) {
+            put_short(s, (uint16_t)bi_buf);
+            bi_buf >>= 16;
+            bi_valid -= 16;
         }
-        if (s->bi_valid > 0) {
-            put_byte(s, s->bi_buf);
+        if (bi_valid > 0) {
+            put_byte(s, (uint8_t)bi_buf);
         }
     }
     s->bi_buf = 0;

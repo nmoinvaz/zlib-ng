@@ -809,24 +809,30 @@ static int detect_data_type(deflate_state *s) {
  * Flush the bit buffer, keeping at most 7 bits in it.
  */
 void Z_INTERNAL zng_tr_flush_bits(deflate_state *s) {
-    if (s->bi_valid >= 48) {
-        put_uint32(s, (uint32_t)s->bi_buf);
-        put_short(s, (uint16_t)(s->bi_buf >> 32));
-        s->bi_buf >>= 48;
-        s->bi_valid -= 48;
-    } else if (s->bi_valid >= 32) {
-        put_uint32(s, (uint32_t)s->bi_buf);
-        s->bi_buf >>= 32;
-        s->bi_valid -= 32;
+    uint64_t bi_buf = s->bi_buf;
+    int32_t bi_valid = s->bi_valid;
+
+    if (bi_valid >= 48) {
+        put_uint32(s, (uint32_t)bi_buf);
+        put_short(s, (uint16_t)(bi_buf >> 32));
+        bi_buf >>= 48;
+        bi_valid -= 48;
+    } else if (bi_valid >= 32) {
+        put_uint32(s, (uint32_t)bi_buf);
+        bi_buf >>= 32;
+        bi_valid -= 32;
     }
-    if (s->bi_valid >= 16) {
-        put_short(s, (uint16_t)s->bi_buf);
-        s->bi_buf >>= 16;
-        s->bi_valid -= 16;
+    if (bi_valid >= 16) {
+        put_short(s, (uint16_t)bi_buf);
+        bi_buf >>= 16;
+        bi_valid -= 16;
     }
-    if (s->bi_valid >= 8) {
-        put_byte(s, s->bi_buf);
-        s->bi_buf >>= 8;
-        s->bi_valid -= 8;
+    if (bi_valid >= 8) {
+        put_byte(s, (uint8_t)bi_buf);
+        bi_buf >>= 8;
+        bi_valid -= 8;
     }
+
+    s->bi_buf = bi_buf;
+    s->bi_valid = bi_valid;
 }
