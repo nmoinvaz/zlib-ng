@@ -1,0 +1,41 @@
+name: Benchmark
+on: [push, workflow_dispatch]
+
+concurrency:
+  group: benchmark
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    name: S390X CMake Benchmark
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install cross-compilation tools
+        run: |
+          sudo apt-get -qq update
+          sudo apt-get -qq install -y qemu-user crossbuild-essential-s390x
+
+      - name: Build
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-s390x.cmake \
+            -DCMAKE_EXE_LINKER_FLAGS=-static \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DBUILD_TESTING=ON \
+            -DWITH_BENCHMARKS=ON
+          cmake --build build --config Release -j$(nproc)
+
+      - name: Benchmark
+        run: |
+          build/test/benchmarks/benchmark_zlib \
+            --benchmark_filter=slide_hash* \
+            --benchmark_repetitions=5 \
+            --benchmark_report_aggregates_only=true
