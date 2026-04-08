@@ -311,7 +311,7 @@ int Z_INTERNAL zng_inflate_table(codetype type, uint16_t *lens, unsigned codes,
     mask = used - 1;            /* mask for comparing low */
 
     /* check available table space */
-    if ((type == LENS && used > ENOUGH_LENS) ||
+    if ((type == LENS && used > (unsigned)(root > 10 ? ENOUGH_LENS_EXT : ENOUGH_LENS)) ||
         (type == DISTS && used > ENOUGH_DISTS))
         return 1;
 
@@ -375,7 +375,8 @@ int Z_INTERNAL zng_inflate_table(codetype type, uint16_t *lens, unsigned codes,
 
             /* check for enough space */
             used += 1U << curr;
-            if ((type == LENS && used > ENOUGH_LENS) || (type == DISTS && used > ENOUGH_DISTS))
+            if ((type == LENS && used > (unsigned)(root > 10 ? ENOUGH_LENS_EXT : ENOUGH_LENS)) ||
+                (type == DISTS && used > ENOUGH_DISTS))
                 return 1;
 
             /* point entry in root table to sub-table */

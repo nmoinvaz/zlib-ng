@@ -59,6 +59,7 @@ int32_t ZNG_CONDEXPORT PREFIX(inflateBackInit)(PREFIX3(stream) *strm, int32_t wi
     state->window = window;
     state->wnext = 0;
     state->whave = 0;
+    state->codes_ext = NULL;
 #ifdef INFLATE_STRICT
     state->dmax = 32768U;
 #endif
@@ -270,6 +271,11 @@ int32_t Z_EXPORT PREFIX(inflateBack)(PREFIX3(stream) *strm, in_func in, void *in
             }
             while (state->have < 19)
                 state->lens[order[state->have++]] = 0;
+
+            /* Check if the code-length alphabet can encode lengths > 10 */
+            state->long_lens = state->lens[11] | state->lens[12] | state->lens[13] |
+                               state->lens[14] | state->lens[15];
+
             state->next = state->codes;
             state->lencode = (const code *)(state->next);
             state->lenbits = 7;
@@ -337,11 +343,25 @@ int32_t Z_EXPORT PREFIX(inflateBack)(PREFIX3(stream) *strm, in_func in, void *in
             }
 
             /* build code tables -- note: do not change the lenbits or distbits
-               values here (11 and 9) without reading the comments in inftrees.h
+               values here (10/11 and 9) without reading the comments in inftrees.h
                concerning the ENOUGH constants, which depend on those values */
-            state->next = state->codes;
+
+            /* Use lenbits=11 when long codes are present for fewer secondary lookups */
+            state->lenbits = state->long_lens ? 11 : 10;
+
+            /* Allocate extended table for lenbits=11 if needed */
+            if (state->lenbits > 10 && state->codes_ext == NULL) {
+                state->codes_ext = (code *)strm->zalloc(strm->opaque,
+                    ENOUGH_LENS_EXT + ENOUGH_DISTS, sizeof(code));
+            }
+            if (state->lenbits > 10 && state->codes_ext != NULL) {
+                state->next = state->codes_ext;
+            } else {
+                state->lenbits = 10;
+                state->next = state->codes;
+            }
+
             state->lencode = (const code *)(state->next);
-            state->lenbits = 11;
             ret = zng_inflate_table(LENS, state->lens, state->nlen, &(state->next), &(state->lenbits), state->work);
             if (ret) {
                 SET_BAD("invalid literal/lengths set");

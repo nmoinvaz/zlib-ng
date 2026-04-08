@@ -134,6 +134,7 @@ struct ALIGNED_(64) inflate_state {
     unsigned ncode;             /* number of code length code lengths */
     unsigned nlen;              /* number of length code lengths */
     unsigned ndist;             /* number of distance code lengths */
+    unsigned long_lens;         /* code-length alphabet has lengths > 10 */
     uint32_t have;              /* number of code lengths in lens[] */
     code *next;                 /* next available space in codes[] */
 
@@ -145,6 +146,7 @@ struct ALIGNED_(64) inflate_state {
     uint16_t lens[320];         /* temporary storage for code lengths */
     uint16_t work[288];         /* work area for code table building */
     code codes[ENOUGH];         /* space for code tables */
+    code *codes_ext;            /* extended table for adaptive lenbits=11 */
 
     inflate_allocs *alloc_bufs; /* struct for handling memory allocations */
 
