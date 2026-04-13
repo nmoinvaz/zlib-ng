@@ -225,6 +225,9 @@ public:
                 break;
             }
         }
+
+        state.counters["compressed"] = benchmark::Counter(double(strm.total_out));
+        state.counters["ratio"] = benchmark::Counter(double(cf->size) / double(strm.total_out));
     }
 
     void TearDown(const benchmark::State &) override {
@@ -312,6 +315,9 @@ public:
                 break;
             }
         }
+
+        state.counters["compressed"] = benchmark::Counter(double(strm.total_out));
+        state.counters["ratio"] = benchmark::Counter(double(cf->size) / double(strm.total_out));
     }
 
     void TearDown(const benchmark::State &) override {
@@ -330,7 +336,7 @@ static int register_corpora_benchmarks(void) {
     if (!discover_corpora())
         return 0;
 
-    int levels[] = {1, 6, 9};
+    int levels[] = {1, 3, 6, 8, 9};
 
     size_t prefix_len = strlen(CORPORA_DIR) + 1;
 
