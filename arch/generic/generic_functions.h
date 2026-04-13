@@ -38,7 +38,7 @@ uint32_t crc32_copy_braid(uint32_t crc, uint8_t *dst, const uint8_t *src, size_t
 void     inflate_fast_c(PREFIX3(stream) *strm, uint32_t start);
 
 uint32_t longest_match_c(deflate_state *const s, uint32_t cur_match);
-uint32_t longest_match_slow_c(deflate_state *const s, uint32_t cur_match);
+uint32_t longest_match_roll_c(deflate_state *const s, uint32_t cur_match);
 
 void     slide_hash_c(deflate_state *s);
 
@@ -57,7 +57,7 @@ void     slide_hash_c(deflate_state *s);
 #  define native_inflate_fast inflate_fast_c
 #  define native_slide_hash slide_hash_c
 #  define native_longest_match longest_match_c
-#  define native_longest_match_slow longest_match_slow_c
+#  define native_longest_match_roll longest_match_roll_c
 #  define native_compare256 compare256_c
 #endif
 
