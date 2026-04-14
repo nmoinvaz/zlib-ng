@@ -1,0 +1,275 @@
+name: Bloaty
+on:
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to compare (results posted as PR comment)'
+        required: false
+        type: number
+      head_ref:
+        description: 'Commit SHA or branch to measure (defaults to PR head)'
+        required: false
+        default: ''
+        type: string
+      base_ref:
+        description: 'Base branch to compare against (defaults to PR base or develop)'
+        required: false
+        default: ''
+        type: string
+      arch:
+        description: 'Target architecture to cross-compile for'
+        required: false
+        default: 'x86_64'
+        type: choice
+        options:
+          - x86_64
+          - aarch64
+          - powerpc64le
+          - riscv64
+          - s390x
+
+concurrency:
+  group: bloaty-${{ github.event.issue.number || inputs.pr_number || github.run_id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  bloaty:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.issue.pull_request &&
+       contains(github.event.comment.body, '/bloaty'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Acknowledge bloaty request
+        if: github.event_name == 'issue_comment'
+        run: |
+          gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
+            -f content='rocket'
+
+      - name: Resolve refs
+        id: refs
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          INPUT_PR_NUMBER: ${{ inputs.pr_number }}
+          INPUT_HEAD_REF: ${{ inputs.head_ref }}
+          INPUT_BASE_REF: ${{ inputs.base_ref }}
+          INPUT_ARCH: ${{ inputs.arch }}
+        run: |
+          ARCH=""
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            PR_NUMBER="$INPUT_PR_NUMBER"
+            INPUT_HEAD="$INPUT_HEAD_REF"
+            INPUT_BASE="$INPUT_BASE_REF"
+            ARCH="$INPUT_ARCH"
+          else
+            PR_NUMBER="${{ github.event.issue.number }}"
+            # Parse "/bloaty [arch] [commit]" — both tokens optional, arch first if present.
+            TOKENS=$(echo "$COMMENT_BODY" | grep -oP '/bloaty\K[^\n]*' | head -1 | xargs || true)
+            FIRST=$(echo "$TOKENS" | awk '{print $1}')
+            SECOND=$(echo "$TOKENS" | awk '{print $2}')
+            case "$FIRST" in
+              x86_64|amd64|aarch64|arm64|powerpc64le|ppc64le|riscv64|s390x)
+                ARCH="$FIRST"
+                INPUT_HEAD="$SECOND"
+                ;;
+              *)
+                INPUT_HEAD="$FIRST"
+                ;;
+            esac
+            INPUT_BASE=""
+          fi
+
+          ARCH="${ARCH:-x86_64}"
+
+          if [ -n "$PR_NUMBER" ]; then
+            pr_json=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json baseRefName,headRefName,headRefOid)
+            PR_BASE=$(echo "$pr_json" | jq -r .baseRefName)
+            PR_HEAD_REF=$(echo "$pr_json" | jq -r .headRefName)
+            PR_HEAD_SHA=$(echo "$pr_json" | jq -r .headRefOid)
+
+            HEAD_REF="${INPUT_HEAD:-$PR_HEAD_SHA}"
+            HEAD_LABEL="${INPUT_HEAD:-$PR_HEAD_REF}"
+            BASE_REF="${INPUT_BASE:-$PR_BASE}"
+          else
+            HEAD_REF="$INPUT_HEAD"
+            HEAD_LABEL="$INPUT_HEAD"
+            BASE_REF="${INPUT_BASE:-develop}"
+          fi
+
+          # Map architecture to toolchain file (relative to source dir) and apt packages.
+          case "$ARCH" in
+            x86_64|amd64)
+              ARCH=x86_64
+              TOOLCHAIN=""
+              PACKAGES=""
+              LIB_NAME="libz-ng.so"
+              ;;
+            aarch64|arm64)
+              ARCH=aarch64
+              TOOLCHAIN="cmake/toolchain-aarch64.cmake"
+              PACKAGES="gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross"
+              LIB_NAME="libz-ng.so"
+              ;;
+            powerpc64le|ppc64le)
+              ARCH=powerpc64le
+              TOOLCHAIN="cmake/toolchain-powerpc64le.cmake"
+              PACKAGES="gcc-powerpc64le-linux-gnu g++-powerpc64le-linux-gnu libc6-dev-ppc64el-cross"
+              LIB_NAME="libz-ng.so"
+              ;;
+            riscv64)
+              ARCH=riscv64
+              TOOLCHAIN="cmake/toolchain-riscv.cmake"
+              PACKAGES="gcc-riscv64-linux-gnu g++-riscv64-linux-gnu libc6-dev-riscv64-cross"
+              LIB_NAME="libz-ng.so"
+              ;;
+            s390x)
+              ARCH=s390x
+              TOOLCHAIN="cmake/toolchain-s390x.cmake"
+              PACKAGES="gcc-s390x-linux-gnu g++-s390x-linux-gnu libc6-dev-s390x-cross"
+              LIB_NAME="libz-ng.so"
+              ;;
+            *)
+              echo "::error::Unknown architecture: $ARCH"
+              exit 1
+              ;;
+          esac
+
+          {
+            echo "pr_number=$PR_NUMBER"
+            echo "head_ref=$HEAD_REF"
+            echo "head_label=$HEAD_LABEL"
+            echo "base_ref=$BASE_REF"
+            echo "arch=$ARCH"
+            echo "toolchain=$TOOLCHAIN"
+            echo "packages=$PACKAGES"
+            echo "lib_name=$LIB_NAME"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Checkout head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.refs.outputs.head_ref }}
+          path: head-source
+
+      - name: Checkout base branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.refs.outputs.base_ref }}
+          path: base-source
+
+      - name: Install bloaty and cross-compile toolchain
+        env:
+          PACKAGES: ${{ steps.refs.outputs.packages }}
+        run: |
+          sudo apt-get -qq update
+          # shellcheck disable=SC2086
+          sudo apt-get -qq install -y bloaty $PACKAGES
+          bloaty --version
+
+      - name: Build base branch
+        env:
+          TOOLCHAIN: ${{ steps.refs.outputs.toolchain }}
+        run: |
+          ARGS=(-S base-source -B base-build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=ON)
+          if [ -n "$TOOLCHAIN" ]; then
+            ARGS+=(-DCMAKE_TOOLCHAIN_FILE="$PWD/base-source/$TOOLCHAIN")
+          fi
+          cmake "${ARGS[@]}"
+          cmake --build base-build --config RelWithDebInfo -j"$(nproc)"
+
+      - name: Build head
+        env:
+          TOOLCHAIN: ${{ steps.refs.outputs.toolchain }}
+        run: |
+          ARGS=(-S head-source -B head-build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=ON)
+          if [ -n "$TOOLCHAIN" ]; then
+            ARGS+=(-DCMAKE_TOOLCHAIN_FILE="$PWD/head-source/$TOOLCHAIN")
+          fi
+          cmake "${ARGS[@]}"
+          cmake --build head-build --config RelWithDebInfo -j"$(nproc)"
+
+      - name: Run bloaty
+        id: bloaty
+        env:
+          LIB_NAME: ${{ steps.refs.outputs.lib_name }}
+        run: |
+          BASE_LIB=$(find base-build -maxdepth 2 -name "${LIB_NAME}*" -type f | head -1)
+          HEAD_LIB=$(find head-build -maxdepth 2 -name "${LIB_NAME}*" -type f | head -1)
+
+          if [ -z "$BASE_LIB" ] || [ -z "$HEAD_LIB" ]; then
+            echo "::error::Could not find ${LIB_NAME} in base or head build"
+            ls -la base-build head-build
+            exit 1
+          fi
+
+          echo "Base library: $BASE_LIB"
+          echo "Head library: $HEAD_LIB"
+
+          # Section-level summary (small, high-level overview)
+          bloaty -d sections -n 0 \
+            "$HEAD_LIB" -- "$BASE_LIB" \
+            > sections-diff.txt
+
+          # Top 30 compile units by size delta
+          bloaty -d compileunits -n 30 \
+            "$HEAD_LIB" -- "$BASE_LIB" \
+            > compileunits-diff.txt
+
+          # Top 30 symbols by size delta
+          bloaty -d symbols -n 30 \
+            "$HEAD_LIB" -- "$BASE_LIB" \
+            > symbols-diff.txt
+
+      - name: Post bloaty results
+        env:
+          PR_NUMBER: ${{ steps.refs.outputs.pr_number }}
+          BASE_REF: ${{ steps.refs.outputs.base_ref }}
+          HEAD_LABEL: ${{ steps.refs.outputs.head_label }}
+          ARCH: ${{ steps.refs.outputs.arch }}
+          LIB_NAME: ${{ steps.refs.outputs.lib_name }}
+        run: |
+          body=$(cat <<EOF
+          ## Bloaty Size Comparison
+
+          Comparing \`${HEAD_LABEL}\` against base \`${BASE_REF}\` (\`${LIB_NAME}\`, ${ARCH}, RelWithDebInfo).
+
+          <details open>
+          <summary>Sections</summary>
+
+          \`\`\`
+          $(cat sections-diff.txt)
+          \`\`\`
+          </details>
+
+          <details>
+          <summary>Top 30 compile units</summary>
+
+          \`\`\`
+          $(cat compileunits-diff.txt)
+          \`\`\`
+          </details>
+
+          <details>
+          <summary>Top 30 symbols</summary>
+
+          \`\`\`
+          $(cat symbols-diff.txt)
+          \`\`\`
+          </details>
+          EOF
+          )
+
+          if [ -n "$PR_NUMBER" ]; then
+            gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "$body"
+          else
+            echo "$body" >> "$GITHUB_STEP_SUMMARY"
+          fi
