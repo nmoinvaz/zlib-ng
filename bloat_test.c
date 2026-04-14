@@ -36,3 +36,8 @@ uint32_t Z_INTERNAL zng_bloat_xor(const uint32_t *data, size_t n) {
         acc ^= data[i];
     return acc;
 }
+
+/* Exported stub so abidiff has a public-ABI delta to report. */
+uint32_t zng_bloat_ping(uint32_t seed) {
+    return seed ^ zng_bloat_table[seed & 15];
+}

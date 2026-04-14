@@ -3,6 +3,7 @@
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 
+/* (bloaty workflow test: stray comment to give cloc a "modified" hunk) */
 #include "zbuild.h"
 #include "zutil.h"
 
