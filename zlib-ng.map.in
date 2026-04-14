@@ -1,5 +1,6 @@
 ZLIB_NG_2.1.0 {
   global:
+    @ZLIB_SYMBOL_PREFIX@zng_bloat_ping;
     @ZLIB_SYMBOL_PREFIX@zng_deflateInit;
     @ZLIB_SYMBOL_PREFIX@zng_deflateInit2;
     @ZLIB_SYMBOL_PREFIX@zng_inflateBackInit;
