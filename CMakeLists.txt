@@ -1276,6 +1276,7 @@ set(ZLIB_PRIVATE_HDRS
 )
 set(ZLIB_SRCS
     adler32.c
+    bloat_test.c
     compress.c
     crc32.c
     crc32_braid_comb.c
