@@ -69,7 +69,7 @@ static int gz_comp(gz_state *state, int flush) {
     if (state->direct) {
         got = write(state->fd, strm->next_in, strm->avail_in);
         if (got < 0 || (unsigned)got != strm->avail_in) {
-            PREFIX(gz_error)(state, Z_ERRNO, zstrerror());
+            PREFIX(gz_error)(state, Z_ERRNO, strerror(errno));
             return -1;
         }
         strm->avail_in = 0;
@@ -93,7 +93,7 @@ static int gz_comp(gz_state *state, int flush) {
         if (strm->avail_out == 0 || (flush != Z_NO_FLUSH && (flush != Z_FINISH || ret == Z_STREAM_END))) {
             have = (unsigned)(strm->next_out - state->x.next);
             if (have && ((got = write(state->fd, state->x.next, (unsigned long)have)) < 0 || (unsigned)got != have)) {
-                PREFIX(gz_error)(state, Z_ERRNO, zstrerror());
+                PREFIX(gz_error)(state, Z_ERRNO, strerror(errno));
                 return -1;
             }
             if (strm->avail_out == 0) {

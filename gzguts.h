@@ -65,13 +65,7 @@
 #  define snprintf _snprintf
 #endif
 
-/* get errno and strerror definition */
-#ifndef NO_STRERROR
-#  include <errno.h>
-#  define zstrerror() strerror(errno)
-#else
-#  define zstrerror() "stdio error (consult errno)"
-#endif
+#include <errno.h>
 
 /* default memLevel */
 #if MAX_MEM_LEVEL >= 8

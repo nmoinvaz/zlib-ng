@@ -517,13 +517,6 @@ if(NOT HAVE_FSEEKO)
 endif()
 set(CMAKE_REQUIRED_FLAGS)
 
-set(CMAKE_REQUIRED_FLAGS "${ADDITIONAL_CHECK_FLAGS}")
-check_function_exists(strerror HAVE_STRERROR)
-if(NOT HAVE_STRERROR)
-    add_definitions(-DNO_STRERROR)
-endif()
-set(CMAKE_REQUIRED_FLAGS)
-
 #
 # Check for x86 __cpuid / __cpuid_count support: GNU extensions
 # gcc/clang and MSVC have __cpuid, so check __cpuid_count instead

@@ -54,7 +54,7 @@ static int gz_load(gz_state *state, unsigned char *buf, unsigned len, unsigned *
         *have += (unsigned)ret;
     } while (*have < len);
     if (ret < 0) {
-        PREFIX(gz_error)(state, Z_ERRNO, zstrerror());
+        PREFIX(gz_error)(state, Z_ERRNO, strerror(errno));
         return -1;
     }
     if (ret == 0)
