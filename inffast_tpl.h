@@ -10,6 +10,101 @@
 #include "inflate_p.h"
 #include "functable.h"
 
+/* Result code from the outlined window-copy helper. */
+typedef enum {
+    INFFAST_WIN_OK = 0,           /* normal completion, fall through */
+    INFFAST_WIN_BAD_DISTANCE = 1, /* SET_BAD then break the outer loop */
+    INFFAST_WIN_DONEXT = 2,       /* skip remaining iter body, hit back-edge */
+} inffast_window_result_t;
+
+/* Outline of the cold copy-from-window path. The locals (w_have, w_next, from)
+   are otherwise live across the entire inflate_fast body and impose
+   register-allocation constraints on the hot in-output chunkcopy path. The
+   only call site is gated by UNLIKELY(dist > op) so the call cost is rare. */
+static Z_INTERNAL __attribute__((noinline)) uint8_t *
+inflate_fast_window_copy_outlined(
+    struct inflate_state *state,
+    uint8_t *out, unsigned dist, unsigned len,
+    unsigned op_in,
+    uint8_t *safe, int safe_mode,
+    inffast_window_result_t *result)
+{
+    unsigned w_have = state->whave;
+    unsigned w_next = state->wnext;
+    unsigned char *w_base = state->window;
+    unsigned char *from;
+    unsigned op = op_in;             /* distance back in window */
+
+    if (UNLIKELY(op > w_have)) {
+#ifdef INFLATE_ALLOW_INVALID_DISTANCE_TOOFAR_ARRR
+        if (LIKELY(state->sane)) {
+            *result = INFFAST_WIN_BAD_DISTANCE;
+            return out;
+        }
+        unsigned gap = op - w_have;
+        unsigned zeros = MIN(len, gap);
+        memset(out, 0, zeros);
+        out += zeros;
+        len -= zeros;
+        if (UNLIKELY(len == 0)) {
+            *result = INFFAST_WIN_DONEXT;
+            return out;
+        }
+        op = w_have;
+        if (UNLIKELY(op == 0)) {
+            out = chunkcopy_safe(out, out - dist, len, safe);
+            *result = INFFAST_WIN_DONEXT;
+            return out;
+        }
+#else
+        *result = INFFAST_WIN_BAD_DISTANCE;
+        return out;
+#endif
+    }
+    from = w_base;
+    if (LIKELY(w_next == 0)) {                    /* very common case */
+        from += state->wsize - op;
+    } else if (LIKELY(w_next >= op)) {            /* contiguous in window */
+        from += w_next - op;
+    } else {                                      /* wrap around window */
+        op -= w_next;
+        from += state->wsize - op;
+        if (UNLIKELY(op < len)) {                 /* some from end of window */
+            len -= op;
+            out = CHUNKCOPY_SAFE(out, from, op, safe);
+            from = w_base;                        /* more from start of window */
+            op = w_next;
+        }
+    }
+    if (UNLIKELY(op < len)) {                     /* still need some from output */
+        len -= op;
+        if (LIKELY(!safe_mode)) {
+            out = CHUNKCOPY_SAFE(out, from, op, safe);
+            out = CHUNKUNROLL(out, &dist, &len);
+            out = CHUNKCOPY_SAFE(out, out - dist, len, safe);
+        } else {
+#ifdef HAVE_MASKED_READWRITE
+            out = CHUNKCOPY_SAFE(out, from, op, safe);
+            out = CHUNKCOPY_SAFE(out, out - dist, len, safe);
+#else
+            out = chunkcopy_safe(out, from, op, safe);
+            out = chunkcopy_safe(out, out - dist, len, safe);
+#endif
+        }
+    } else {
+#ifdef HAVE_MASKED_READWRITE
+        out = CHUNKCOPY_SAFE(out, from, len, safe);
+#else
+        if (LIKELY(!safe_mode))
+            out = CHUNKCOPY_SAFE(out, from, len, safe);
+        else
+            out = chunkcopy_safe(out, from, len, safe);
+#endif
+    }
+    *result = INFFAST_WIN_OK;
+    return out;
+}
+
 /*
    Decode literal, length, and distance codes and write out the resulting
    literal and match bytes until either not enough input or output is
@@ -58,10 +153,6 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start, int safe_mod
     unsigned char *beg;         /* inflate()'s initial strm->next_out */
     unsigned char *end;         /* while out < end, enough space available */
     unsigned char *safe;        /* can use chunkcopy provided out < safe */
-    unsigned char *window;      /* allocated sliding window, if wsize != 0 */
-    unsigned wsize;             /* window size or zero if not using window */
-    unsigned whave;             /* valid bytes in the window */
-    unsigned wnext;             /* window write index */
 
     /* hold is a local copy of strm->hold. By default, hold satisfies the same
        invariants that strm->hold does, namely that (hold >> bits) == 0. This
@@ -110,7 +201,6 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start, int safe_mod
     unsigned op;                /* code bits, operation, extra bits, or */
                                 /*  window position, window bytes to copy */
     unsigned len;               /* match length, unused bytes */
-    unsigned char *from;        /* where to copy match from */
     unsigned dist;              /* match distance */
     uint64_t old;               /* look-behind buffer for extra bits */
 
@@ -122,10 +212,6 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start, int safe_mod
     beg = out - (start - strm->avail_out);
     safe = out + strm->avail_out;
     end = safe - (safe_mode ? INFLATE_FAST_MIN_SAFE : INFLATE_FAST_MIN_LEFT) + 1;
-    wsize = state->wsize;
-    whave = state->whave;
-    wnext = state->wnext;
-    window = state->window;
     hold = state->hold;
     bits = (bits_t)state->bits;
     lcode = state->lencode;
@@ -197,73 +283,15 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start, int safe_mod
 
                 op = (unsigned)(out - beg);     /* max distance in output */
                 if (UNLIKELY(dist > op)) {      /* see if copy from window */
-                    op = dist - op;             /* distance back in window */
-                    if (UNLIKELY(op > whave)) {
-#ifdef INFLATE_ALLOW_INVALID_DISTANCE_TOOFAR_ARRR
-                        if (LIKELY(state->sane)) {
-                            SET_BAD("invalid distance too far back");
-                            break;
-                        }
-                        unsigned gap = op - whave;
-                        unsigned zeros = MIN(len, gap);
-                        memset(out, 0, zeros);  /* fill missing bytes with zeros */
-                        out += zeros;
-                        len -= zeros;
-                        if (UNLIKELY(len == 0))
-                            continue;
-                        op = whave;
-                        if (UNLIKELY(op == 0)) {/* copy from already-decoded output */
-                            out = chunkcopy_safe(out, out - dist, len, safe);
-                            continue;
-                        }
-#else
+                    inffast_window_result_t r;
+                    out = inflate_fast_window_copy_outlined(
+                        state, out, dist, len, dist - op, safe, safe_mode, &r);
+                    if (UNLIKELY(r == INFFAST_WIN_BAD_DISTANCE)) {
                         SET_BAD("invalid distance too far back");
                         break;
-#endif
                     }
-                    from = window;
-                    if (LIKELY(wnext == 0)) {           /* very common case */
-                        from += wsize - op;
-                    } else if (LIKELY(wnext >= op)) {   /* contiguous in window */
-                        from += wnext - op;
-                    } else {                            /* wrap around window */
-                        op -= wnext;
-                        from += wsize - op;
-                        if (UNLIKELY(op < len)) {       /* some from end of window */
-                            len -= op;
-                            out = CHUNKCOPY_SAFE(out, from, op, safe);
-                            from = window;              /* more from start of window */
-                            op = wnext;
-                            /* This (rare) case can create a situation where
-                               the first chunkcopy below must be checked.
-                             */
-                        }
-                    }
-                    if (UNLIKELY(op < len)) {           /* still need some from output */
-                        len -= op;
-                        if (LIKELY(!safe_mode)) {
-                            out = CHUNKCOPY_SAFE(out, from, op, safe);
-                            out = CHUNKUNROLL(out, &dist, &len);
-                            out = CHUNKCOPY_SAFE(out, out - dist, len, safe);
-                        } else {
-#ifdef HAVE_MASKED_READWRITE
-                            out = CHUNKCOPY_SAFE(out, from, op, safe);
-                            out = CHUNKCOPY_SAFE(out, out - dist, len, safe);
-#else
-                            out = chunkcopy_safe(out, from, op, safe);
-                            out = chunkcopy_safe(out, out - dist, len, safe);
-#endif
-                        }
-                    } else {
-#ifdef HAVE_MASKED_READWRITE
-                        out = CHUNKCOPY_SAFE(out, from, len, safe);
-#else
-                        if (LIKELY(!safe_mode))
-                            out = CHUNKCOPY_SAFE(out, from, len, safe);
-                        else
-                            out = chunkcopy_safe(out, from, len, safe);
-#endif
-                    }
+                    if (UNLIKELY(r == INFFAST_WIN_DONEXT))
+                        continue;
                 } else if (LIKELY(!safe_mode)) {
                     /* Whole reference is in range of current output.  No range checks are
                        necessary because we start with room for at least 258 bytes of output,
