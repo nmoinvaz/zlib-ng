@@ -220,13 +220,25 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start, int safe_mod
     dmask = (1U << state->distbits) - 1;
 
     /* decode literals and length/distances until end-of-block or not enough
-       input data or output space */
+       input data or output space.
+
+       here.bits doubles as a "preloaded entry pending" flag: zero means the
+       next iteration must REFILL+lookup, non-zero means here already holds a
+       speculatively-decoded entry from the previous iteration. */
+    here.bits = 0;
+#ifdef _MSC_VER
+    here.op = 0;        /* silence C4701 potentially uninitialized */
+    here.val = 0;
+    old = 0;
+#endif
     do {
-        REFILL();
-        here = lcode[hold & lmask];
-        Z_TOUCH(here);
-        old = hold;
-        DROPBITS(here.bits);
+        if (here.bits == 0) {
+            REFILL();
+            here = lcode[hold & lmask];
+            Z_TOUCH(here);
+            old = hold;
+            DROPBITS(here.bits);
+        }
         if (LIKELY(here.op == 0)) {
             TRACE_LITERAL(here.val);
             *out++ = (unsigned char)(here.val);
@@ -245,6 +257,7 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start, int safe_mod
                 if (LIKELY(here.op == 0)) {
                     TRACE_LITERAL(here.val);
                     *out++ = (unsigned char)(here.val);
+                    here.bits = 0;
                     continue;
                 }
             }
@@ -262,6 +275,8 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start, int safe_mod
             old = hold;
             DROPBITS(here.bits);
             op = here.op;
+            here.bits = 0;                      /* clear preloaded sentinel; speculative preload below
+                                                   restores it from the next lcode entry's bit count */
             if (LIKELY(op & 16)) {              /* distance base */
                 dist = here.val + EXTRA_BITS(old, here, op);
 #ifdef INFLATE_STRICT
@@ -280,6 +295,16 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start, int safe_mod
                     state->offset = dist;
                     break;
                 }
+
+                /* Preload the next iteration's literal/length code so its lookup
+                   latency overlaps with the chunk-copy below. REFILL is idempotent
+                   when bits is already saturated, so this is safe regardless of
+                   whether the early conditional refill above fired. */
+                REFILL();
+                here = lcode[hold & lmask];
+                Z_TOUCH(here);
+                old = hold;
+                DROPBITS(here.bits);
 
                 op = (unsigned)(out - beg);     /* max distance in output */
                 if (UNLIKELY(dist > op)) {      /* see if copy from window */
@@ -324,12 +349,20 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start, int safe_mod
         } else if (UNLIKELY(op & 32)) {                     /* end-of-block */
             TRACE_END_OF_BLOCK();
             state->mode = TYPE;
+            here.bits = 0;
             break;
         } else {
             SET_BAD("invalid literal/length code");
+            here.bits = 0;
             break;
         }
     } while (in < last && out < end);
+
+    /* undo preload if we exited the loop with a preloaded symbol pending */
+    if (here.bits) {
+        hold = old;
+        bits += here.bits;
+    }
 
     /* return unused bytes (on entry, bits < 8, so in won't go too far back) */
     len = bits >> 3;
