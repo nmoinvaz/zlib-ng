@@ -825,11 +825,16 @@ int32_t Z_EXPORT PREFIX(deflate)(PREFIX3(stream) *strm, int32_t flush) {
             header |= PRESET_DICT;
         header += 31 - (header % 31);
 
-        put_short_msb(s, (uint16_t)header);
+        {
+            deflate_emit_hot e;
+            DEFLATE_EMIT_HOT_LOAD(s, e);
+            put_short_msb(&e, (uint16_t)header);
 
-        /* Save the adler32 of the preset dictionary: */
-        if (s->strstart != 0)
-            put_uint32_msb(s, strm->adler);
+            /* Save the adler32 of the preset dictionary: */
+            if (s->strstart != 0)
+                put_uint32_msb(&e, strm->adler);
+            DEFLATE_EMIT_HOT_STORE(s, e);
+        }
         strm->adler = ADLER32_INITIAL_VALUE;
         s->status = BUSY_STATE;
 
@@ -842,37 +847,41 @@ int32_t Z_EXPORT PREFIX(deflate)(PREFIX3(stream) *strm, int32_t flush) {
     }
 #ifdef GZIP
     if (s->status == GZIP_STATE) {
+        deflate_emit_hot e;
+        DEFLATE_EMIT_HOT_LOAD(s, e);
         /* gzip header */
         strm->adler = CRC32_INITIAL_VALUE;
-        put_byte(s, 31);
-        put_byte(s, 139);
-        put_byte(s, 8);
+        put_byte(&e, 31);
+        put_byte(&e, 139);
+        put_byte(&e, 8);
         if (s->gzhead == NULL) {
-            put_uint32(s, 0);
-            put_byte(s, 0);
-            put_byte(s, s->level == 9 ? 2 :
+            put_uint32(&e, 0);
+            put_byte(&e, 0);
+            put_byte(&e, s->level == 9 ? 2 :
                      (s->strategy >= Z_HUFFMAN_ONLY || s->level < 2 ? 4 : 0));
-            put_byte(s, OS_CODE);
+            put_byte(&e, OS_CODE);
             s->status = BUSY_STATE;
 
             /* Compression must start with an empty pending buffer */
+            DEFLATE_EMIT_HOT_STORE(s, e);
             PREFIX(flush_pending)(strm);
             if (s->pending != 0) {
                 s->last_flush = -1;
                 return Z_OK;
             }
         } else {
-            put_byte(s, (s->gzhead->text ? 1 : 0) +
+            put_byte(&e, (s->gzhead->text ? 1 : 0) +
                      (s->gzhead->hcrc ? 2 : 0) +
                      (s->gzhead->extra == NULL ? 0 : 4) +
                      (s->gzhead->name == NULL ? 0 : 8) +
                      (s->gzhead->comment == NULL ? 0 : 16)
                      );
-            put_uint32(s, s->gzhead->time);
-            put_byte(s, s->level == 9 ? 2 : (s->strategy >= Z_HUFFMAN_ONLY || s->level < 2 ? 4 : 0));
-            put_byte(s, s->gzhead->os & 0xff);
+            put_uint32(&e, s->gzhead->time);
+            put_byte(&e, s->level == 9 ? 2 : (s->strategy >= Z_HUFFMAN_ONLY || s->level < 2 ? 4 : 0));
+            put_byte(&e, s->gzhead->os & 0xff);
             if (s->gzhead->extra != NULL)
-                put_short(s, (uint16_t)s->gzhead->extra_len);
+                put_short(&e, (uint16_t)s->gzhead->extra_len);
+            DEFLATE_EMIT_HOT_STORE(s, e);
             if (s->gzhead->hcrc)
                 strm->adler = PREFIX(crc32)(strm->adler, s->pending_buf, s->pending);
             s->gzindex = 0;
@@ -909,20 +918,25 @@ int32_t Z_EXPORT PREFIX(deflate)(PREFIX3(stream) *strm, int32_t flush) {
         if (s->gzhead->name != NULL) {
             uint32_t beg = s->pending;   /* start of bytes to update crc */
             unsigned char val;
+            deflate_emit_hot e;
+            DEFLATE_EMIT_HOT_LOAD(s, e);
 
             do {
-                if (s->pending == s->pending_buf_size) {
+                if (e.pending == s->pending_buf_size) {
+                    DEFLATE_EMIT_HOT_STORE(s, e);
                     HCRC_UPDATE(beg);
                     PREFIX(flush_pending)(strm);
                     if (s->pending != 0) {
                         s->last_flush = -1;
                         return Z_OK;
                     }
+                    e.pending = s->pending;
                     beg = 0;
                 }
                 val = s->gzhead->name[s->gzindex++];
-                put_byte(s, val);
+                put_byte(&e, val);
             } while (val != 0);
+            DEFLATE_EMIT_HOT_STORE(s, e);
             HCRC_UPDATE(beg);
             s->gzindex = 0;
         }
@@ -932,20 +946,25 @@ int32_t Z_EXPORT PREFIX(deflate)(PREFIX3(stream) *strm, int32_t flush) {
         if (s->gzhead->comment != NULL) {
             uint32_t beg = s->pending;  /* start of bytes to update crc */
             unsigned char val;
+            deflate_emit_hot e;
+            DEFLATE_EMIT_HOT_LOAD(s, e);
 
             do {
-                if (s->pending == s->pending_buf_size) {
+                if (e.pending == s->pending_buf_size) {
+                    DEFLATE_EMIT_HOT_STORE(s, e);
                     HCRC_UPDATE(beg);
                     PREFIX(flush_pending)(strm);
                     if (s->pending != 0) {
                         s->last_flush = -1;
                         return Z_OK;
                     }
+                    e.pending = s->pending;
                     beg = 0;
                 }
                 val = s->gzhead->comment[s->gzindex++];
-                put_byte(s, val);
+                put_byte(&e, val);
             } while (val != 0);
+            DEFLATE_EMIT_HOT_STORE(s, e);
             HCRC_UPDATE(beg);
         }
         s->status = HCRC_STATE;
@@ -959,7 +978,12 @@ int32_t Z_EXPORT PREFIX(deflate)(PREFIX3(stream) *strm, int32_t flush) {
                     return Z_OK;
                 }
             }
-            put_short(s, (uint16_t)strm->adler);
+            {
+                deflate_emit_hot e;
+                DEFLATE_EMIT_HOT_LOAD(s, e);
+                put_short(&e, (uint16_t)strm->adler);
+                DEFLATE_EMIT_HOT_STORE(s, e);
+            }
             strm->adler = CRC32_INITIAL_VALUE;
         }
         s->status = BUSY_STATE;
@@ -1031,13 +1055,20 @@ int32_t Z_EXPORT PREFIX(deflate)(PREFIX3(stream) *strm, int32_t flush) {
     /* Write the trailer */
 #ifdef GZIP
     if (s->wrap == 2) {
-        put_uint32(s, strm->adler);
-        put_uint32(s, (uint32_t)strm->total_in);
+        deflate_emit_hot e;
+        DEFLATE_EMIT_HOT_LOAD(s, e);
+        put_uint32(&e, strm->adler);
+        put_uint32(&e, (uint32_t)strm->total_in);
+        DEFLATE_EMIT_HOT_STORE(s, e);
     } else
 #endif
     {
-        if (s->wrap == 1)
-            put_uint32_msb(s, strm->adler);
+        if (s->wrap == 1) {
+            deflate_emit_hot e;
+            DEFLATE_EMIT_HOT_LOAD(s, e);
+            put_uint32_msb(&e, strm->adler);
+            DEFLATE_EMIT_HOT_STORE(s, e);
+        }
     }
     flush_pending_inline(strm);
     /* If avail_out is zero, the application will call deflate again

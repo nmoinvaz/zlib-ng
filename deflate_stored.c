@@ -70,8 +70,13 @@ Z_INTERNAL block_state deflate_stored(deflate_state *s, int flush) {
 
         /* Replace the lengths in the dummy stored block with len. */
         s->pending -= 4;
-        put_short(s, (uint16_t)len);
-        put_short(s, (uint16_t)~len);
+        {
+            deflate_emit_hot e;
+            DEFLATE_EMIT_HOT_LOAD(s, e);
+            put_short(&e, (uint16_t)len);
+            put_short(&e, (uint16_t)~len);
+            DEFLATE_EMIT_HOT_STORE(s, e);
+        }
 
         /* Write the stored block header bytes. */
         PREFIX(flush_pending)(s->strm);

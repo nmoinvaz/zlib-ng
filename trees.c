@@ -474,9 +474,8 @@ static void send_tree(deflate_state *s, ct_data *tree, int max_code) {
     if (nextlen == 0)
         max_count = 138, min_count = 3;
 
-    // Temp local variables
-    uint32_t bi_valid = s->bi_valid;
-    uint64_t bi_buf = s->bi_buf;
+    deflate_emit_hot e;
+    DEFLATE_EMIT_HOT_LOAD(s, e);
 
     for (n = 0; n <= max_code; n++) {
         curlen = nextlen;
@@ -485,25 +484,25 @@ static void send_tree(deflate_state *s, ct_data *tree, int max_code) {
             continue;
         } else if (count < min_count) {
             do {
-                send_code(s, curlen, s->bl_tree, bi_buf, bi_valid);
+                send_code(curlen, s->bl_tree, &e);
             } while (--count != 0);
 
         } else if (curlen != 0) {
             if (curlen != prevlen) {
-                send_code(s, curlen, s->bl_tree, bi_buf, bi_valid);
+                send_code(curlen, s->bl_tree, &e);
                 count--;
             }
             Assert(count >= 3 && count <= 6, " 3_6?");
-            send_code(s, REP_3_6, s->bl_tree, bi_buf, bi_valid);
-            send_bits(s, count-3, 2, bi_buf, bi_valid);
+            send_code(REP_3_6, s->bl_tree, &e);
+            send_bits(count-3, 2, &e);
 
         } else if (count <= 10) {
-            send_code(s, REPZ_3_10, s->bl_tree, bi_buf, bi_valid);
-            send_bits(s, count-3, 3, bi_buf, bi_valid);
+            send_code(REPZ_3_10, s->bl_tree, &e);
+            send_bits(count-3, 3, &e);
 
         } else {
-            send_code(s, REPZ_11_138, s->bl_tree, bi_buf, bi_valid);
-            send_bits(s, count-11, 7, bi_buf, bi_valid);
+            send_code(REPZ_11_138, s->bl_tree, &e);
+            send_bits(count-11, 7, &e);
         }
         count = 0;
         prevlen = curlen;
@@ -516,9 +515,7 @@ static void send_tree(deflate_state *s, ct_data *tree, int max_code) {
         }
     }
 
-    // Store back temp variables
-    s->bi_buf = bi_buf;
-    s->bi_valid = bi_valid;
+    DEFLATE_EMIT_HOT_STORE(s, e);
 }
 
 /* ===========================================================================
@@ -564,23 +561,20 @@ static void send_all_trees(deflate_state *s, int lcodes, int dcodes, int blcodes
     Assert(lcodes >= 257 && dcodes >= 1 && blcodes >= 4, "not enough codes");
     Assert(lcodes <= L_CODES && dcodes <= D_CODES && blcodes <= BL_CODES, "too many codes");
 
-    // Temp local variables
-    uint32_t bi_valid = s->bi_valid;
-    uint64_t bi_buf = s->bi_buf;
+    deflate_emit_hot e;
+    DEFLATE_EMIT_HOT_LOAD(s, e);
 
     Tracev((stderr, "\nbl counts: "));
-    send_bits(s, lcodes-257, 5, bi_buf, bi_valid); /* not +255 as stated in appnote.txt */
-    send_bits(s, dcodes-1,   5, bi_buf, bi_valid);
-    send_bits(s, blcodes-4,  4, bi_buf, bi_valid); /* not -3 as stated in appnote.txt */
+    send_bits(lcodes-257, 5, &e); /* not +255 as stated in appnote.txt */
+    send_bits(dcodes-1,   5, &e);
+    send_bits(blcodes-4,  4, &e); /* not -3 as stated in appnote.txt */
     for (rank = 0; rank < blcodes; rank++) {
         Tracev((stderr, "\nbl code %2u ", bl_order[rank]));
-        send_bits(s, s->bl_tree[bl_order[rank]].Len, 3, bi_buf, bi_valid);
+        send_bits(s->bl_tree[bl_order[rank]].Len, 3, &e);
     }
     Tracev((stderr, "\nbl tree: sent %lu", s->bits_sent));
 
-    // Store back temp variables
-    s->bi_buf = bi_buf;
-    s->bi_valid = bi_valid;
+    DEFLATE_EMIT_HOT_STORE(s, e);
 
     send_tree(s, (ct_data *)s->dyn_ltree, lcodes-1); /* literal tree */
     Tracev((stderr, "\nlit tree: sent %lu", s->bits_sent));
@@ -599,8 +593,13 @@ void Z_INTERNAL zng_tr_stored_block(deflate_state *s, unsigned char *buf, uint32
     zng_tr_emit_tree(s, STORED_BLOCK, last); /* send block type */
     zng_tr_emit_align(s);                    /* align on byte boundary */
     cmpr_bits_align(s);
-    put_short(s, (uint16_t)stored_len);
-    put_short(s, (uint16_t)~stored_len);
+    {
+        deflate_emit_hot e;
+        DEFLATE_EMIT_HOT_LOAD(s, e);
+        put_short(&e, (uint16_t)stored_len);
+        put_short(&e, (uint16_t)~stored_len);
+        DEFLATE_EMIT_HOT_STORE(s, e);
+    }
     cmpr_bits_add(s, 32);
     sent_bits_add(s, 32);
     if (stored_len) {
@@ -724,9 +723,9 @@ static void compress_block(deflate_state *s, const ct_data *ltree, const ct_data
     unsigned char *sym_buf = s->sym_buf;
 #endif
 
-    /* Keep bi_buf and bi_valid in registers across the entire loop */
-    uint64_t bi_buf = s->bi_buf;
-    uint32_t bi_valid = s->bi_valid;
+    /* Keep bit-emit state in registers across the entire loop */
+    deflate_emit_hot e;
+    DEFLATE_EMIT_HOT_LOAD(s, e);
 
     if (sym_next != 0) {
         do {
@@ -745,9 +744,9 @@ static void compress_block(deflate_state *s, const ct_data *ltree, const ct_data
             sx += 3;
 #endif
             if (dist == 0) {
-                zng_emit_lit(s, ltree, lc, &bi_buf, &bi_valid);
+                zng_emit_lit(s, ltree, lc, &e);
             } else {
-                zng_emit_dist(s, ltree, dtree, lc, dist, &bi_buf, &bi_valid);
+                zng_emit_dist(s, ltree, dtree, lc, dist, &e);
             } /* literal or match pair ? */
 
             /* Check for no overlay of pending_buf on needed symbols */
@@ -759,11 +758,9 @@ static void compress_block(deflate_state *s, const ct_data *ltree, const ct_data
         } while (sx < sym_next);
     }
 
-    zng_emit_end_block(s, ltree, 0, &bi_buf, &bi_valid);
+    zng_emit_end_block(s, ltree, 0, &e);
 
-    /* Write back to state */
-    s->bi_buf = bi_buf;
-    s->bi_valid = bi_valid;
+    DEFLATE_EMIT_HOT_STORE(s, e);
 }
 
 /* ===========================================================================
@@ -809,24 +806,29 @@ static int detect_data_type(deflate_state *s) {
  * Flush the bit buffer, keeping at most 7 bits in it.
  */
 void Z_INTERNAL zng_tr_flush_bits(deflate_state *s) {
-    if (s->bi_valid >= 48) {
-        put_uint32(s, (uint32_t)s->bi_buf);
-        put_short(s, (uint16_t)(s->bi_buf >> 32));
-        s->bi_buf >>= 48;
-        s->bi_valid -= 48;
-    } else if (s->bi_valid >= 32) {
-        put_uint32(s, (uint32_t)s->bi_buf);
-        s->bi_buf >>= 32;
-        s->bi_valid -= 32;
+    deflate_emit_hot e;
+    DEFLATE_EMIT_HOT_LOAD(s, e);
+
+    if (e.bi_valid >= 48) {
+        put_uint32(&e, (uint32_t)e.bi_buf);
+        put_short(&e, (uint16_t)(e.bi_buf >> 32));
+        e.bi_buf >>= 48;
+        e.bi_valid -= 48;
+    } else if (e.bi_valid >= 32) {
+        put_uint32(&e, (uint32_t)e.bi_buf);
+        e.bi_buf >>= 32;
+        e.bi_valid -= 32;
     }
-    if (s->bi_valid >= 16) {
-        put_short(s, (uint16_t)s->bi_buf);
-        s->bi_buf >>= 16;
-        s->bi_valid -= 16;
+    if (e.bi_valid >= 16) {
+        put_short(&e, (uint16_t)e.bi_buf);
+        e.bi_buf >>= 16;
+        e.bi_valid -= 16;
     }
-    if (s->bi_valid >= 8) {
-        put_byte(s, s->bi_buf);
-        s->bi_buf >>= 8;
-        s->bi_valid -= 8;
+    if (e.bi_valid >= 8) {
+        put_byte(&e, e.bi_buf);
+        e.bi_buf >>= 8;
+        e.bi_valid -= 8;
     }
+
+    DEFLATE_EMIT_HOT_STORE(s, e);
 }

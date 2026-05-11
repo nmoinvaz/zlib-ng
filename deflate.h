@@ -323,62 +323,63 @@ typedef enum {
     finish_done     /* finish done, accept no more input or output */
 } block_state;
 
-/* Output a byte on the stream.
- * IN assertion: there is enough room in pending_buf.
+/* ===========================================================================
+ * Hot bit-emit state. Hot-path callers declare a local instance, populate it
+ * from s, do all emit work against it via the put_* / send_bits / send_code
+ * helpers, and write back to s before any callout that observes the fields
+ * (flush_pending, fill_window, etc).
+ *
+ * SROA-promotes to per-field registers as long as &e is only passed into
+ * Z_FORCEINLINE helpers (so the address never escapes the calling function).
  */
-#define put_byte(s, c) { \
-    s->pending_buf[s->pending++] = (unsigned char)(c); \
-}
+typedef struct deflate_emit_hot_s {
+    unsigned char *pending_buf;
+    uint32_t pending;
+    uint64_t bi_buf;
+    uint32_t bi_valid;
+} deflate_emit_hot;
 
 /* ===========================================================================
- * Output a short LSB first on the stream.
- * IN assertion: there is enough room in pending_buf.
+ * Output helpers operate on a deflate_emit_hot.  IN assertion: there is
+ * enough room in pending_buf.
  */
-static inline void put_short(deflate_state *s, uint16_t w) {
-    w = Z_U16_TO_LE(w);
-    zng_memwrite_2(&s->pending_buf[s->pending], w);
-    s->pending += 2;
+static inline void put_byte(deflate_emit_hot *e, unsigned char c) {
+    e->pending_buf[e->pending++] = c;
+}
+static inline void put_short(deflate_emit_hot *e, uint16_t w) {
+    zng_memwrite_2(&e->pending_buf[e->pending], Z_U16_TO_LE(w));
+    e->pending += 2;
+}
+static inline void put_short_msb(deflate_emit_hot *e, uint16_t w) {
+    zng_memwrite_2(&e->pending_buf[e->pending], Z_U16_TO_BE(w));
+    e->pending += 2;
+}
+static inline void put_uint32(deflate_emit_hot *e, uint32_t dw) {
+    zng_memwrite_4(&e->pending_buf[e->pending], Z_U32_TO_LE(dw));
+    e->pending += 4;
+}
+static inline void put_uint32_msb(deflate_emit_hot *e, uint32_t dw) {
+    zng_memwrite_4(&e->pending_buf[e->pending], Z_U32_TO_BE(dw));
+    e->pending += 4;
+}
+static inline void put_uint64(deflate_emit_hot *e, uint64_t lld) {
+    zng_memwrite_8(&e->pending_buf[e->pending], Z_U64_TO_LE(lld));
+    e->pending += 8;
 }
 
-/* ===========================================================================
- * Output a short MSB first on the stream.
- * IN assertion: there is enough room in pending_buf.
- */
-static inline void put_short_msb(deflate_state *s, uint16_t w) {
-    w = Z_U16_TO_BE(w);
-    zng_memwrite_2(&s->pending_buf[s->pending], w);
-    s->pending += 2;
-}
+/* Helpers to load from / store back to the deflate_state. */
+#define DEFLATE_EMIT_HOT_LOAD(s, e) do {                    \
+    e.pending_buf = s->pending_buf;                         \
+    e.pending     = s->pending;                             \
+    e.bi_buf      = s->bi_buf;                              \
+    e.bi_valid    = s->bi_valid;                            \
+} while (0)
 
-/* ===========================================================================
- * Output a 32-bit unsigned int LSB first on the stream.
- * IN assertion: there is enough room in pending_buf.
- */
-static inline void put_uint32(deflate_state *s, uint32_t dw) {
-    dw = Z_U32_TO_LE(dw);
-    zng_memwrite_4(&s->pending_buf[s->pending], dw);
-    s->pending += 4;
-}
-
-/* ===========================================================================
- * Output a 32-bit unsigned int MSB first on the stream.
- * IN assertion: there is enough room in pending_buf.
- */
-static inline void put_uint32_msb(deflate_state *s, uint32_t dw) {
-    dw = Z_U32_TO_BE(dw);
-    zng_memwrite_4(&s->pending_buf[s->pending], dw);
-    s->pending += 4;
-}
-
-/* ===========================================================================
- * Output a 64-bit unsigned int LSB first on the stream.
- * IN assertion: there is enough room in pending_buf.
- */
-static inline void put_uint64(deflate_state *s, uint64_t lld) {
-    lld = Z_U64_TO_LE(lld);
-    zng_memwrite_8(&s->pending_buf[s->pending], lld);
-    s->pending += 8;
-}
+#define DEFLATE_EMIT_HOT_STORE(s, e) do {                   \
+    s->pending  = e.pending;                                \
+    s->bi_buf   = e.bi_buf;                                 \
+    s->bi_valid = e.bi_valid;                               \
+} while (0)
 
 #define MIN_LOOKAHEAD (STD_MAX_MATCH + STD_MIN_MATCH + 1)
 /* Minimum amount of lookahead, except at the end of the input file.
