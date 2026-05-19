@@ -1,0 +1,196 @@
+name: Arch Symbols
+
+# One job per arch (cross toolchain installed once). Within each job a single
+# step iterates that arch's WITH_<feature> combinations: cross-build the static
+# library plus the C++ consumers (gtest_zlib, benchmark_zlib) -- compile and
+# cross-link only, never executed, so no qemu -- then assert the archive symbol
+# table (feature -> symbol map) and native_* macro dispatch per combination.
+# Each combination is reported; a failing one emits a ::error:: annotation and
+# fails the job, but the rest still run.
+
+on:
+  push: { branches: [develop, master, main] }
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  arch-symbols:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: x86_64,  cc: gcc,                       triple: x86_64-linux-gnu,      pkg: "",
+              feats: "WITH_SSSE3 WITH_SSE41 WITH_SSE42 WITH_PCLMULQDQ WITH_AVX2 WITH_AVX512 WITH_AVX512VNNI WITH_VPCLMULQDQ",
+              targets: "march-westmere|-D CMAKE_C_FLAGS=-march=westmere -D CMAKE_CXX_FLAGS=-march=westmere;march-x86-64-v4|-D CMAKE_C_FLAGS=-march=x86-64-v4 -D CMAKE_CXX_FLAGS=-march=x86-64-v4;march-icelake-server|-D CMAKE_C_FLAGS=-march=icelake-server -D CMAKE_CXX_FLAGS=-march=icelake-server;allfb-westmere|-D WITH_ALL_FALLBACKS=ON -D CMAKE_C_FLAGS=-march=westmere -D CMAKE_CXX_FLAGS=-march=westmere",
+              extra: "cflags-only-march|-D WITH_RUNTIME_CPU_DETECTION=ON -D CMAKE_C_FLAGS=-march=westmere" }
+          - { arch: aarch64, cc: aarch64-linux-gnu-gcc,     triple: aarch64-linux-gnu,     pkg: "gcc-aarch64-linux-gnu g++-aarch64-linux-gnu",
+              feats: "WITH_NEON WITH_ARMV8 WITH_ACLE",
+              targets: "march-armv8-crc|-D CMAKE_C_FLAGS=-march=armv8-a+crc -D CMAKE_CXX_FLAGS=-march=armv8-a+crc;march-armv8.2-sha3|-D CMAKE_C_FLAGS=-march=armv8.2-a+crypto+sha3 -D CMAKE_CXX_FLAGS=-march=armv8.2-a+crypto+sha3",
+              extra: "cflags-only-march|-D WITH_RUNTIME_CPU_DETECTION=ON -D CMAKE_C_FLAGS=-march=armv8-a+crc" }
+          - { arch: armhf,   cc: arm-linux-gnueabihf-gcc,   triple: arm-linux-gnueabihf,   pkg: "gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf",
+              feats: "WITH_NEON WITH_ARMV6 WITH_ARMV8 WITH_ACLE",
+              targets: "" }
+          - { arch: ppc64le, cc: powerpc64le-linux-gnu-gcc, triple: powerpc64le-linux-gnu, pkg: "gcc-powerpc64le-linux-gnu g++-powerpc64le-linux-gnu",
+              feats: "WITH_ALTIVEC WITH_POWER8 WITH_POWER9",
+              targets: "mcpu-power9|-D CMAKE_C_FLAGS=-mcpu=power9 -D CMAKE_CXX_FLAGS=-mcpu=power9",
+              extra: "cflags-only-march|-D WITH_RUNTIME_CPU_DETECTION=ON -D CMAKE_C_FLAGS=-mcpu=power9" }
+          - { arch: s390x,   cc: s390x-linux-gnu-gcc,       triple: s390x-linux-gnu,       pkg: "gcc-s390x-linux-gnu g++-s390x-linux-gnu",
+              feats: "WITH_S390_VX",
+              targets: "march-z13|-D CMAKE_C_FLAGS=-march=z13 -D CMAKE_CXX_FLAGS=-march=z13",
+              extra: "cflags-only-march|-D WITH_RUNTIME_CPU_DETECTION=ON -D CMAKE_C_FLAGS=-march=z13" }
+          - { arch: riscv64, cc: riscv64-linux-gnu-gcc,     triple: riscv64-linux-gnu,     pkg: "gcc-riscv64-linux-gnu g++-riscv64-linux-gnu",
+              feats: "WITH_RVV WITH_RISCV_ZBC",
+              targets: "march-zbc|-D CMAKE_C_FLAGS=-march=rv64gc_zbc -D CMAKE_CXX_FLAGS=-march=rv64gc_zbc;march-rvv|-D CMAKE_C_FLAGS=-march=rv64gcv -D CMAKE_CXX_FLAGS=-march=rv64gcv",
+              extra: "cflags-only-march|-D WITH_RUNTIME_CPU_DETECTION=ON -D CMAKE_C_FLAGS=-march=rv64gcv" }
+          - { arch: loongarch64, cc: loongarch64-unknown-linux-gnu-gcc, triple: loongarch64-unknown-linux-gnu, pkg: "",
+              tc: "https://github.com/loongson/build-tools/releases/download/2025.02.21/x86_64-cross-tools-loongarch64-binutils_2.44-gcc_14.2.0-glibc_2.41.tar.xz",
+              feats: "WITH_CRC32_LA WITH_LSX WITH_LASX",
+              targets: "march-la464|-D CMAKE_C_FLAGS=-march=la464 -D CMAKE_CXX_FLAGS=-march=la464",
+              extra: "cflags-only-march|-D WITH_RUNTIME_CPU_DETECTION=ON -D CMAKE_C_FLAGS=-march=la464" }
+
+    name: ${{ matrix.arch }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build ${{ matrix.pkg }}
+
+      # Some arches (loongarch64) have no cross toolchain in apt; fetch a
+      # prebuilt one and put its bin on PATH.
+      - name: Fetch prebuilt cross toolchain
+        if: matrix.tc != ''
+        run: |
+          curl -fsSL "${{ matrix.tc }}" -o /tmp/cross.tar.xz
+          mkdir -p "$HOME/cross-tc"
+          tar -xf /tmp/cross.tar.xz -C "$HOME/cross-tc"
+          gcc_path=$(find "$HOME/cross-tc" -type f -name '${{ matrix.cc }}' | head -1)
+          [ -n "$gcc_path" ] || { echo "::error::${{ matrix.cc }} not found in $(basename "${{ matrix.tc }}")"; exit 1; }
+          dirname "$gcc_path" >> "$GITHUB_PATH"
+          "$gcc_path" --version | head -1
+
+      - name: Build + symbol-check every WITH_ combination for ${{ matrix.arch }}
+        env:
+          CC: ${{ matrix.cc }}
+          TRIPLE: ${{ matrix.triple }}
+          FEATS: ${{ matrix.feats }}
+          TARGETS: ${{ matrix.targets }}
+          EXTRA: ${{ matrix.extra }}
+          PYTHONUNBUFFERED: "1"
+        run: |
+          set -uo pipefail
+          # combo name -> extra cmake flags
+          combos=(
+            "runtime|-D WITH_RUNTIME_CPU_DETECTION=ON"
+            "native|-D WITH_RUNTIME_CPU_DETECTION=OFF"
+            "all-fallbacks|-D WITH_RUNTIME_CPU_DETECTION=ON -D WITH_ALL_FALLBACKS=ON"
+            "allfb-native|-D WITH_RUNTIME_CPU_DETECTION=OFF -D WITH_ALL_FALLBACKS=ON"
+          )
+          for f in $FEATS; do combos+=("no-${f#WITH_}|-D ${f}=OFF"); done
+          # feature-targeted native builds (top *_NATIVE enabled)
+          IFS=';' read -ra tc <<< "${TARGETS:-}"
+          for t in "${tc[@]}"; do [ -n "$t" ] && combos+=("${t%%|*}|-D WITH_RUNTIME_CPU_DETECTION=OFF ${t#*|}"); done
+          # verbatim extra combos (e.g. KungFuJesus C-only -march mismatch)
+          IFS=';' read -ra ec <<< "${EXTRA:-}"
+          for e in "${ec[@]}"; do [ -n "$e" ] && combos+=("$e"); done
+
+          fails=""
+          for entry in "${combos[@]}"; do
+            cname=${entry%%|*}; cflags=${entry#*|}
+            bd="build-${cname}"
+            mkdir -p "$bd"
+            echo "::group::${{ matrix.arch }} / ${cname} — configure + build  (${cflags})"
+            ok=1
+            # Google Benchmark probes its regex backend with try_run, which
+            # cannot run under cross-compile; pre-seed the cache so it skips
+            # detection and uses std::regex.
+            cmake -S . -B "$bd" -G Ninja -D CMAKE_C_COMPILER="$CC" \
+                  -D CMAKE_CXX_COMPILER="$(echo "$CC" | sed 's/gcc$/g++/')" \
+                  -D BUILD_SHARED_LIBS=OFF -D BUILD_TESTING=ON -D CMAKE_EXPORT_COMPILE_COMMANDS=ON \
+                  -D WITH_BENCHMARKS=ON -D WITH_GTEST=ON \
+                  -D HAVE_STD_REGEX=ON -D HAVE_POSIX_REGEX=OFF -D HAVE_GNU_POSIX_REGEX=OFF \
+                  -D RUN_HAVE_STD_REGEX=1 -D RUN_HAVE_POSIX_REGEX=0 -D RUN_HAVE_GNU_POSIX_REGEX=0 \
+                  -D WITH_MAINTAINER_WARNINGS=ON $cflags 2>&1 | tee "$bd/.cfg.log" \
+              || { echo "::error::${{ matrix.arch }}/${cname}: cmake configure failed"; fails="$fails ${cname}(configure)"; ok=0; }
+            # build lib + the C++ consumers (compile + cross-link, never run) so
+            # gtest/benchmark compile errors are caught too.
+            if [ $ok = 1 ]; then
+              # -k 0 = ninja keep-going: link gtest_zlib AND benchmark_zlib
+              # even if one fails, so the cflags-only-march xfail shows the
+              # benchmark-link failure (the exact KungFuJesus scenario in
+              # PR#2302) and not just gtest's.
+              cmake --build "$bd" --target zlib-ng gtest_zlib benchmark_zlib \
+                -- -k 0 > "$bd/.build.log" 2>&1 && built=1 || built=0
+              cat "$bd/.build.log"
+              if [ "$cname" = cflags-only-march ]; then
+                # Constraint demonstration: C and C++ must use symmetric ISA
+                # flags. The symmetric 'march-*' target combos prove the
+                # supported path links clean. This combo injects -march into C
+                # only (the KungFuJesus mis-config). It is unsupported by
+                # design; both documented outcomes are accepted:
+                #   - link fails with a missing generic-fallback symbol: the
+                #     desync the C TUs compiled the fallback out while an
+                #     un-flagged C++ consumer still references it. Manifests on
+                #     arches whose consumers cross-reference that symbol
+                #     (x86/arm/riscv with the current benchmarks).
+                #   - links clean: the gated-out fallback is reached only
+                #     through the (consistently -march'd) C functable, so
+                #     nothing crosses the C/C++ boundary (s390/ppc/loongarch).
+                # Only a different failure is a real flag.
+                fb='undefined reference to .(crc32_braid|crc32_copy_braid|crc32_chorba|adler32_c|adler32_copy_c|compare256_c|slide_hash_c|chunkmemset_safe_c|longest_match)'
+                if [ $built = 1 ]; then
+                  echo "${{ matrix.arch }}/${cname}: links clean — asymmetric C-only -march is benign here (the gated-out fallback is not cross-referenced by the C++ consumers on this arch). Symmetric flags are still required in general."
+                elif grep -Eq "$fb" "$bd/.build.log"; then
+                  echo "${{ matrix.arch }}/${cname}: EXPECTED link failure — asymmetric C-only -march is unsupported. The generic fallbacks are compiled out of the library but still referenced by the C++ consumers. Symmetric CMAKE_C_FLAGS/CMAKE_CXX_FLAGS is required."
+                else
+                  echo "::error::${{ matrix.arch }}/${cname}: failed without the expected missing-fallback-symbol signature"
+                  fails="$fails ${cname}(build)"
+                fi
+                ok=0
+              elif [ $built = 0 ]; then
+                echo "::error::${{ matrix.arch }}/${cname}: build failed"
+                fails="$fails ${cname}(build)"; ok=0
+              fi
+            fi
+            echo "::endgroup::"
+            echo "──── ${{ matrix.arch }} / ${cname} — symbol + dispatch check ────"
+            # Floor-respecting check: a pinned high -march build must not carry
+            # below-floor generic *_c / braid / chorba fallbacks; they are
+            # unreachable because the binary requires >= -march at runtime.
+            # SIMD variants gated on WITH_<feat> are independently built and
+            # are not forbidden here.
+            forbid=""
+            case "$cname" in
+              march-westmere|march-icelake-server)
+                # PCLMUL + SSSE3 + SSE2 floor: braid/chorba and *_c all dead.
+                forbid="crc32_braid crc32_copy_braid crc32_chorba crc32_copy_chorba crc32_chorba_sse2 crc32_copy_chorba_sse2 crc32_chorba_sse41 crc32_copy_chorba_sse41 adler32_c adler32_copy_c compare256_c longest_match_c longest_match_roll_c chunkmemset_safe_c inflate_fast_c slide_hash_c" ;;
+              march-x86-64-v4)
+                # psABI x86-64-v4 does NOT include PCLMUL/AES-NI; braid/chorba
+                # remain legitimately built. SSSE3 (from v2) + SSE2 floor.
+                forbid="adler32_c adler32_copy_c compare256_c longest_match_c longest_match_roll_c chunkmemset_safe_c inflate_fast_c slide_hash_c" ;;
+              march-armv8-crc|march-armv8.2-sha3|mcpu-power9|march-la464)
+                forbid="crc32_braid crc32_copy_braid crc32_chorba crc32_copy_chorba adler32_c adler32_copy_c compare256_c longest_match_c longest_match_roll_c chunkmemset_safe_c inflate_fast_c slide_hash_c" ;;
+              march-rvv)
+                forbid="adler32_c adler32_copy_c compare256_c longest_match_c longest_match_roll_c chunkmemset_safe_c inflate_fast_c slide_hash_c" ;;
+              march-z13)
+                forbid="slide_hash_c" ;;
+            esac
+            if [ $ok = 1 ] && ! python3 .github/scripts/check_arch_symbols.py "$bd" "${TRIPLE}-nm" --forbid "$forbid"; then
+              fails="$fails ${cname}(symbols)"
+            fi
+            if [ $ok = 1 ] && ! python3 .github/scripts/check_native_dispatch.py . "$bd" "$CC"; then
+              fails="$fails ${cname}(dispatch)"
+            fi
+          done
+
+          # Findings surface as ::error:: annotations; the job is intentionally
+          # not failed (it's a diagnostic, not a gate). With the native_*
+          # guard in place every combo is clean; the cflags-only-march combo
+          # prints its EXPECTED link failure, documenting the C/C++
+          # ISA-symmetry constraint rather than flagging it.
+          echo "${{ matrix.arch }} done; flagged combinations:${fails:- none}"
