@@ -135,10 +135,13 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start, int safe_mod
 
     /* decode literals and length/distances until end-of-block or not enough
        input data or output space */
+    REFILL();
     do {
-        REFILL();
+        /* Zero refill latency: index the table with bits already present, then
+           refill in parallel with the table load rather than before it. */
         here = lcode[hold & lmask];
         Z_TOUCH(here);
+        REFILL();
         old = hold;
         DROPBITS(here.bits);
       preloaded:
@@ -197,10 +200,16 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start, int safe_mod
                     break;
                 }
 
-                /* preload and shift for next iteration */
-                REFILL();
+                /* Ensure enough bits are present to index lcode before decoding;
+                   unlikely, since we usually still hold plenty after the distance. */
+                if (bits < 10) {
+                    REFILL();
+                }
+
+                /* preload and shift for next iteration (refill after the decode) */
                 here = lcode[hold & lmask];
                 Z_TOUCH(here);
+                REFILL();
                 old = hold;
                 DROPBITS(here.bits);
                 op = (unsigned)(out - beg);     /* max distance in output */
