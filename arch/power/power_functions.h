@@ -23,7 +23,8 @@ uint8_t* chunkmemset_safe_power8(uint8_t *out, uint8_t *from, size_t len, size_t
 uint32_t compare256_power8(const uint8_t *src0, const uint8_t *src1);
 uint32_t crc32_power8(uint32_t crc, const uint8_t *buf, size_t len);
 uint32_t crc32_copy_power8(uint32_t crc, uint8_t *dst, const uint8_t *src, size_t len);
-void inflate_fast_power8(PREFIX3(stream) *strm, uint32_t start, int safe_mode);
+void inflate_fast_power8(PREFIX3(stream) *strm, uint32_t start);
+void inflate_fast_safe_power8(PREFIX3(stream) *strm, uint32_t start);
 uint32_t longest_match_power8(deflate_state *const s, uint32_t cur_match);
 uint32_t longest_match_roll_power8(deflate_state *const s, uint32_t cur_match);
 void slide_hash_power8(deflate_state *s);
@@ -74,6 +75,8 @@ uint32_t longest_match_slow_roll_power9(deflate_state *const s, uint32_t cur_mat
 #    define native_compare256 compare256_power8
 #    undef native_inflate_fast
 #    define native_inflate_fast inflate_fast_power8
+#    undef native_inflate_fast_safe
+#    define native_inflate_fast_safe inflate_fast_safe_power8
 #    undef native_longest_match
 #    define native_longest_match longest_match_power8
 #    undef native_longest_match_roll
