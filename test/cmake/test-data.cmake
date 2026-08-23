@@ -66,3 +66,8 @@ endforeach()
 # Additional tests to verify with automatic data type detection arg
 test_minigzip("detect-text" "data/lcet10.txt" -A)
 test_minigzip("detect-binary" "data/paper-100k.pdf" -A)
+
+# Independent blocks, decompressed on threads
+test_minigzip("blocks-text" "data/lcet10.txt" -6 -b 16K)
+test_minigzip("blocks-binary" "data/fireworks.jpg" -1 -b 8K)
+test_minigzip("blocks-stored" "data/fireworks.jpg" -0 -b 4K)   # stored blocks copy the data as is
