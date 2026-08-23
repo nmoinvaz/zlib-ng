@@ -12,6 +12,10 @@
 /* Internal to the library, the gz layer sits on top of this, see gzsetblocksize() and
    gzsetthreads(). Errors are reported with a zlib return code and a message. */
 
+/* Largest block size accepted, from a caller or from a file's header. Bounds what a member can make
+   the reader allocate, two slots of input and output at this size stay within the ring budget. */
+#define GZBLOCK_MAX_BLOCK (256u << 20)
+
 /* I/O callbacks. read returns the bytes read, 0 at end of input, (size_t)-1 on error. write returns
    the bytes written, anything short of len is an error. */
 typedef size_t (*gzblock_read_fn)(void *ctx, uint8_t *buf, size_t len);
@@ -48,6 +52,9 @@ typedef struct gzblock_reader_s gzblock_reader;
 gzblock_reader Z_INTERNAL *gzblock_ropen(gzblock_read_fn read, void *ctx, const uint8_t *head, size_t head_len,
                               uint32_t block_size, int nthreads);
 int Z_INTERNAL gzblock_read(gzblock_reader *r, uint8_t *buf, size_t len, size_t *got);   /* 0, or -1 on error */
+/* Hand out the next piece of output without copying. *p and *n describe bytes owned by the reader,
+   valid until the next gzblock_read() or gzblock_rnext() call, *n is 0 at the end of the data. */
+int Z_INTERNAL gzblock_rnext(gzblock_reader *r, const uint8_t **p, size_t *n);             /* 0, or -1 on error */
 const char Z_INTERNAL *gzblock_rerror(const gzblock_reader *r);
 int Z_INTERNAL gzblock_rerrcode(const gzblock_reader *r);    /* Z_ERRNO, Z_DATA_ERROR, Z_BUF_ERROR, ... */
 void Z_INTERNAL gzblock_rclose(gzblock_reader *r);

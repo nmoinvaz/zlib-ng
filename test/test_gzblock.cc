@@ -110,10 +110,38 @@ TEST(gzip, blocks_readwrite) {
     EXPECT_EQ(PREFIX(gzgetc)(file), data[0]);
     EXPECT_EQ(PREFIX(gzclose)(file), Z_OK);
 
-    /* Transparent writing cannot use blocks. */
+    /* Transparent writing cannot use blocks, and the block size is bounded. */
     file = PREFIX(gzopen)(BLOCKFILE, "wbT");
     ASSERT_TRUE(file != NULL);
     EXPECT_EQ(PREFIX(gzsetblocksize)(file, kBlock), Z_STREAM_ERROR);
+    EXPECT_EQ(PREFIX(gzclose)(file), Z_OK);
+    file = PREFIX(gzopen)(BLOCKFILE, "wb");
+    ASSERT_TRUE(file != NULL);
+    EXPECT_EQ(PREFIX(gzsetblocksize)(file, 0xffffffffu), Z_STREAM_ERROR);
+    EXPECT_EQ(PREFIX(gzsetblocksize)(file, kBlock), Z_OK);
+    EXPECT_EQ(PREFIX(gzwrite)(file, data.data(), 1000), 1000);
+    EXPECT_EQ(PREFIX(gzclose)(file), Z_OK);
+
+    /* A header claiming an absurd block size must not drive allocations, the member is simply
+       inflated the plain way. Patch the ZB subfield in place, it sits at byte 16 of the header. */
+    {
+        FILE *raw = fopen(BLOCKFILE, "r+b");
+        ASSERT_TRUE(raw != NULL);
+        uint8_t hdr[20];
+        ASSERT_EQ(fread(hdr, 1, sizeof(hdr), raw), sizeof(hdr));
+        ASSERT_EQ(hdr[12], 'Z');
+        ASSERT_EQ(hdr[13], 'B');
+        memset(hdr + 16, 0xff, 4);
+        ASSERT_EQ(fseek(raw, 0, SEEK_SET), 0);
+        ASSERT_EQ(fwrite(hdr, 1, sizeof(hdr), raw), sizeof(hdr));
+        fclose(raw);
+    }
+    file = PREFIX(gzopen)(BLOCKFILE, "rb");
+    ASSERT_TRUE(file != NULL);
+    EXPECT_EQ(PREFIX(gzsetthreads)(file, 0), Z_OK);
+    std::vector<uint8_t> small(2000);
+    EXPECT_EQ(PREFIX(gzread)(file, small.data(), 2000), 1000);
+    EXPECT_EQ(memcmp(small.data(), data.data(), 1000), 0);
     EXPECT_EQ(PREFIX(gzclose)(file), Z_OK);
 
     remove(BLOCKFILE);

@@ -290,13 +290,16 @@ static int gz_fetch(gz_state *state) {
                 return -1;
             continue;
         case BLOCKS: {  /* -> BLOCKS, the block reader handles the remaining members itself */
+            /* Its output is handed out in place, x.next points into the reader's buffers until the
+               next fetch. gzungetc() copies it into state->out first when it needs room. */
+            const uint8_t *p;
             size_t got;
-            if (gzblock_read(state->br, state->out, state->size << 1, &got) != 0) {
+            if (gzblock_rnext(state->br, &p, &got) != 0) {
                 PREFIX(gz_error)(state, gzblock_rerrcode(state->br), gzblock_rerror(state->br));
                 return -1;
             }
-            state->x.next = state->out;
-            state->x.have = (unsigned)got;
+            state->x.next = (unsigned char *)p;
+            state->x.have = got > UINT_MAX ? UINT_MAX : (unsigned)got;
             if (got == 0)
                 state->eof = 1;
             return 0;
@@ -556,6 +559,20 @@ z_int32_t Z_EXPORT PREFIX(gzungetc)(z_int32_t c, gzFile file) {
         state->x.pos--;
         state->past = 0;
         return c;
+    }
+
+    /* output handed out in place by the block reader is not in state->out, bring it in so there
+       is room in front of it */
+    if (state->how == BLOCKS &&
+        (state->x.next < state->out || state->x.next >= state->out + (state->size << 1))) {
+        unsigned char *dest;
+        if (state->x.have >= (state->size << 1)) {
+            PREFIX(gz_error)(state, Z_DATA_ERROR, "out of room to push characters");
+            return -1;
+        }
+        dest = state->out + (state->size << 1) - state->x.have;
+        memcpy(dest, state->x.next, state->x.have);
+        state->x.next = dest;
     }
 
     /* if no room, give up (must have already done a gzungetc()) */

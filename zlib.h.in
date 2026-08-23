@@ -1410,7 +1410,7 @@ Z_EXTERN int Z_EXPORT gzsetblocksize(gzFile file, unsigned block_size);
    when reading assume that block size for members whose header records none,
    see zlib-ng.h for details. When writing, must be called before the first
    write. Returns Z_OK, or Z_STREAM_ERROR if the file was not opened, is in
-   transparent mode, or data was already written.
+   transparent mode, data was already written, or block_size exceeds 256M.
 */
 
 Z_EXTERN int Z_EXPORT gzsetthreads(gzFile file, int threads);

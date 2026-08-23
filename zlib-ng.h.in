@@ -1425,7 +1425,8 @@ int32_t zng_gzsetblocksize(gzFile file, uint32_t block_size);
    subfield. The result is an ordinary gzip file for any reader, and a reader
    that knows the layout, gzread() after gzsetthreads(), can decompress the
    blocks in parallel. Independent blocks cost some compression, about 3% at
-   128K. A block_size of zero writes a plain stream, which is the default.
+   128K. A block_size of zero writes a plain stream, which is the default, the
+   largest accepted is 256M.
 
      When reading, block_size is assumed for gzip members whose header does not
    record one, which lets files written the same way by other tools, pigz -i for

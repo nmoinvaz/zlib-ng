@@ -386,6 +386,8 @@ z_int32_t Z_EXPORT PREFIX(gzsetblocksize)(gzFile file, z_uint32_t block_size) {
     /* when writing only before anything was written, and not for transparent writing */
     if (state->mode != GZ_READ && (state->size != 0 || state->direct))
         return Z_STREAM_ERROR;
+    if (block_size > GZBLOCK_MAX_BLOCK)
+        return Z_STREAM_ERROR;
     state->block_size = block_size;
     return Z_OK;
 }

@@ -765,7 +765,7 @@ gzblock_writer Z_INTERNAL *gzblock_wopen(gzblock_write_fn write, void *ctx, int 
     PREFIX3(stream) bound;
     size_t out_cap;
 
-    if (write == NULL || block_size == 0)
+    if (write == NULL || block_size == 0 || block_size > GZBLOCK_MAX_BLOCK)
         return NULL;
     w = (gzblock_writer *)calloc(1, sizeof(*w));
     if (w == NULL)
@@ -1417,11 +1417,16 @@ static int r_header(gzblock_reader *r) {
             break;
         if (r->eof)
             return r_fail(r, Z_BUF_ERROR, "unexpected end of file");
+        /* A header that does not fit in a megabyte is not one worth buffering, inflate takes it
+           piece by piece. */
+        if (want >= (1u << 20))
+            return r_start_stream(r);
         want *= 2;
     }
     if (hdr_block_size == 0)
         hdr_block_size = r->block_hint;
-    if (hdr_block_size == 0)
+    /* Nothing to parallelize, or a block size that would cost more memory than is sensible. */
+    if (hdr_block_size == 0 || hdr_block_size > GZBLOCK_MAX_BLOCK)
         return r_start_stream(r);
     return r_start_blocks(r, hdr_len, hdr_block_size);
 }
@@ -1437,7 +1442,7 @@ gzblock_reader Z_INTERNAL *gzblock_ropen(gzblock_read_fn read, void *ctx, const 
         return NULL;
     r->read = read;
     r->ctx = ctx;
-    r->block_hint = block_size;
+    r->block_hint = block_size > GZBLOCK_MAX_BLOCK ? 0 : block_size;
     r->nthreads = nthreads > 0 ? nthreads : default_threads();
     r->obuf = (uint8_t *)malloc(IO_CHUNK);
     if (r->obuf == NULL || (head_len != 0 && membuf_append(&r->buf, head, head_len) != 0)) {
@@ -1448,36 +1453,64 @@ gzblock_reader Z_INTERNAL *gzblock_ropen(gzblock_read_fn read, void *ctx, const 
     return r;
 }
 
-int Z_INTERNAL gzblock_read(gzblock_reader *r, uint8_t *buf, size_t len, size_t *got) {
-    size_t done = 0;
-    int rc;
+/* Output handed out earlier has been consumed, the slot holding it can go back to the pool. */
+static void r_done_pending(gzblock_reader *r) {
+    if (r->out_n == 0 && r->out_slot != NULL) {
+        slot_release(&r->pool, r->out_slot);
+        r->out_slot = NULL;
+    }
+}
 
-    while (done < len) {
-        if (r->out_n != 0) {
-            size_t n = r->out_n < len - done ? r->out_n : len - done;
-            memcpy(buf + done, r->out_p, n);
-            done += n;
-            r->out_p += n;
-            r->out_n -= n;
-            if (r->out_n == 0 && r->out_slot != NULL) {
-                slot_release(&r->pool, r->out_slot);
-                r->out_slot = NULL;
-            }
-            continue;
-        }
+/* Advance until there is output to hand out or the data ends. Returns 0 with r->out_n set or the
+   state at R_END, -1 on error. */
+static int r_advance(gzblock_reader *r) {
+    int rc;
+    while (r->out_n == 0) {
         switch (r->state) {
         case R_HEADER:     rc = r_header(r); break;
         case R_PASSTHRU:   rc = r_passthru(r); break;
         case R_STREAM:     rc = r_stream(r); break;
         case R_BLOCKS:     rc = r_blocks(r); break;
         case R_MEMBER_END: rc = r_member_end_step(r); break;
-        case R_END:        *got = done; return 0;
+        case R_END:        return 0;
         default:           return -1;
         }
         if (rc != 0)
             return -1;
     }
+    return 0;
+}
+
+int Z_INTERNAL gzblock_read(gzblock_reader *r, uint8_t *buf, size_t len, size_t *got) {
+    size_t done = 0;
+
+    r_done_pending(r);
+    while (done < len) {
+        size_t n;
+        if (r_advance(r) != 0)
+            return -1;
+        if (r->out_n == 0)
+            break;                  /* end of the data */
+        n = r->out_n < len - done ? r->out_n : len - done;
+        memcpy(buf + done, r->out_p, n);
+        done += n;
+        r->out_p += n;
+        r->out_n -= n;
+        r_done_pending(r);
+    }
     *got = done;
+    return 0;
+}
+
+int Z_INTERNAL gzblock_rnext(gzblock_reader *r, const uint8_t **p, size_t *n) {
+    r_done_pending(r);
+    if (r_advance(r) != 0)
+        return -1;
+    *p = r->out_p;
+    *n = r->out_n;
+    /* Consumed as far as the reader is concerned, the slot goes back on the next call. */
+    r->out_p += r->out_n;
+    r->out_n = 0;
     return 0;
 }
 
