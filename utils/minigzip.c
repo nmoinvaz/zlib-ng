@@ -19,6 +19,7 @@
 #  include "zlib-ng.h"
 #endif
 #include <stdio.h>
+#include <stdint.h>
 
 #include <string.h>
 #include <stdlib.h>
@@ -58,6 +59,8 @@
 #define MAX_NAME_LEN 1024
 
 static char *prog;
+static uint32_t block_size = 0;   /* -b, independent blocks of this many input bytes, assumed when reading */
+static int threads = 0;           /* -p, threads for block work, 0 picks the CPU count */
 
 /* ===========================================================================
  * Display error message and exit
@@ -178,6 +181,34 @@ static void gz_uncompress(gzFile in, FILE *out) {
 
 
 /* ===========================================================================
+ * Apply the block size and thread count to a freshly opened gzFile.
+ */
+static void gz_setup(gzFile file, int writing) {
+    if (block_size != 0 && PREFIX(gzsetblocksize)(file, block_size) != Z_OK)
+        error(writing ? "can't set a block size on this stream" : "can't set the block size");
+    if (PREFIX(gzsetthreads)(file, threads) != Z_OK)
+        error("can't set the thread count");
+}
+
+/* ===========================================================================
+ * Parse a size with an optional K, M, or G suffix.
+ */
+static uint32_t parse_size(const char *arg) {
+    char *end;
+    unsigned long long v = strtoull(arg, &end, 10);
+    switch (*end) {
+    case 'k': case 'K': v <<= 10; end++; break;
+    case 'm': case 'M': v <<= 20; end++; break;
+    case 'g': case 'G': v <<= 30; end++; break;
+    }
+    if (end == arg || *end != 0 || v == 0 || v > 0xffffffffULL) {
+        fprintf(stderr, "%s: bad size %s\n", prog, arg);
+        exit(64);
+    }
+    return (uint32_t)v;
+}
+
+/* ===========================================================================
  * Compress the given file: create a corresponding .gz file and remove the
  * original.
  */
@@ -203,6 +234,7 @@ static void file_compress(char *file, char *mode, int keep) {
         fprintf(stderr, "%s: can't gzopen %s\n", prog, outfile);
         exit(1);
     }
+    gz_setup(out, 1);
     gz_compress(in, out);
 
     if (!keep)
@@ -241,6 +273,7 @@ static void file_uncompress(char *file, int keep) {
         fprintf(stderr, "%s: can't gzopen %s\n", prog, infile);
         exit(1);
     }
+    gz_setup(in, 0);
     out = fopen(outfile, "wb");
     if (out == NULL) {
         perror(file);
@@ -254,7 +287,7 @@ static void file_uncompress(char *file, int keep) {
 }
 
 static void show_help(void) {
-    printf("Usage: minigzip [-c] [-d] [-k] [-f|-h|-R|-F|-T] [-A] [-0 to -9] [files...]\n\n"
+    printf("Usage: minigzip [-c] [-d] [-k] [-f|-h|-R|-F|-T] [-A] [-b size] [-p threads] [-0 to -9] [files...]\n\n"
            "  -c : write to standard output\n"
            "  -d : decompress\n"
            "  -k : keep input files\n"
@@ -264,6 +297,9 @@ static void show_help(void) {
            "  -F : compress with Z_FIXED\n"
            "  -T : stored raw\n"
            "  -A : auto detect type\n"
+           "  -b size : write independent blocks of size input bytes, e.g. 128K\n"
+           "  -p threads : threads for block compression and decompression\n"
+           "               (default: CPU count)\n"
            "  -0 to -9 : compression level\n\n");
 }
 
@@ -299,6 +335,10 @@ int main(int argc, char *argv[]) {
             keep = 1;
         else if (strcmp(argv[i], "-A") == 0)
             type = "";
+        else if (strcmp(argv[i], "-b") == 0 && i + 1 < argc)
+            block_size = parse_size(argv[++i]);
+        else if (strcmp(argv[i], "-p") == 0 && i + 1 < argc)
+            threads = atoi(argv[++i]);
         else if (argv[i][0] == '-' && (argv[i][1] == 'f' || argv[i][1] == 'h' ||
                  argv[i][1] == 'R' || argv[i][1] == 'F' || argv[i][1] == 'T') && argv[i][2] == 0)
             strategy = argv[i] + 1;
@@ -323,10 +363,12 @@ int main(int argc, char *argv[]) {
         if (uncompr) {
             file = PREFIX(gzdopen)(fileno(stdin), "rb");
             if (file == NULL) error("can't gzdopen stdin");
+            gz_setup(file, 0);
             gz_uncompress(file, stdout);
         } else {
             file = PREFIX(gzdopen)(fileno(stdout), outmode);
             if (file == NULL) error("can't gzdopen stdout");
+            gz_setup(file, 1);
             gz_compress(stdin, file);
         }
     } else {
@@ -337,10 +379,12 @@ int main(int argc, char *argv[]) {
             if (uncompr) {
                 if (copyout) {
                     file = PREFIX(gzopen)(argv[i], "rb");
-                    if (file == NULL)
+                    if (file == NULL) {
                         fprintf(stderr, "%s: can't gzopen %s\n", prog, argv[i]);
-                    else
+                    } else {
+                        gz_setup(file, 0);
                         gz_uncompress(file, stdout);
+                    }
                 } else {
                     file_uncompress(argv[i], keep);
                 }
@@ -353,6 +397,7 @@ int main(int argc, char *argv[]) {
                     } else {
                         file = PREFIX(gzdopen)(fileno(stdout), outmode);
                         if (file == NULL) error("can't gzdopen stdout");
+                        gz_setup(file, 1);
 
                         gz_compress(in, file);
                     }
