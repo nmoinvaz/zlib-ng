@@ -100,3 +100,8 @@ ZLIB_1.2.12 {
 ZLIB_1.3.2 {
     @ZLIB_SYMBOL_PREFIX@deflateUsed;
 } ZLIB_1.2.12;
+
+ZLIB_NG_2.4.0 {
+    @ZLIB_SYMBOL_PREFIX@gzsetblocksize;
+    @ZLIB_SYMBOL_PREFIX@gzsetthreads;
+} ZLIB_1.3.2;

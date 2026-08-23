@@ -39,6 +39,7 @@
 #else
 #  include "zlib-ng.h"
 #endif
+#include "gzblock.h"
 
 #ifdef _WIN32
 #  include <stddef.h>
@@ -113,6 +114,7 @@
 #define LOOK 0      /* look for a gzip header */
 #define COPY 1      /* copy input directly */
 #define GZIP 2      /* decompress a gzip stream */
+#define BLOCKS 3    /* decompress independent blocks through gzblock */
 
 /* internal gzip file state data structure */
 typedef struct {
@@ -140,6 +142,11 @@ typedef struct {
     int level;              /* compression level */
     int strategy;           /* compression strategy */
     int reset;              /* true if a reset is pending after a Z_FINISH */
+        /* independent blocks, see gzsetblocksize() and gzsetthreads() */
+    unsigned block_size;    /* block size when writing, 0 for a plain stream */
+    int threads;            /* threads for block work, 1 for none, 0 for the CPU count */
+    gzblock_writer *bw;     /* block writer, when writing blocks */
+    gzblock_reader *br;     /* block reader, once a block member was found */
         /* seek request */
     z_off64_t skip;         /* amount to skip (already rewound if backwards) */
         /* error information */

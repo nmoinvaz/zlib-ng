@@ -40,6 +40,8 @@ EXPORTS
     @ZLIB_SYMBOL_PREFIX@gzdopen
     @ZLIB_SYMBOL_PREFIX@gzbuffer
     @ZLIB_SYMBOL_PREFIX@gzsetparams
+    @ZLIB_SYMBOL_PREFIX@gzsetblocksize
+    @ZLIB_SYMBOL_PREFIX@gzsetthreads
     @ZLIB_SYMBOL_PREFIX@gzread
     @ZLIB_SYMBOL_PREFIX@gzfread
     @ZLIB_SYMBOL_PREFIX@gzwrite

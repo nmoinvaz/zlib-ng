@@ -1404,6 +1404,23 @@ Z_EXTERN int Z_EXPORT gzsetparams(gzFile file, int level, int strategy);
    or Z_MEM_ERROR if there is a memory allocation error.
 */
 
+Z_EXTERN int Z_EXPORT gzsetblocksize(gzFile file, unsigned block_size);
+/*
+     Write the file as independent blocks of block_size uncompressed bytes, or
+   when reading assume that block size for members whose header records none,
+   see zlib-ng.h for details. When writing, must be called before the first
+   write. Returns Z_OK, or Z_STREAM_ERROR if the file was not opened, is in
+   transparent mode, or data was already written.
+*/
+
+Z_EXTERN int Z_EXPORT gzsetthreads(gzFile file, int threads);
+/*
+     Use threads for independent block work on file, see zlib-ng.h for
+   details. 1 (the default) means the calling thread, 0 means one thread per
+   CPU. Returns Z_OK, or Z_STREAM_ERROR if the file was not opened, threads is
+   negative, or data was already written.
+*/
+
 Z_EXTERN int Z_EXPORT gzread(gzFile file, void *buf, unsigned len);
 /*
      Read and decompress up to len uncompressed bytes from file into buf.  If

@@ -94,6 +94,44 @@ static int gz_avail(gz_state *state) {
     return 0;
 }
 
+/* Read callback for the block reader, straight from the file descriptor. */
+static size_t gz_br_read(void *ctx, uint8_t *buf, size_t len) {
+    gz_state *state = (gz_state *)ctx;
+    ssize_t got;
+
+    if (len > INT_MAX)
+        len = INT_MAX;
+    got = read(state->fd, buf, len);
+    return got < 0 ? (size_t)-1 : (size_t)got;
+}
+
+/* A gzip member begins at strm->next_in. If it records a block size, or gzsetblocksize() supplied
+   one, and the application asked for threads, hand the rest of the input to the block reader, which
+   takes care of this and all following members. Returns 1 when it did, 0 when the member is for
+   inflate, -1 on error. */
+static int gz_look_blocks(gz_state *state) {
+    PREFIX3(stream) *strm = &(state->strm);
+    size_t hdr_len;
+    uint32_t block_size;
+
+    if (state->threads == 1)
+        return 0;
+    if (gzblock_parse_header(strm->next_in, strm->avail_in, &hdr_len, &block_size) != 1)
+        return 0;
+    if (block_size == 0 && state->block_size == 0)
+        return 0;
+    state->br = gzblock_ropen(gz_br_read, state, strm->next_in, strm->avail_in, state->block_size, state->threads);
+    if (state->br == NULL) {
+        PREFIX(gz_error)(state, Z_MEM_ERROR, "out of memory");
+        return -1;
+    }
+    strm->avail_in = 0;
+    state->eof = 0;         /* the block reader reads the file from here on */
+    state->how = BLOCKS;
+    state->direct = 0;
+    return 1;
+}
+
 /* Look for gzip header, set up for inflate or copy.  state->x.have must be 0.
    If this is the first time in, allocate required memory.  state->how will be
    left unchanged if there is no more input data available, will be set to COPY
@@ -114,6 +152,11 @@ static int gz_look(gz_state *state) {
        if we're looking for a gzip member after the first one, which is not at
        the start, then proceed directly to look for a gzip member next */
     if (state->direct == -1) {
+        int ret;
+        if (strm->avail_in < 2 && gz_avail(state) == -1)
+            return -1;
+        if ((ret = gz_look_blocks(state)) != 0)
+            return ret < 0 ? -1 : 0;
         PREFIX(inflateReset)(strm);
         state->how = GZIP;
         state->direct = 0;
@@ -137,6 +180,9 @@ static int gz_look(gz_state *state) {
        single byte is sufficient indication that it is not a gzip file) */
     if (strm->avail_in > 1 &&
             strm->next_in[0] == 31 && strm->next_in[1] == 139) {
+        int ret = gz_look_blocks(state);
+        if (ret != 0)
+            return ret < 0 ? -1 : 0;
         PREFIX(inflateReset)(strm);
         state->how = GZIP;
         state->direct = 0;
@@ -243,6 +289,18 @@ static int gz_fetch(gz_state *state) {
             if (gz_decomp(state) == -1)
                 return -1;
             continue;
+        case BLOCKS: {  /* -> BLOCKS, the block reader handles the remaining members itself */
+            size_t got;
+            if (gzblock_read(state->br, state->out, state->size << 1, &got) != 0) {
+                PREFIX(gz_error)(state, gzblock_rerrcode(state->br), gzblock_rerror(state->br));
+                return -1;
+            }
+            state->x.next = state->out;
+            state->x.have = (unsigned)got;
+            if (got == 0)
+                state->eof = 1;
+            return 0;
+        }
         default:    // Can't happen
             Z_UNREACHABLE();
 #if !defined(__STDC_VERSION__) || __STDC_VERSION__ < 202311L
@@ -337,6 +395,18 @@ static size_t gz_read(gz_state *state, void *buf, size_t len) {
         else if (state->how == COPY) {      /* read directly */
             if (gz_load(state, (unsigned char *)buf, n, &n) == -1)
                 return 0;
+        }
+
+        /* large len -- blocks directly into user buffer */
+        else if (state->how == BLOCKS) {
+            size_t have;
+            if (gzblock_read(state->br, (unsigned char *)buf, n, &have) != 0) {
+                PREFIX(gz_error)(state, gzblock_rerrcode(state->br), gzblock_rerror(state->br));
+                return 0;
+            }
+            n = (unsigned)have;
+            if (have == 0)
+                state->eof = 1;
         }
 
         /* large len -- decompress directly into user buffer */
@@ -607,6 +677,8 @@ z_int32_t Z_EXPORT PREFIX(gzclose_r)(gzFile file) {
         PREFIX(inflateEnd)(&(state->strm));
         gz_buffer_free(state);
     }
+    if (state->br != NULL)
+        gzblock_rclose(state->br);
     err = state->err == Z_BUF_ERROR ? Z_BUF_ERROR : Z_OK;
     PREFIX(gz_error)(state, Z_OK, NULL);
     free(state->path);

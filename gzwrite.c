@@ -17,6 +17,36 @@ static size_t gz_write(gz_state *, void const *, size_t);
 /* Initialize state for writing a gzip file.  Mark initialization by setting
    state->size to non-zero.  Return -1 on a memory allocation failure, or 0 on
    success. */
+/* Write callback for the block writer, straight to the file descriptor. */
+static size_t gz_bw_write(void *ctx, const uint8_t *buf, size_t len) {
+    gz_state *state = (gz_state *)ctx;
+    size_t done = 0;
+
+    while (done < len) {
+        ssize_t got = write(state->fd, buf + done, len - done);
+        if (got <= 0)
+            break;
+        done += (size_t)got;
+    }
+    return done;
+}
+
+/* Start a block writer for a new gzip member. */
+static int gz_bw_open(gz_state *state) {
+    state->bw = gzblock_wopen(gz_bw_write, state, state->level, state->strategy, state->block_size, state->threads);
+    if (state->bw == NULL) {
+        PREFIX(gz_error)(state, Z_MEM_ERROR, "out of memory");
+        return -1;
+    }
+    return 0;
+}
+
+static int gz_bw_error(gz_state *state) {
+    int err = gzblock_werrcode(state->bw);
+    PREFIX(gz_error)(state, err, err == Z_ERRNO ? zstrerror() : gzblock_werror(state->bw));
+    return -1;
+}
+
 static int gz_write_init(gz_state *state) {
     PREFIX3(stream) *strm = &(state->strm);
 
@@ -24,6 +54,16 @@ static int gz_write_init(gz_state *state) {
     if (gz_buffer_alloc(state) != 0) {
         PREFIX(gz_error)(state, Z_MEM_ERROR, "out of memory");
         return -1;
+    }
+
+    /* independent blocks go through the block writer instead of deflate */
+    if (state->block_size != 0 && !state->direct) {
+        if (gz_bw_open(state) == -1) {
+            gz_buffer_free(state);
+            return -1;
+        }
+        strm->next_in = NULL;
+        return 0;
     }
 
     /* only need deflate state if compressing */
@@ -73,6 +113,32 @@ static int gz_comp(gz_state *state, int flush) {
             return -1;
         }
         strm->avail_in = 0;
+        return 0;
+    }
+
+    /* independent blocks, the block writer takes the input and does the flushing */
+    if (state->bw != NULL) {
+        if (state->reset) {
+            /* don't start a new gzip member unless there is data to write and we're not flushing */
+            if (strm->avail_in == 0 && flush == Z_NO_FLUSH)
+                return 0;
+            gzblock_wclose(state->bw);
+            state->bw = NULL;
+            if (gz_bw_open(state) == -1)
+                return -1;
+            state->reset = 0;
+        }
+        if (strm->avail_in != 0 && gzblock_write(state->bw, strm->next_in, strm->avail_in) != 0)
+            return gz_bw_error(state);
+        strm->avail_in = 0;
+        if (flush == Z_FINISH) {
+            if (gzblock_wfinish(state->bw) != 0)
+                return gz_bw_error(state);
+            state->reset = 1;
+        } else if (flush != Z_NO_FLUSH) {
+            if (gzblock_wflush(state->bw) != 0)
+                return gz_bw_error(state);
+        }
         return 0;
     }
 
@@ -450,7 +516,10 @@ z_int32_t Z_EXPORT PREFIX(gzsetparams)(gzFile file, z_int32_t level, z_int32_t s
         /* flush previous input with previous parameters before changing */
         if (strm->avail_in && gz_comp(state, Z_BLOCK) == -1)
             return state->err;
-        PREFIX(deflateParams)(strm, level, strategy);
+        if (state->bw != NULL)
+            gzblock_wsetparams(state->bw, level, strategy);
+        else
+            PREFIX(deflateParams)(strm, level, strategy);
     }
     state->level = level;
     state->strategy = strategy;
@@ -479,7 +548,10 @@ z_int32_t Z_EXPORT PREFIX(gzclose_w)(gzFile file) {
     if (gz_comp(state, Z_FINISH) == -1)
         ret = state->err;
     if (state->size) {
-        if (!state->direct) {
+        if (state->bw != NULL) {
+            gzblock_wclose(state->bw);
+            state->bw = NULL;
+        } else if (!state->direct) {
             (void)PREFIX(deflateEnd)(&(state->strm));
         }
         gz_buffer_free(state);

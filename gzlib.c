@@ -44,6 +44,10 @@ static gzFile gz_state_init(void) {
     state->level = Z_DEFAULT_COMPRESSION;
     state->strategy = Z_DEFAULT_STRATEGY;
     state->msg = NULL;
+    state->block_size = 0;
+    state->threads = 1;
+    state->bw = NULL;
+    state->br = NULL;
 
     state->past = 0;
     state->skip = 0;
@@ -62,6 +66,10 @@ static void gz_reset(gz_state *state) {
         state->eof = 0;             /* not at end of file */
         state->past = 0;            /* have not read past end yet */
         state->how = LOOK;          /* look for gzip header */
+        if (state->br != NULL) {    /* start over on the block reader too */
+            gzblock_rclose(state->br);
+            state->br = NULL;
+        }
     }
     else                            /* for writing ... */
         state->reset = 0;           /* no deflateReset pending */
@@ -362,6 +370,45 @@ z_int32_t Z_EXPORT PREFIX(gzbuffer)(gzFile file, z_uint32_t size) {
         size = 8;               /* needed to behave well with flushing */
     state->want = size;
     return 0;
+}
+
+/* -- see zlib.h -- */
+z_int32_t Z_EXPORT PREFIX(gzsetblocksize)(gzFile file, z_uint32_t block_size) {
+    gz_state *state;
+
+    /* get internal structure and check integrity */
+    if (file == NULL)
+        return Z_STREAM_ERROR;
+    state = (gz_state *)file;
+    if (state->mode != GZ_READ && state->mode != GZ_WRITE && state->mode != GZ_APPEND)
+        return Z_STREAM_ERROR;
+
+    /* when writing only before anything was written, and not for transparent writing */
+    if (state->mode != GZ_READ && (state->size != 0 || state->direct))
+        return Z_STREAM_ERROR;
+    state->block_size = block_size;
+    return Z_OK;
+}
+
+/* -- see zlib.h -- */
+z_int32_t Z_EXPORT PREFIX(gzsetthreads)(gzFile file, z_int32_t threads) {
+    gz_state *state;
+
+    /* get internal structure and check integrity */
+    if (file == NULL)
+        return Z_STREAM_ERROR;
+    state = (gz_state *)file;
+    if (state->mode != GZ_READ && state->mode != GZ_WRITE && state->mode != GZ_APPEND)
+        return Z_STREAM_ERROR;
+    if (threads < 0)
+        return Z_STREAM_ERROR;
+
+    /* when writing only before anything was written, when reading it applies from the next
+       gzip member on */
+    if (state->mode != GZ_READ && state->size != 0)
+        return Z_STREAM_ERROR;
+    state->threads = threads;
+    return Z_OK;
 }
 
 /* -- see zlib.h -- */

@@ -1,6 +1,8 @@
 ZLIB_NG_2.4.0 {
   global:
     @ZLIB_SYMBOL_PREFIX@zng_deflateUsed;
+    @ZLIB_SYMBOL_PREFIX@zng_gzsetblocksize;
+    @ZLIB_SYMBOL_PREFIX@zng_gzsetthreads;
 };
 
 ZLIB_NG_2.1.0 {

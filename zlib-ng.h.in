@@ -1417,6 +1417,43 @@ int32_t zng_gzsetparams(gzFile file, int32_t level, int32_t strategy);
 */
 
 Z_EXTERN Z_EXPORT
+int32_t zng_gzsetblocksize(gzFile file, uint32_t block_size);
+/*
+     Write the file as independent blocks of block_size uncompressed bytes.
+   Each block ends with a full flush, so it can be decompressed without the
+   blocks before it, and the gzip header records block_size in a "ZB" extra
+   subfield. The result is an ordinary gzip file for any reader, and a reader
+   that knows the layout, gzread() after gzsetthreads(), can decompress the
+   blocks in parallel. Independent blocks cost some compression, about 3% at
+   128K. A block_size of zero writes a plain stream, which is the default.
+
+     When reading, block_size is assumed for gzip members whose header does not
+   record one, which lets files written the same way by other tools, pigz -i for
+   instance, be decompressed in parallel after gzsetthreads().
+
+     When writing, gzsetblocksize must be called before the first write. It
+   returns Z_OK on success, or Z_STREAM_ERROR if the file was not opened, is in
+   transparent mode, or data was already written.
+*/
+
+Z_EXTERN Z_EXPORT
+int32_t zng_gzsetthreads(gzFile file, int32_t threads);
+/*
+     Use threads for the block work on file. When writing after
+   gzsetblocksize(), blocks are compressed on that many threads. When reading,
+   a gzip member whose header records a block size is decompressed on that
+   many threads, other members are decompressed as usual. A threads value of 1,
+   the default, does all the work on the calling thread, 0 uses one thread per
+   CPU.
+
+     When writing, gzsetthreads must be called before the first write. When
+   reading it takes effect from the next gzip member on, so call it before the
+   first read to cover the whole file. It returns Z_OK on success, or
+   Z_STREAM_ERROR if the file was not opened, threads is negative, or data was
+   already written.
+*/
+
+Z_EXTERN Z_EXPORT
 int32_t zng_gzread(gzFile file, void *buf, uint32_t len);
 /*
      Read and decompress up to len uncompressed bytes from file into buf.  If
