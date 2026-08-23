@@ -96,6 +96,7 @@ endif()
 # Options parsing
 #
 option(WITH_GZFILEOP "Compile with support for gzFile related functions" ON)
+option(WITH_GZTHREADS "Use threads for gzFile independent block compression and decompression" ON)
 option(ZLIB_COMPAT "Compile with zlib compatible API" OFF)
 option(ZLIB_ALIASES "Provide zlib compatible CMake targets" ON)
 option(WITH_OPTIM "Build with optimisation" ON)
@@ -228,6 +229,18 @@ endif()
 
 if(WITH_GZFILEOP)
     add_definitions(-DWITH_GZFILEOP)
+endif()
+
+# Threads for the gzFile block code, pthreads only so far
+if(WITH_GZFILEOP AND WITH_GZTHREADS)
+    find_package(Threads)
+    if(Threads_FOUND AND NOT WIN32 AND NOT BASEARCH_WASM32_FOUND)
+        add_definitions(-DGZBLOCK_THREADS)
+    else()
+        set(WITH_GZTHREADS OFF)
+    endif()
+else()
+    set(WITH_GZTHREADS OFF)
 endif()
 
 if(NOT WITH_CRC32_CHORBA)
@@ -1291,9 +1304,11 @@ if(WITH_RUNTIME_CPU_DETECTION)
 endif()
 
 set(ZLIB_GZFILE_PRIVATE_HDRS
+    gzblock.h
     gzguts.h
 )
 set(ZLIB_GZFILE_SRCS
+    gzblock.c
     gzlib.c
     gzread.c
     gzwrite.c
@@ -1327,6 +1342,12 @@ else()
     endif()
 
     set(ZLIB_INSTALL_LIBRARIES zlib-ng)
+endif()
+
+if(WITH_GZTHREADS)
+    foreach(lib ${ZLIB_INSTALL_LIBRARIES})
+        target_link_libraries(${lib} PRIVATE Threads::Threads)
+    endforeach()
 endif()
 
 # INFO: Mimics official zlib CMake target
@@ -1545,6 +1566,7 @@ string(REPLACE ";" " " propval "${propvalraw}")
 message("CURRENT_SOURCE_DIR: ${propval}\n")
 
 add_feature_info(WITH_GZFILEOP WITH_GZFILEOP "Compile with support for gzFile related functions")
+add_feature_info(WITH_GZTHREADS WITH_GZTHREADS "Use threads for gzFile independent block compression and decompression")
 add_feature_info(ZLIB_COMPAT ZLIB_COMPAT "Compile with zlib compatible API")
 add_feature_info(ZLIB_ALIASES ZLIB_ALIASES "Compile with zlib compatible CMake targets")
 add_feature_info(BUILD_TESTING BUILD_TESTING "Build test binaries")

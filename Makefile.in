@@ -105,6 +105,7 @@ OBJZ = \
 	$(ARCH_STATIC_OBJS)
 
 OBJG = \
+	gzblock.o \
 	gzlib.o \
 	gzread.o \
 	gzwrite.o
@@ -143,6 +144,7 @@ PIC_OBJZ = \
 	$(ARCH_SHARED_OBJS)
 
 PIC_OBJG = \
+	gzblock.lo \
 	gzlib.lo \
 	gzread.lo \
 	gzwrite.lo
@@ -228,6 +230,12 @@ zlibrc.o: $(SRCDIR)/win32/zlib$(SUFFIX)1.rc
 
 %.lo: $(SRCDIR)/%.c
 	$(CC) $(SFLAGS) -DPIC $(INCLUDES) -c -o $@ $<
+
+gzblock.o: $(SRCDIR)/gzblock.c
+	$(CC) $(CFLAGS) -DWITH_GZFILEOP $(INCLUDES) -c -o $@ $<
+
+gzblock.lo: $(SRCDIR)/gzblock.c
+	$(CC) $(SFLAGS) -DPIC -DWITH_GZFILEOP $(INCLUDES) -c -o $@ $<
 
 gzlib.o: $(SRCDIR)/gzlib.c
 	$(CC) $(CFLAGS) -DWITH_GZFILEOP $(INCLUDES) -c -o $@ $<
