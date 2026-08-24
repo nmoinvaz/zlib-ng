@@ -22,7 +22,8 @@ typedef size_t (*gzblock_read_fn)(void *ctx, uint8_t *buf, size_t len);
 typedef size_t (*gzblock_write_fn)(void *ctx, const uint8_t *buf, size_t len);
 
 /* Parse a gzip header. Returns 1 and sets *hdr_len when complete, 0 when more bytes are needed, -1
-   when buf is not a gzip header. *block_size receives the value of a "ZB" extra subfield, or 0. */
+   when buf is not a gzip header. *block_size receives the block size from a "ZB" extra subfield,
+   or 0. The subfield holds the size as 32 bits little-endian plus, from LEN 5 on, a flags byte. */
 int Z_INTERNAL gzblock_parse_header(const uint8_t *buf, size_t len, size_t *hdr_len, uint32_t *block_size);
 
 /* Writer. Produces one gzip member whose deflate stream is cut into independent blocks of

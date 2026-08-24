@@ -3,12 +3,15 @@
  */
 
 /*
- * Format. One ordinary gzip member whose deflate stream does a full flush every block_size input
- * bytes. Each block therefore ends with an empty stored block, the bytes 00 00 FF FF, and the next
- * block references nothing before it, so blocks can be inflated on their own. The gzip header
- * records the block size in an extra subfield with the ID "ZB", LEN 4, and the block size as a
- * 32-bit little-endian value, so readers can learn the layout from the header. Any deflate stream
- * built the same way decodes here, pigz -i output included given its block size.
+ * Format. One ordinary gzip member whose deflate stream is cut into independent blocks of
+ * block_size input bytes. Each block ends with two empty stored blocks, the nine bytes
+ * 00 00 FF FF 00 00 00 FF FF, the same shape pigz --independent writes, so blocks can be
+ * inflated on their own and boundaries are hard to fake. The gzip header records the layout in an
+ * extra subfield with the ID "ZB", the block size as a 32-bit little-endian value and a flags
+ * byte whose bit 0 says the boundaries are marker pairs, which lets the reader ignore the single
+ * markers that a flush inside a block or a chance pattern in stored data produce. Any deflate
+ * stream built the same way decodes here, pigz -i output included given its block size, and
+ * streams with single full flush markers are still read by scanning for those.
  *
  * Threads. A pool of workers runs deflate or inflate over a ring of slots. The main thread fills
  * the slots in order and drains them in order, so output order is slot order and memory is
@@ -124,11 +127,14 @@ static int membuf_fill(membuf *m, gzblock_read_fn read, void *ctx, size_t want, 
  */
 
 /* Returns the header length, 0 if more bytes are needed, (size_t)-1 if this is not a gzip header. */
-static size_t parse_header(const uint8_t *buf, size_t len, uint32_t *block_size) {
+#define ZB_PAIRED 1     /* block boundaries are marker pairs */
+
+static size_t parse_header(const uint8_t *buf, size_t len, uint32_t *block_size, uint32_t *zb_flags) {
     size_t pos = 10;
     uint8_t flags;
 
     *block_size = 0;
+    *zb_flags = 0;
     if (len < 10)
         return 0;
     if (buf[0] != 0x1f || buf[1] != 0x8b || buf[2] != 8)
@@ -148,9 +154,12 @@ static size_t parse_header(const uint8_t *buf, size_t len, uint32_t *block_size)
             return 0;
         while (pos + 4 <= end) {
             size_t sublen = buf[pos + 2] | ((size_t)buf[pos + 3] << 8);
-            if (buf[pos] == 'Z' && buf[pos + 1] == 'B' && sublen == 4 && pos + 8 <= end)
+            if (buf[pos] == 'Z' && buf[pos + 1] == 'B' && sublen >= 4 && pos + 4 + sublen <= end) {
                 *block_size = (uint32_t)buf[pos + 4] | ((uint32_t)buf[pos + 5] << 8) |
                               ((uint32_t)buf[pos + 6] << 16) | ((uint32_t)buf[pos + 7] << 24);
+                if (sublen >= 5)
+                    *zb_flags = buf[pos + 8];
+            }
             pos += 4 + sublen;
         }
         pos = end;
@@ -178,7 +187,8 @@ static size_t parse_header(const uint8_t *buf, size_t len, uint32_t *block_size)
 }
 
 int Z_INTERNAL gzblock_parse_header(const uint8_t *buf, size_t len, size_t *hdr_len, uint32_t *block_size) {
-    size_t n = parse_header(buf, len, block_size);
+    uint32_t zb_flags;
+    size_t n = parse_header(buf, len, block_size, &zb_flags);
     if (n == (size_t)-1)
         return -1;
     if (n == 0)
@@ -351,7 +361,9 @@ static void run_block(PREFIX3(stream) *z, slot_t *slot, size_t out_cap) {
     z->avail_in = (uint32_t)slot->in_len;
     z->next_out = slot->out;
     z->avail_out = (uint32_t)out_cap;
-    err = PREFIX(deflate)(z, slot->last ? Z_FINISH : Z_FULL_FLUSH);
+    err = PREFIX(deflate)(z, slot->last ? Z_FINISH : Z_SYNC_FLUSH);
+    if (!slot->last && err == Z_OK)
+        err = PREFIX(deflate)(z, Z_FULL_FLUSH);   /* the second marker makes it a boundary */
     slot->out_len = out_cap - z->avail_out;
     slot->in_used = slot->in_len - z->avail_in;
     slot->status = slot->last ? (err == Z_STREAM_END ? 0 : -1)
@@ -620,9 +632,9 @@ static int w_out(gzblock_writer *w, const uint8_t *buf, size_t len) {
     return 0;
 }
 
-/* gzip header with FEXTRA carrying the "ZB" block size subfield. */
+/* gzip header with FEXTRA carrying the "ZB" subfield, the block size plus a flags byte. */
 static int w_header(gzblock_writer *w) {
-    uint8_t hdr[10 + 2 + 8];
+    uint8_t hdr[10 + 2 + 9];
     if (w->hdr_written)
         return 0;
     memset(hdr, 0, sizeof(hdr));
@@ -637,14 +649,15 @@ static int w_header(gzblock_writer *w) {
 #else
     hdr[9] = 3;
 #endif
-    hdr[10] = 8;
+    hdr[10] = 9;
     hdr[12] = 'Z';
     hdr[13] = 'B';
-    hdr[14] = 4;
+    hdr[14] = 5;
     hdr[16] = (uint8_t)w->block_size;
     hdr[17] = (uint8_t)(w->block_size >> 8);
     hdr[18] = (uint8_t)(w->block_size >> 16);
     hdr[19] = (uint8_t)(w->block_size >> 24);
+    hdr[20] = ZB_PAIRED;
     w->hdr_written = 1;
     return w_out(w, hdr, sizeof(hdr));
 }
@@ -684,7 +697,9 @@ static int w_inline_out(gzblock_writer *w, int flush) {
 
 /* The inline block is complete, seal it the way the pool does and account for it. */
 static int w_inline_end(gzblock_writer *w, int last) {
-    if (w_inline_out(w, last ? Z_FINISH : Z_FULL_FLUSH) != 0)
+    if (w_inline_out(w, last ? Z_FINISH : Z_SYNC_FLUSH) != 0)
+        return -1;
+    if (!last && w_inline_out(w, Z_FULL_FLUSH) != 0)
         return -1;
     w->crc = (uint32_t)PREFIX(crc32_combine)(w->crc, w->inline_crc, (z_off64_t)w->inline_fill);
     w->total += w->inline_fill;
@@ -783,7 +798,7 @@ gzblock_writer Z_INTERNAL *gzblock_wopen(gzblock_write_fn write, void *ctx, int 
         free(w);
         return NULL;
     }
-    out_cap = PREFIX(deflateBound)(&bound, block_size) + 16;
+    out_cap = PREFIX(deflateBound)(&bound, block_size) + 32;
     PREFIX(deflateEnd)(&bound);
 
     w->pool.mode = POOL_DEFLATE;
@@ -962,6 +977,7 @@ struct gzblock_reader_s {
     uint8_t *obuf;            /* IO_CHUNK, output of z, or bytes passed through */
 
     uint32_t block_size;      /* block mode */
+    int paired;               /* boundaries are marker pairs, lone markers are not candidates */
     size_t max_seg;           /* longest a compressed block can be */
     membuf hdr;               /* this member's header, kept for the fallback */
     size_t scanned;           /* bytes of buf already scanned for markers */
@@ -1174,8 +1190,9 @@ static int next_segment(gzblock_reader *r) {
         const uint8_t *hit = r->scanned < limit ? find_marker(b->p + r->scanned, b->p + limit) : NULL;
         if (hit != NULL) {
             size_t n = (size_t)(hit - b->p) + 4;
-            /* Empty stored blocks right after the marker belong to this segment too, pigz -i writes a
-               second one. Their bytes must be in hand to tell. */
+            int empties = 0;
+            /* Empty stored blocks right after the marker belong to this segment too, the second one
+               is what makes a boundary when the header says pairs. Their bytes must be in hand. */
             for (;;) {
                 if (n + 5 > b->len) {
                     if (r->eof)
@@ -1186,6 +1203,12 @@ static int next_segment(gzblock_reader *r) {
                 if (memcmp(b->p + n, "\0\0\0\xff\xff", 5) != 0)
                     break;
                 n += 5;
+                empties++;
+            }
+            if (r->paired && empties == 0) {
+                /* a lone marker, a flush inside a block or data that happens to match */
+                r->scanned = (size_t)(hit - b->p) + 1;
+                continue;
             }
             if (n > r->max_seg)
                 return -2;
@@ -1207,7 +1230,7 @@ read_more:
 
 /* Enter block mode for a member whose header (the first hdr_len bytes of buf) records, or -b
    supplies, a block size. */
-static int r_start_blocks(gzblock_reader *r, size_t hdr_len, uint32_t block_size) {
+static int r_start_blocks(gzblock_reader *r, size_t hdr_len, uint32_t block_size, uint32_t zb_flags) {
     r->hdr.len = 0;
     if (membuf_append(&r->hdr, r->buf.p, hdr_len) != 0)
         return r_oom(r);
@@ -1239,6 +1262,7 @@ static int r_start_blocks(gzblock_reader *r, size_t hdr_len, uint32_t block_size
             return r_oom(r);
         r->mz_init = 1;
     }
+    r->paired = (zb_flags & ZB_PAIRED) != 0;
     r->scanned = 0;
     r->cut_all = 0;
     r->next_produce = r->next_emit = 0;
@@ -1467,7 +1491,7 @@ static int r_member_end_step(gzblock_reader *r) {
    that is not gzip, or the end. */
 static int r_header(gzblock_reader *r) {
     size_t want = 1024, hdr_len;
-    uint32_t hdr_block_size;
+    uint32_t hdr_block_size, zb_flags;
 
     for (;;) {
         if (r_fill(r, want) != 0)
@@ -1481,7 +1505,7 @@ static int r_header(gzblock_reader *r) {
                 r->state = R_END;        /* trailing garbage, ignored like gzread() */
             return 0;
         }
-        hdr_len = parse_header(r->buf.p, r->buf.len, &hdr_block_size);
+        hdr_len = parse_header(r->buf.p, r->buf.len, &hdr_block_size, &zb_flags);
         if (hdr_len == (size_t)-1)
             return r_fail(r, Z_DATA_ERROR, "not in gzip format");
         if (hdr_len != 0)
@@ -1494,12 +1518,14 @@ static int r_header(gzblock_reader *r) {
             return r_start_stream(r);
         want *= 2;
     }
-    if (hdr_block_size == 0)
+    if (hdr_block_size == 0) {
         hdr_block_size = r->block_hint;
+        zb_flags = 0;                  /* a guessed size implies nothing about the markers */
+    }
     /* Nothing to parallelize, or a block size that would cost more memory than is sensible. */
     if (hdr_block_size == 0 || hdr_block_size > GZBLOCK_MAX_BLOCK)
         return r_start_stream(r);
-    return r_start_blocks(r, hdr_len, hdr_block_size);
+    return r_start_blocks(r, hdr_len, hdr_block_size, zb_flags);
 }
 
 gzblock_reader Z_INTERNAL *gzblock_ropen(gzblock_read_fn read, void *ctx, const uint8_t *head, size_t head_len,
