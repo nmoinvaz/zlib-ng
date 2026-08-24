@@ -302,9 +302,39 @@ const char Z_INTERNAL *gzblk_seg_name(int status) {
 
 static void run_segment(PREFIX3(stream) *z, slot_t *slot, uint32_t block_size) {
     block_dec d;
-    gzblk_block_begin(&d, z, slot->out, block_size);
+    size_t off = 0, used;
+    int status;
+
+    /* Strict blocks must fill exactly block_size, so a reused larger buffer is capped for them. */
+    gzblk_block_begin(&d, z, slot->out,
+                      slot->pair || slot->last ? (uint32_t)slot->out_cap : block_size);
     d.accept_partial = slot->pair;
-    slot->status = gzblk_block_feed(&d, slot->in, slot->in_len, &slot->in_used);
+    for (;;) {
+        status = gzblk_block_feed(&d, slot->in + off, slot->in_len - off, &used);
+        off += used;
+        /* Pair-terminated and final segments may hold several coalesced chunks, so their output
+           grows on demand. Their validity never rested on the size, growing stays safe. */
+        if (status == SEG_OVERFLOW && (slot->pair || slot->last) && slot->out_cap < GZBLOCK_MAX_BLOCK) {
+            size_t ncap = slot->out_cap * 2;
+            uint8_t *grown;
+            if (ncap > GZBLOCK_MAX_BLOCK)
+                ncap = GZBLOCK_MAX_BLOCK;
+            grown = (uint8_t *)realloc(slot->out, ncap);
+            if (grown == NULL) {
+                status = SEG_ERROR;
+                break;
+            }
+            z->next_out = grown + (size_t)z->total_out;
+            z->avail_out += (uint32_t)(ncap - slot->out_cap);
+            slot->out = grown;
+            slot->out_cap = ncap;
+            d.want_marker = 0;    /* output is no longer full, back to normal decoding */
+            continue;
+        }
+        break;
+    }
+    slot->status = status;
+    slot->in_used = off;
     slot->out_len = (size_t)z->total_out;
     slot->crc = (uint32_t)PREFIX(crc32_z)(0, slot->out, slot->out_len);
 }
@@ -372,6 +402,7 @@ int Z_INTERNAL gzblk_pool_alloc(pool_t *p, int nthreads, size_t in_cap, size_t o
         return -1;
     for (i = 0; i < p->nring; i++) {
         p->ring[i].out = (uint8_t *)malloc(out_cap);
+        p->ring[i].out_cap = out_cap;
         if (p->ring[i].out == NULL)
             return -1;
         if (in_cap != 0) {

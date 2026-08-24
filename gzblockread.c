@@ -31,9 +31,11 @@ struct gzblock_reader_s {
 
     uint32_t block_size;      /* block mode */
     int paired;               /* boundaries are marker pairs, lone markers are not candidates */
+    int pair_seen;            /* a pair turned up in this member, so treat it as pair-delimited */
     size_t max_seg;           /* longest a compressed block can be */
     membuf hdr;               /* this member's header, kept for the fallback */
     size_t scanned;           /* bytes of buf already scanned for markers */
+    size_t coal;              /* rightmost pair end while coalescing small chunks, 0 when not */
     int cut_all;              /* the scanner handed out the member's last segment */
     membuf seg;               /* segment most recently cut out of buf */
     int seg_last;
@@ -42,6 +44,7 @@ struct gzblock_reader_s {
     pool_t pool;
     int pool_up;
     PREFIX3(stream) mz;       /* for repairing false splits on this thread */
+    size_t tmp_cap;
     int mz_init;
     uint8_t *tmp;             /* block_size bytes for repaired and final blocks */
     uint32_t crc;             /* running crc and length of the member's output */
@@ -219,6 +222,7 @@ static int cut_segment(gzblock_reader *r, size_t n, int last, int pair) {
     r->seg_pair = pair;
     gzblk_buf_drop(&r->buf, n);
     r->scanned = 0;
+    r->coal = 0;
     return 0;
 }
 
@@ -249,18 +253,33 @@ static int next_segment(gzblock_reader *r) {
                 n += 5;
                 empties++;
             }
-            if (r->paired && empties == 0) {
+            if (empties > 0)
+                r->pair_seen = 1;
+            if ((r->paired || r->pair_seen) && empties == 0) {
                 /* a lone marker, a flush inside a block or data that happens to match */
                 r->scanned = (size_t)(hit - bp) + 1;
                 continue;
             }
-            if (n > r->max_seg)
+            if (empties > 0 && n < r->block_size) {
+                /* A small pair-terminated chunk. One slot per chunk costs more in handoff than
+                   inflation, so keep absorbing chunks until a block of input is in hand. */
+                r->coal = n;
+                r->scanned = n;
+                continue;
+            }
+            if (n > r->max_seg) {
+                if (r->coal != 0)
+                    return cut_segment(r, r->coal, 0, 1) != 0 ? -1 : 1;
                 return -2;
+            }
             return cut_segment(r, n, 0, empties > 0) != 0 ? -1 : 1;
         }
         r->scanned = limit;
-        if (b->len > r->max_seg + 3)
+        if (b->len > r->max_seg + 3) {
+            if (r->coal != 0)
+                return cut_segment(r, r->coal, 0, 1) != 0 ? -1 : 1;
             return -2;
+        }
         if (r->eof) {
             if (b->len == 0)
                 return 0;
@@ -294,6 +313,7 @@ static int r_start_blocks(gzblock_reader *r, size_t hdr_len, uint32_t block_size
         r->pool.block_size = block_size;
         /* Segments are swapped in from the scanner, so slots start without an in buffer. */
         r->tmp = (uint8_t *)malloc(block_size);
+        r->tmp_cap = block_size;
         if (r->tmp == NULL || gzblk_pool_alloc(&r->pool, r->nthreads, 0, block_size) != 0)
             return r_oom(r);
         if (gzblk_pool_start(&r->pool, r->nthreads) != 0)
@@ -308,6 +328,8 @@ static int r_start_blocks(gzblock_reader *r, size_t hdr_len, uint32_t block_size
     }
     r->paired = (zb_flags & ZB_PAIRED) != 0;
     r->scanned = 0;
+    r->coal = 0;
+    r->pair_seen = 0;
     r->cut_all = 0;
     r->next_produce = r->next_emit = 0;
     r->crc = 0;
@@ -489,6 +511,13 @@ static int r_drain(gzblock_reader *r) {
     }
     if (slot->status == SEG_END) {
         /* The final block. Its output goes out from tmp so the slot can be recycled right away. */
+        if (slot->out_len > r->tmp_cap) {
+            uint8_t *grown = (uint8_t *)realloc(r->tmp, slot->out_len);
+            if (grown == NULL)
+                return r_oom(r);
+            r->tmp = grown;
+            r->tmp_cap = slot->out_len;
+        }
         memcpy(r->tmp, slot->out, slot->out_len);
         r_block_out(r, r->tmp, slot->out_len, slot->crc, NULL);
         r->next_emit++;

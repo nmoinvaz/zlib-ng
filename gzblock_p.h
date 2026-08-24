@@ -77,6 +77,7 @@ typedef struct {
     int last;            /* final piece of the input */
     int pair;            /* the segment ends with a marker pair, a boundary in its own right */
     uint8_t *out;
+    size_t out_cap;      /* grows past block_size for pair-terminated and final segments */
     int level, strategy; /* deflate settings for this block */
     int status;          /* SEG_* for inflate, 0 or -1 for deflate */
     size_t out_len, in_used;
