@@ -1071,7 +1071,76 @@ static int r_passthru(gzblock_reader *r) {
     return 0;
 }
 
-/* Pointer to the first 00 00 FF FF starting in [p, end), or NULL. end + 3 must be readable. */
+#if defined(_MSC_VER) && !defined(__clang__)
+#  include <intrin.h>
+static __forceinline unsigned marker_ctz32(unsigned x) { unsigned long i; _BitScanForward(&i, x); return (unsigned)i; }
+static __forceinline unsigned marker_ctz64(unsigned long long x) { unsigned long i; _BitScanForward64(&i, x); return (unsigned)i; }
+#else
+#  define marker_ctz32(x) ((unsigned)__builtin_ctz(x))
+#  define marker_ctz64(x) ((unsigned)__builtin_ctzll(x))
+#endif
+
+/* Pointer to the first 00 00 FF FF starting in [p, end), or NULL. end + 3 must be readable.
+   The vector versions filter for the zero byte the way libc memchr does, one load and one
+   reduction per 16 bytes, but stay inline so the roughly one hit per 256 bytes that compressed
+   data produces costs a few cycles instead of a call boundary. Candidates get the full four-byte
+   check, real markers are tens of kilobytes apart. */
+#if !defined(GZBLOCK_NO_SIMD) && (defined(__aarch64__) || defined(_M_ARM64))
+
+#include <arm_neon.h>
+
+static const uint8_t *find_marker(const uint8_t *p, const uint8_t *end) {
+    while (end - p >= 16) {
+        uint8x16_t v = vld1q_u8(p);
+        if (vminvq_u8(v) == 0) {
+            /* four mask bits per lane, the usual movemask substitute */
+            uint64_t mask = vget_lane_u64(vreinterpret_u64_u8(
+                                vshrn_n_u16(vreinterpretq_u16_u8(vceqzq_u8(v)), 4)), 0);
+            do {
+                unsigned i = marker_ctz64(mask) >> 2;
+                const uint8_t *q = p + i;
+                if (q[1] == 0 && q[2] == 0xff && q[3] == 0xff)
+                    return q;
+                mask &= ~(0xfull << (i * 4));
+            } while (mask != 0);
+        }
+        p += 16;
+    }
+    while (p < end && (p = (const uint8_t *)memchr(p, 0, (size_t)(end - p))) != NULL) {
+        if (p[1] == 0 && p[2] == 0xff && p[3] == 0xff)
+            return p;
+        p++;
+    }
+    return NULL;
+}
+
+#elif !defined(GZBLOCK_NO_SIMD) && (defined(__SSE2__) || defined(_M_X64) || (defined(_M_IX86_FP) && _M_IX86_FP >= 2))
+
+#include <emmintrin.h>
+
+static const uint8_t *find_marker(const uint8_t *p, const uint8_t *end) {
+    const __m128i zero = _mm_setzero_si128();
+    while (end - p >= 16) {
+        unsigned mask = (unsigned)_mm_movemask_epi8(_mm_cmpeq_epi8(_mm_loadu_si128((const __m128i *)p), zero));
+        while (mask != 0) {
+            unsigned i = marker_ctz32(mask);
+            const uint8_t *q = p + i;
+            if (q[1] == 0 && q[2] == 0xff && q[3] == 0xff)
+                return q;
+            mask &= mask - 1;
+        }
+        p += 16;
+    }
+    while (p < end && (p = (const uint8_t *)memchr(p, 0, (size_t)(end - p))) != NULL) {
+        if (p[1] == 0 && p[2] == 0xff && p[3] == 0xff)
+            return p;
+        p++;
+    }
+    return NULL;
+}
+
+#else
+
 static const uint8_t *find_marker(const uint8_t *p, const uint8_t *end) {
     while (p < end && (p = (const uint8_t *)memchr(p, 0, (size_t)(end - p))) != NULL) {
         if (p[1] == 0 && p[2] == 0xff && p[3] == 0xff)
@@ -1080,6 +1149,8 @@ static const uint8_t *find_marker(const uint8_t *p, const uint8_t *end) {
     }
     return NULL;
 }
+
+#endif
 
 /* Move the first n bytes of the input buffer into seg. */
 static int cut_segment(gzblock_reader *r, size_t n, int last) {
