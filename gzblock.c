@@ -56,7 +56,17 @@ int Z_INTERNAL gzblk_default_threads(void) {
     return 1;
 }
 
+/* Move the live bytes back to the front of the allocation. */
+static void buf_compact(membuf *m) {
+    if (m->off != 0) {
+        memmove(m->p, m->p + m->off, m->len);
+        m->off = 0;
+    }
+}
+
 int Z_INTERNAL gzblk_buf_reserve(membuf *m, size_t need) {
+    if (m->off + need > m->cap)
+        buf_compact(m);
     if (need > m->cap) {
         size_t ncap = m->cap ? m->cap : (1 << 16);
         uint8_t *grown;
@@ -74,14 +84,16 @@ int Z_INTERNAL gzblk_buf_reserve(membuf *m, size_t need) {
 int Z_INTERNAL gzblk_buf_append(membuf *m, const uint8_t *data, size_t n) {
     if (gzblk_buf_reserve(m, m->len + n) != 0)
         return -1;
-    memcpy(m->p + m->len, data, n);
+    memcpy(GZBLK_BUF(m) + m->len, data, n);
     m->len += n;
     return 0;
 }
 
 void Z_INTERNAL gzblk_buf_drop(membuf *m, size_t n) {
-    memmove(m->p, m->p + n, m->len - n);
+    m->off += n;
     m->len -= n;
+    if (m->len == 0)
+        m->off = 0;
 }
 
 /* Read through the callback until the buffer holds at least want bytes or the input ends, which
@@ -89,9 +101,13 @@ void Z_INTERNAL gzblk_buf_drop(membuf *m, size_t n) {
 int Z_INTERNAL gzblk_buf_fill(membuf *m, gzblock_read_fn read, void *ctx, size_t want, int *eof) {
     while (m->len < want && !*eof) {
         size_t got;
-        if (m->len == m->cap && gzblk_buf_reserve(m, m->cap + 1) != 0)
-            return -1;
-        got = read(ctx, m->p + m->len, m->cap - m->len);
+        if (m->off + m->len == m->cap) {
+            if (m->off != 0)
+                buf_compact(m);
+            else if (gzblk_buf_reserve(m, m->cap + 1) != 0)
+                return -1;
+        }
+        got = read(ctx, GZBLK_BUF(m) + m->len, m->cap - m->off - m->len);
         if (got == (size_t)-1)
             return -1;
         if (got == 0) {

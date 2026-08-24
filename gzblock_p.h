@@ -33,11 +33,15 @@ void Z_INTERNAL gzblk_msgv(char *msg, const char *fmt, va_list ap);
 void Z_INTERNAL gzblk_msg(char *msg, const char *fmt, ...);
 int Z_INTERNAL gzblk_default_threads(void);
 
-/* Growable byte buffer. */
+/* Growable byte buffer, consumed from the front by moving an offset rather than the bytes. The
+   live data is GZBLK_BUF(m), len bytes at p + off, and compaction happens when space is needed. */
 typedef struct {
     uint8_t *p;
     size_t len, cap;
+    size_t off;
 } membuf;
+
+#define GZBLK_BUF(m) ((m)->p + (m)->off)
 
 int Z_INTERNAL gzblk_buf_reserve(membuf *m, size_t need);
 int Z_INTERNAL gzblk_buf_append(membuf *m, const uint8_t *data, size_t n);

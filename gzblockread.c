@@ -99,7 +99,7 @@ static int r_stream(gzblock_reader *r) {
             return r_fail(r, Z_BUF_ERROR, "unexpected end of file");
     }
     feed = r->buf.len > UINT32_MAX ? UINT32_MAX : r->buf.len;
-    r->z.next_in = (z_const uint8_t *)r->buf.p;
+    r->z.next_in = (z_const uint8_t *)GZBLK_BUF(&r->buf);
     r->z.avail_in = (uint32_t)feed;
     r->z.next_out = r->obuf;
     r->z.avail_out = IO_CHUNK;
@@ -120,7 +120,7 @@ static int r_passthru(gzblock_reader *r) {
     size_t n;
     if (r->buf.len != 0) {
         n = r->buf.len < IO_CHUNK ? r->buf.len : IO_CHUNK;
-        memcpy(r->obuf, r->buf.p, n);
+        memcpy(r->obuf, GZBLK_BUF(&r->buf), n);
         gzblk_buf_drop(&r->buf, n);
         r_handout(r, r->obuf, n, NULL);
         return 0;
@@ -213,7 +213,7 @@ static const uint8_t *find_marker(const uint8_t *p, const uint8_t *end) {
 /* Move the first n bytes of the input buffer into seg. */
 static int cut_segment(gzblock_reader *r, size_t n, int last, int pair) {
     r->seg.len = 0;
-    if (gzblk_buf_append(&r->seg, r->buf.p, n) != 0)
+    if (gzblk_buf_append(&r->seg, GZBLK_BUF(&r->buf), n) != 0)
         return r_oom(r);
     r->seg_last = last;
     r->seg_pair = pair;
@@ -230,9 +230,10 @@ static int next_segment(gzblock_reader *r) {
 
     for (;;) {
         size_t limit = b->len >= 3 ? b->len - 3 : 0;
-        const uint8_t *hit = r->scanned < limit ? find_marker(b->p + r->scanned, b->p + limit) : NULL;
+        const uint8_t *bp = GZBLK_BUF(b);
+        const uint8_t *hit = r->scanned < limit ? find_marker(bp + r->scanned, bp + limit) : NULL;
         if (hit != NULL) {
-            size_t n = (size_t)(hit - b->p) + 4;
+            size_t n = (size_t)(hit - bp) + 4;
             int empties = 0;
             /* Empty stored blocks right after the marker belong to this segment too, the second one
                is what makes a boundary when the header says pairs. Their bytes must be in hand. */
@@ -240,17 +241,17 @@ static int next_segment(gzblock_reader *r) {
                 if (n + 5 > b->len) {
                     if (r->eof)
                         break;
-                    r->scanned = (size_t)(hit - b->p);
+                    r->scanned = (size_t)(hit - bp);
                     goto read_more;
                 }
-                if (memcmp(b->p + n, "\0\0\0\xff\xff", 5) != 0)
+                if (memcmp(bp + n, "\0\0\0\xff\xff", 5) != 0)
                     break;
                 n += 5;
                 empties++;
             }
             if (r->paired && empties == 0) {
                 /* a lone marker, a flush inside a block or data that happens to match */
-                r->scanned = (size_t)(hit - b->p) + 1;
+                r->scanned = (size_t)(hit - bp) + 1;
                 continue;
             }
             if (n > r->max_seg)
@@ -275,7 +276,7 @@ read_more:
    supplies, a block size. */
 static int r_start_blocks(gzblock_reader *r, size_t hdr_len, uint32_t block_size, uint32_t zb_flags) {
     r->hdr.len = 0;
-    if (gzblk_buf_append(&r->hdr, r->buf.p, hdr_len) != 0)
+    if (gzblk_buf_append(&r->hdr, GZBLK_BUF(&r->buf), hdr_len) != 0)
         return r_oom(r);
     gzblk_buf_drop(&r->buf, hdr_len);
 
@@ -318,7 +319,7 @@ static int r_start_blocks(gzblock_reader *r, size_t hdr_len, uint32_t block_size
 /* Put the header, the segments cut so far, and the input in hand back together and stream the member
    through plain inflate instead. Only valid before any of its output was handed out. */
 static int r_fallback(gzblock_reader *r) {
-    membuf all = { NULL, 0, 0 };
+    membuf all = { NULL, 0, 0, 0 };
     size_t i;
 
     if (gzblk_buf_append(&all, r->hdr.p, r->hdr.len) != 0)
@@ -330,7 +331,7 @@ static int r_fallback(gzblock_reader *r) {
             return r_oom(r);
         gzblk_slot_release(&r->pool, slot);
     }
-    if (gzblk_buf_append(&all, r->buf.p, r->buf.len) != 0)
+    if (gzblk_buf_append(&all, GZBLK_BUF(&r->buf), r->buf.len) != 0)
         return r_oom(r);
     free(r->buf.p);
     r->buf = all;
@@ -383,7 +384,7 @@ static int r_produce(gzblock_reader *r) {
    possibly more members, which together with any segments cut after it and the input in hand goes
    back to the front of the input. slot, if not NULL, held rest and is released afterwards. */
 static int r_member_end(gzblock_reader *r, const uint8_t *rest, size_t rest_n, slot_t *slot) {
-    membuf all = { NULL, 0, 0 };
+    membuf all = { NULL, 0, 0, 0 };
     size_t i;
 
     if (gzblk_buf_append(&all, rest, rest_n) != 0)
@@ -397,7 +398,7 @@ static int r_member_end(gzblock_reader *r, const uint8_t *rest, size_t rest_n, s
             return r_oom(r);
         gzblk_slot_release(&r->pool, s);
     }
-    if (gzblk_buf_append(&all, r->buf.p, r->buf.len) != 0)
+    if (gzblk_buf_append(&all, GZBLK_BUF(&r->buf), r->buf.len) != 0)
         return r_oom(r);
     free(r->buf.p);
     r->buf = all;
@@ -521,7 +522,7 @@ static int r_member_end_step(gzblock_reader *r) {
         return -1;
     if (r->buf.len < GZ_TRAILER)
         return r_fail(r, Z_BUF_ERROR, "unexpected end of file");
-    t = r->buf.p;
+    t = GZBLK_BUF(&r->buf);
     want_crc = (uint32_t)t[0] | ((uint32_t)t[1] << 8) | ((uint32_t)t[2] << 16) | ((uint32_t)t[3] << 24);
     want_size = (uint32_t)t[4] | ((uint32_t)t[5] << 8) | ((uint32_t)t[6] << 16) | ((uint32_t)t[7] << 24);
     if (r->crc != want_crc)
@@ -543,7 +544,7 @@ static int r_header(gzblock_reader *r) {
     for (;;) {
         if (r_fill(r, want) != 0)
             return -1;
-        if (r->buf.len < 2 || r->buf.p[0] != 0x1f || r->buf.p[1] != 0x8b) {
+        if (r->buf.len < 2 || GZBLK_BUF(&r->buf)[0] != 0x1f || GZBLK_BUF(&r->buf)[1] != 0x8b) {
             if (r->buf.len == 0 && r->eof)
                 r->state = R_END;
             else if (r->members == 0)
@@ -552,7 +553,7 @@ static int r_header(gzblock_reader *r) {
                 r->state = R_END;        /* trailing garbage, ignored like gzread() */
             return 0;
         }
-        hdr_len = gzblk_header_parse(r->buf.p, r->buf.len, &hdr_block_size, &zb_flags);
+        hdr_len = gzblk_header_parse(GZBLK_BUF(&r->buf), r->buf.len, &hdr_block_size, &zb_flags);
         if (hdr_len == (size_t)-1)
             return r_fail(r, Z_DATA_ERROR, "not in gzip format");
         if (hdr_len != 0)
