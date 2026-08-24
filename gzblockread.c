@@ -566,6 +566,32 @@ static int r_member_end_step(gzblock_reader *r) {
 
 /* Decide how to decode what comes next: a gzip member in block mode or plain, pass-through for data
    that is not gzip, or the end. */
+/* Probe defaults when nothing declares a block size, the coalescing target and how far to look. */
+#define PROBE_BLOCK (128u << 10)
+#define PROBE_WINDOW (1u << 20)
+
+/* Look for a marker pair in the first stretch of compressed data. Returns 1 when one is there,
+   0 when not, -1 on a read error already recorded. */
+static int r_probe(gzblock_reader *r, size_t hdr_len) {
+    const uint8_t *bp, *hit;
+    size_t limit, pos = hdr_len;
+
+    if (r_fill(r, hdr_len + PROBE_WINDOW) != 0)
+        return -1;
+    bp = GZBLK_BUF(&r->buf);
+    limit = r->buf.len < hdr_len + PROBE_WINDOW ? r->buf.len : hdr_len + PROBE_WINDOW;
+    while (pos + 9 <= limit) {
+        hit = find_marker(bp + pos, bp + limit - 3);
+        if (hit == NULL)
+            break;
+        pos = (size_t)(hit - bp);
+        if (pos + 9 <= limit && memcmp(hit + 4, "\0\0\0\xff\xff", 5) == 0)
+            return 1;
+        pos++;
+    }
+    return 0;
+}
+
 static int r_header(gzblock_reader *r) {
     size_t want = 1024, hdr_len;
     uint32_t hdr_block_size, zb_flags;
@@ -599,9 +625,19 @@ static int r_header(gzblock_reader *r) {
         hdr_block_size = r->block_hint;
         zb_flags = 0;                  /* a guessed size implies nothing about the markers */
     }
-    /* Nothing to parallelize, or a block size that would cost more memory than is sensible. */
-    if (hdr_block_size == 0 || hdr_block_size > GZBLOCK_MAX_BLOCK)
+    /* A block size that would cost more memory than is sensible. */
+    if (hdr_block_size > GZBLOCK_MAX_BLOCK)
         return r_start_stream(r);
+    if (hdr_block_size == 0) {
+        /* No declared size and no hint. An early marker pair means someone wrote independent
+           chunks, the full flush behind a pair resets the dictionary, so decode them in
+           parallel. Anything else inflates serially as before. */
+        switch (r_probe(r, hdr_len)) {
+        case -1: return -1;
+        case 0:  return r_start_stream(r);
+        }
+        return r_start_blocks(r, hdr_len, PROBE_BLOCK, ZB_PAIRED);
+    }
     return r_start_blocks(r, hdr_len, hdr_block_size, zb_flags);
 }
 

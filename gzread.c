@@ -118,8 +118,6 @@ static int gz_look_blocks(gz_state *state) {
         return 0;
     if (gzblock_parse_header(strm->next_in, strm->avail_in, &hdr_len, &block_size) != 1)
         return 0;
-    if (block_size == 0 && state->block_size == 0)
-        return 0;
     state->br = gzblock_ropen(gz_br_read, state, strm->next_in, strm->avail_in, state->block_size, state->threads);
     if (state->br == NULL) {
         PREFIX(gz_error)(state, Z_MEM_ERROR, "out of memory");
