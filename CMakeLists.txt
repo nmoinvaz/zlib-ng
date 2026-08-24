@@ -1305,10 +1305,13 @@ endif()
 
 set(ZLIB_GZFILE_PRIVATE_HDRS
     gzblock.h
+    gzblock_p.h
     gzguts.h
 )
 set(ZLIB_GZFILE_SRCS
     gzblock.c
+    gzblockread.c
+    gzblockwrite.c
     gzlib.c
     gzread.c
     gzwrite.c

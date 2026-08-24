@@ -106,6 +106,8 @@ OBJZ = \
 
 OBJG = \
 	gzblock.o \
+	gzblockread.o \
+	gzblockwrite.o \
 	gzlib.o \
 	gzread.o \
 	gzwrite.o
@@ -145,6 +147,8 @@ PIC_OBJZ = \
 
 PIC_OBJG = \
 	gzblock.lo \
+	gzblockread.lo \
+	gzblockwrite.lo \
 	gzlib.lo \
 	gzread.lo \
 	gzwrite.lo
@@ -235,6 +239,18 @@ gzblock.o: $(SRCDIR)/gzblock.c
 	$(CC) $(CFLAGS) -DWITH_GZFILEOP $(INCLUDES) -c -o $@ $<
 
 gzblock.lo: $(SRCDIR)/gzblock.c
+	$(CC) $(SFLAGS) -DPIC -DWITH_GZFILEOP $(INCLUDES) -c -o $@ $<
+
+gzblockread.o: $(SRCDIR)/gzblockread.c
+	$(CC) $(CFLAGS) -DWITH_GZFILEOP $(INCLUDES) -c -o $@ $<
+
+gzblockread.lo: $(SRCDIR)/gzblockread.c
+	$(CC) $(SFLAGS) -DPIC -DWITH_GZFILEOP $(INCLUDES) -c -o $@ $<
+
+gzblockwrite.o: $(SRCDIR)/gzblockwrite.c
+	$(CC) $(CFLAGS) -DWITH_GZFILEOP $(INCLUDES) -c -o $@ $<
+
+gzblockwrite.lo: $(SRCDIR)/gzblockwrite.c
 	$(CC) $(SFLAGS) -DPIC -DWITH_GZFILEOP $(INCLUDES) -c -o $@ $<
 
 gzlib.o: $(SRCDIR)/gzlib.c
