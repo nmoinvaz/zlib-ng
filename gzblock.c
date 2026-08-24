@@ -184,6 +184,7 @@ int Z_INTERNAL gzblock_parse_header(const uint8_t *buf, size_t len, size_t *hdr_
 void Z_INTERNAL gzblk_block_begin(block_dec *d, PREFIX3(stream) *z, uint8_t *out, uint32_t block_size) {
     d->z = z;
     d->want_marker = 0;
+    d->accept_partial = 0;
     PREFIX(inflateReset)(z);
     z->next_in = NULL;
     z->avail_in = 0;
@@ -246,7 +247,9 @@ int Z_INTERNAL gzblk_block_feed(block_dec *d, const uint8_t *in, size_t in_len, 
         }
         if (z->avail_out != 0) {
             if (exhausted) {
-                status = SEG_SHORT;
+                /* A segment that ends at a marker pair is a block at whatever size it produced,
+                   pairs do not occur by accident. Lone markers must land exactly on block_size. */
+                status = (d->accept_partial && boundary && aligned) ? SEG_FULL : SEG_SHORT;
                 break;
             }
             continue;       /* more deflate blocks to go */
@@ -284,6 +287,7 @@ const char Z_INTERNAL *gzblk_seg_name(int status) {
 static void run_segment(PREFIX3(stream) *z, slot_t *slot, uint32_t block_size) {
     block_dec d;
     gzblk_block_begin(&d, z, slot->out, block_size);
+    d.accept_partial = slot->pair;
     slot->status = gzblk_block_feed(&d, slot->in, slot->in_len, &slot->in_used);
     slot->out_len = (size_t)z->total_out;
     slot->crc = (uint32_t)PREFIX(crc32_z)(0, slot->out, slot->out_len);

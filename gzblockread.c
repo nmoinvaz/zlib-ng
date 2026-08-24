@@ -37,6 +37,7 @@ struct gzblock_reader_s {
     int cut_all;              /* the scanner handed out the member's last segment */
     membuf seg;               /* segment most recently cut out of buf */
     int seg_last;
+    int seg_pair;             /* the segment ends with a marker pair */
     size_t next_produce, next_emit;
     pool_t pool;
     int pool_up;
@@ -210,11 +211,12 @@ static const uint8_t *find_marker(const uint8_t *p, const uint8_t *end) {
 #endif
 
 /* Move the first n bytes of the input buffer into seg. */
-static int cut_segment(gzblock_reader *r, size_t n, int last) {
+static int cut_segment(gzblock_reader *r, size_t n, int last, int pair) {
     r->seg.len = 0;
     if (gzblk_buf_append(&r->seg, r->buf.p, n) != 0)
         return r_oom(r);
     r->seg_last = last;
+    r->seg_pair = pair;
     gzblk_buf_drop(&r->buf, n);
     r->scanned = 0;
     return 0;
@@ -253,7 +255,7 @@ static int next_segment(gzblock_reader *r) {
             }
             if (n > r->max_seg)
                 return -2;
-            return cut_segment(r, n, 0) != 0 ? -1 : 1;
+            return cut_segment(r, n, 0, empties > 0) != 0 ? -1 : 1;
         }
         r->scanned = limit;
         if (b->len > r->max_seg + 3)
@@ -261,7 +263,7 @@ static int next_segment(gzblock_reader *r) {
         if (r->eof) {
             if (b->len == 0)
                 return 0;
-            return cut_segment(r, b->len, 1) != 0 ? -1 : 1;
+            return cut_segment(r, b->len, 1, 0) != 0 ? -1 : 1;
         }
 read_more:
         if (r_fill(r, b->len + IO_CHUNK) != 0)
@@ -367,6 +369,7 @@ static int r_produce(gzblock_reader *r) {
         slot->in_cap = r->seg.cap;
         slot->in_len = r->seg.len;
         slot->last = r->seg_last;
+        slot->pair = r->seg_pair;
         r->seg.p = swap.p;
         r->seg.cap = swap.cap;
         r->seg.len = 0;
@@ -418,11 +421,12 @@ static int r_repair(gzblock_reader *r, slot_t *first) {
     block_dec m;
     const uint8_t *piece = first->in;
     size_t piece_len = first->in_len, used;
-    int last = first->last, status;
+    int last = first->last, pair = first->pair, status;
     slot_t *ps = first;
 
     gzblk_block_begin(&m, &r->mz, r->tmp, r->block_size);
     for (;;) {
+        m.accept_partial = pair;
         status = gzblk_block_feed(&m, piece, piece_len, &used);
         r->next_emit++;
         if (status == SEG_SHORT) {
@@ -437,6 +441,7 @@ static int r_repair(gzblock_reader *r, slot_t *first) {
                 piece = ps->in;
                 piece_len = ps->in_len;
                 last = ps->last;
+                pair = ps->pair;
             } else {
                 /* Not cut yet, take it straight from the input, it never needs a slot. */
                 int rc = next_segment(r);
@@ -448,6 +453,7 @@ static int r_repair(gzblock_reader *r, slot_t *first) {
                 piece = r->seg.p;
                 piece_len = r->seg.len;
                 last = r->seg_last;
+                pair = r->seg_pair;
                 r->next_produce++;
             }
             continue;

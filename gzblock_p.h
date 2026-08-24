@@ -55,6 +55,7 @@ enum { SEG_FULL, SEG_END, SEG_SHORT, SEG_OVERFLOW, SEG_ERROR };
 typedef struct {
     PREFIX3(stream) *z;
     int want_marker;    /* output complete, the trailing empty stored block is still to come */
+    int accept_partial; /* the input ends at a marker pair, so any clean output size is a block */
 } block_dec;
 
 void Z_INTERNAL gzblk_block_begin(block_dec *d, PREFIX3(stream) *z, uint8_t *out, uint32_t block_size);
@@ -70,6 +71,7 @@ typedef struct {
     uint8_t *in;         /* input block or compressed segment, owned by the slot */
     size_t in_len, in_cap;
     int last;            /* final piece of the input */
+    int pair;            /* the segment ends with a marker pair, a boundary in its own right */
     uint8_t *out;
     int level, strategy; /* deflate settings for this block */
     int status;          /* SEG_* for inflate, 0 or -1 for deflate */
