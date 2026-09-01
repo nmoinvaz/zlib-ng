@@ -141,6 +141,7 @@ if(WITH_GTEST)
             test_inflate_copy.cc
             test_inflate_cve.cc
             test_inflate_gh_1600.cc
+            test_inflate_overlap.cc
             test_raw.cc
             test_small_window.cc
             )
