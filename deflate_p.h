@@ -84,6 +84,53 @@ static inline int zng_tr_tally_lit(deflate_state *s, unsigned char c) {
     return (s->sym_next == s->sym_end);
 }
 
+/* Number of literals that still fit in the symbol buffer. */
+static inline unsigned int zng_tr_tally_space(const deflate_state *s) {
+#ifdef LIT_MEM
+    return s->sym_end - s->sym_next;
+#else
+    return (s->sym_end - s->sym_next) / 3;
+#endif
+}
+
+/* ===========================================================================
+ * Save a run of unmatched literals. Caching the symbol buffer state in locals
+ * keeps it in registers across iterations, which the single-literal tally
+ * cannot do because its buffer stores may alias the state fields.
+ * The caller must not pass more literals than zng_tr_tally_space() allows.
+ */
+static inline void zng_tr_tally_lit_bulk(deflate_state *s, const unsigned char *src, unsigned int count) {
+    unsigned int sym_next = s->sym_next;
+#ifdef LIT_MEM
+    uint16_t *d_buf = s->d_buf;
+    unsigned char *l_buf = s->l_buf;
+    for (; count > 0; count--) {
+        unsigned char c = *src++;
+        d_buf[sym_next] = 0;
+        l_buf[sym_next] = c;
+        sym_next++;
+        s->dyn_ltree[c].Freq++;
+        Tracevv((stderr, "%c", c));
+    }
+#else
+    unsigned char *sym_buf = s->sym_buf;
+    for (; count > 0; count--) {
+        unsigned char c = *src++;
+#  if OPTIMAL_CMP >= 32
+        zng_memwrite_4(&sym_buf[sym_next], Z_U32_TO_LE((uint32_t)c << 16));
+#  else
+        sym_buf[sym_next] = 0;
+        sym_buf[sym_next+1] = 0;
+        sym_buf[sym_next+2] = c;
+#  endif
+        sym_next += 3;
+        s->dyn_ltree[c].Freq++;
+        Tracevv((stderr, "%c", c));
+    }
+#endif
+    s->sym_next = sym_next;
+}
+
 static inline int zng_tr_tally_dist(deflate_state* s, uint32_t dist, uint32_t len) {
     /* dist: distance of matched string */
     /* len: match length-STD_MIN_MATCH */
