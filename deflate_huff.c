@@ -15,7 +15,6 @@
  */
 Z_INTERNAL block_state deflate_huff(deflate_state *s, int flush) {
     unsigned char *window = s->window;
-    int bflush = 0;         /* set if current block must be flushed */
     unsigned int lookahead = s->lookahead;
     unsigned int strstart = s->strstart;
 
@@ -34,11 +33,12 @@ Z_INTERNAL block_state deflate_huff(deflate_state *s, int flush) {
             }
         }
 
-        /* Output a literal byte */
-        bflush = zng_tr_tally_lit(s, window[strstart]);
-        lookahead--;
-        strstart++;
-        if (bflush) {
+        /* Output a run of literal bytes, bounded by the symbol buffer space */
+        unsigned int count = MIN(lookahead, zng_tr_tally_space(s));
+        zng_tr_tally_lit_bulk(s, window + strstart, count);
+        lookahead -= count;
+        strstart += count;
+        if (s->sym_next == s->sym_end) {
             s->lookahead = lookahead;
             s->strstart = strstart;
             FLUSH_BLOCK(s, window, 0);
