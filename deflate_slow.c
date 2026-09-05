@@ -14,6 +14,10 @@
  * evaluation for matches: a match is finally adopted only if there is
  * no better match at the next window position.
  */
+/* Minimum-length matches beyond this distance cost more bits than the three
+   literals they replace. */
+#define TOO_FAR 4096
+
 Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
     longest_match_func longest_match = s->longest_match;
     insert_batch_func insert_batch = s->insert_batch;
@@ -74,9 +78,11 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
             s->prev_length = prev_length;
             /* longest_match() sets match_start */
 
-            if (match_len <= match_discard) {
-                /* Match not long enough, treat it as no match found, which makes a garbage
-                 * match_start that is harmless. */
+            if (match_len <= match_discard ||
+                (match_len == STD_MIN_MATCH && s->strstart - s->match_start > TOO_FAR)) {
+                /* Match not long enough, or a minimum-length match whose distance costs
+                 * more bits than the literals it replaces. Treat it as no match found,
+                 * which makes a garbage match_start that is harmless. */
                 match_len = STD_MIN_MATCH - 1;
             }
         }
