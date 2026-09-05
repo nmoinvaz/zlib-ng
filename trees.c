@@ -126,6 +126,7 @@ static void init_block(deflate_state *s) {
     for (n = 0; n < SPLIT_TYPES; n++)
         s->split_new[n] = s->split_obs[n] = 0;
     s->split_num_new = s->split_num_obs = 0;
+    s->lazy2_probes = s->lazy2_hits = 0;
 }
 
 /* Queue entries pack freq above the node index, so a single 32-bit compare orders nodes by

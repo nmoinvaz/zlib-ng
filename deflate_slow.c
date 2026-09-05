@@ -10,6 +10,8 @@
 #include "deflate_p.h"
 #include "functable.h"
 #include "insert_string_p.h"
+#include "deflate_lazy2.h"
+#include "fallback_builtins.h"
 #include "trees.h"
 
 /* ===========================================================================
@@ -20,6 +22,7 @@
 /* Minimum-length matches beyond this distance cost more bits than the three
    literals they replace. */
 #define TOO_FAR 4096
+
 
 /* Blocks shorter than this never split, their tree headers cost too much. */
 #define SPLIT_MIN_BLOCK 5000
@@ -226,6 +229,68 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
         if (prev_length >= STD_MIN_MATCH && match_len <= prev_length) {
             unsigned int max_insert = strstart + lookahead - STD_MIN_MATCH;
             /* Do not insert strings in hash table beyond this. */
+
+            /* Look one position past the match that just lost before adopting
+             * the pending one, deflate_lazy2.h holds the probe. Levels 7 and
+             * up, the probe runs a second full match search. */
+            if (level >= 7) {
+                uint32_t next_pos = strstart + 1;
+                uint32_t match_len2 = lazy2_probe(s, window, level, longest_match,
+                                                  strstart, lookahead, prev_length,
+                                                  max_lazy, max_dist);
+                {
+                    if (match_len2 != 0) {
+                        /* Two literals buy the better match. Emit the first one
+                         * exactly as the single-literal step does, so a full
+                         * symbol buffer is flushed with the output drainable. */
+                        bflush = zng_tr_tally_lit(s, window[strstart-1]);
+                        split_observe_lit(s, window[strstart-1]);
+                        if (UNLIKELY(bflush)) {
+                            SLOW_SYNC_STATE();
+                            FLUSH_BLOCK_ONLY(s, window, 0);
+                        }
+                        strstart++;
+                        lookahead--;
+                        if (UNLIKELY(bflush)) {
+                            /* Tallying more now would write symbols over pending
+                             * output not yet handed to the caller, so drop back
+                             * to plain lazy matching. The literal consumed the
+                             * pending match's first byte, the rest of that match
+                             * carries forward one position and stays the pending
+                             * match, or becomes a literal when too short. */
+                            s->match_start = s->prev_match + 1;
+                            prev_length--;
+                            SLOW_SYNC_STATE();
+                            if (UNLIKELY(s->strm->avail_out == 0))
+                                return need_more;
+                            continue;
+                        }
+
+                        bflush = zng_tr_tally_lit(s, window[strstart-1]);
+                        split_observe_lit(s, window[strstart-1]);
+                        if (UNLIKELY(bflush)) {
+                            SLOW_SYNC_STATE();
+                            FLUSH_BLOCK_ONLY(s, window, 0);
+                        }
+                        prev_length = match_len2;
+                        strstart++;
+                        lookahead--;
+
+                        s->lazy2_hits++;
+                        /* Keep the hash contiguous over the skipped position. */
+                        if (level >= 9)
+                            insert_roll(s, window, next_pos);
+                        else
+                            insert_knuth(s, window, next_pos);
+
+                        if (UNLIKELY(s->strm->avail_out == 0)) {
+                            SLOW_SYNC_STATE();
+                            return need_more;
+                        }
+                        continue;
+                    }
+                }
+            }
 
             Assert((strstart-1) <= UINT16_MAX, "strstart-1 should fit in uint16_t");
             check_match(s, strstart - 1, s->prev_match, prev_length);

@@ -316,6 +316,9 @@ struct ALIGNED_(64) internal_state {
     uint32_t split_num_obs;
     uint8_t lit_cost_q3;          /* previous block's average literal price in
                                      eighth-bits, 0 disables match pricing */
+    uint32_t lazy2_probes;        /* two-step lazy probes and hits in the current
+                                     block, the probe stops when unproductive */
+    uint32_t lazy2_hits;
 
     unsigned int opt_len;         /* bit length of current block with optimal trees */
     unsigned int static_len;      /* bit length of current block with static trees */
