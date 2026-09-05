@@ -18,6 +18,57 @@
    literals they replace. */
 #define TOO_FAR 4096
 
+/* Blocks shorter than this never split, their tree headers cost too much. */
+#define SPLIT_MIN_BLOCK 5000
+
+/* Coarse symbol classes for the split statistics: literals keyed by their top
+   two and low bits, matches split into short and long. */
+Z_FORCEINLINE static void split_observe_lit(deflate_state *s, uint8_t c) {
+    s->split_new[((c >> 5) & 0x6) | (c & 1)]++;
+    s->split_num_new++;
+}
+
+Z_FORCEINLINE static void split_observe_match(deflate_state *s, uint32_t len) {
+    s->split_new[SPLIT_LIT_TYPES + (len >= 9)]++;
+    s->split_num_new++;
+}
+
+/* End the block when the distribution of the symbols observed since the last
+   check diverges from the block's overall distribution, so tree boundaries
+   land where the data changes character instead of where the buffer fills. */
+static int split_should_end(deflate_state *s, uint32_t block_len) {
+    if (s->split_num_obs > 0) {
+        uint32_t total_delta = 0;
+        uint32_t num_items, cutoff;
+        int i;
+
+        /* Sum of absolute probability differences, scaled by
+           split_num_obs * split_num_new to stay in integers. */
+        for (i = 0; i < SPLIT_TYPES; i++) {
+            uint32_t expected = s->split_obs[i] * s->split_num_new;
+            uint32_t actual = s->split_new[i] * s->split_num_obs;
+            total_delta += (actual > expected) ? actual - expected : expected - actual;
+        }
+
+        num_items = s->split_num_obs + s->split_num_new;
+        /* Diverged when the summed probability delta reaches 200/512, with an
+           extra penalty while the block is still short. */
+        cutoff = s->split_num_new * 200 / 512 * s->split_num_obs;
+        if (block_len < 10000 && num_items < 8192)
+            cutoff += (uint32_t)((uint64_t)cutoff * (8192 - num_items) / 8192);
+
+        if (total_delta + (block_len / 4096) * s->split_num_obs >= cutoff)
+            return 1;
+    }
+    for (int i = 0; i < SPLIT_TYPES; i++) {
+        s->split_obs[i] += s->split_new[i];
+        s->split_new[i] = 0;
+    }
+    s->split_num_obs += s->split_num_new;
+    s->split_num_new = 0;
+    return 0;
+}
+
 Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
     longest_match_func longest_match = s->longest_match;
     insert_batch_func insert_batch = s->insert_batch;
@@ -100,6 +151,7 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
             check_match(s, s->strstart - 1, s->prev_match, s->prev_length);
 
             bflush = zng_tr_tally_dist(s, s->strstart -1 - s->prev_match, s->prev_length - STD_MIN_MATCH);
+            split_observe_match(s, s->prev_length);
 
             /* Insert in hash table all strings up to the end of the match.
              * strstart-1 and strstart are already inserted. If there is not
@@ -120,8 +172,13 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
             s->match_available = 0;
             s->strstart += mov_fwd + 1;
 
-            if (UNLIKELY(bflush))
+            if (UNLIKELY(bflush)) {
                 FLUSH_BLOCK(s, window, 0);
+            } else if (UNLIKELY(s->split_num_new >= SPLIT_CHECK_SYMS)) {
+                uint32_t block_len = (uint32_t)((int)s->strstart - s->block_start);
+                if (block_len >= SPLIT_MIN_BLOCK && split_should_end(s, block_len))
+                    FLUSH_BLOCK(s, window, 0);
+            }
 
         } else if (s->match_available) {
             /* If there was no match at the previous position, output a
@@ -129,8 +186,14 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
              * is longer, truncate the previous match to a single literal.
              */
             bflush = zng_tr_tally_lit(s, window[s->strstart-1]);
-            if (UNLIKELY(bflush))
+            split_observe_lit(s, window[s->strstart-1]);
+            if (UNLIKELY(bflush)) {
                 FLUSH_BLOCK_ONLY(s, window, 0);
+            } else if (UNLIKELY(s->split_num_new >= SPLIT_CHECK_SYMS)) {
+                uint32_t block_len = (uint32_t)((int)s->strstart - s->block_start);
+                if (block_len >= SPLIT_MIN_BLOCK && split_should_end(s, block_len))
+                    FLUSH_BLOCK_ONLY(s, window, 0);
+            }
             s->prev_length = match_len;
             s->strstart++;
             s->lookahead--;

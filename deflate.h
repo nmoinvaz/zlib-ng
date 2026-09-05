@@ -304,6 +304,17 @@ struct ALIGNED_(64) internal_state {
     unsigned int sym_next;        /* running index in symbol buffer */
     unsigned int sym_end;         /* symbol table full when sym_next reaches this */
 
+    /* Block split statistics: coarse symbol class counts for the block so far
+     * and for the symbols since the last divergence check. deflate_slow ends a
+     * block early when the new symbols' distribution diverges from the block's. */
+#define SPLIT_LIT_TYPES   8
+#define SPLIT_TYPES       (SPLIT_LIT_TYPES + 2)
+#define SPLIT_CHECK_SYMS  512
+    uint32_t split_new[SPLIT_TYPES];
+    uint32_t split_obs[SPLIT_TYPES];
+    uint32_t split_num_new;
+    uint32_t split_num_obs;
+
     unsigned int opt_len;         /* bit length of current block with optimal trees */
     unsigned int static_len;      /* bit length of current block with static trees */
 
