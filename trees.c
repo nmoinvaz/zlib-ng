@@ -121,6 +121,10 @@ static void init_block(deflate_state *s) {
     s->dyn_ltree[END_BLOCK].Freq = 1;
     s->opt_len = s->static_len = 0;
     s->sym_next = 0;
+
+    for (n = 0; n < SPLIT_TYPES; n++)
+        s->split_new[n] = s->split_obs[n] = 0;
+    s->split_num_new = s->split_num_obs = 0;
 }
 
 /* Queue entries pack freq above the node index, so a single 32-bit compare orders nodes by
