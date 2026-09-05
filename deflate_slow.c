@@ -71,18 +71,21 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
              * of the string with itself at the start of the input file).
              */
 
-            /* longest_match only looks for matches longer than s->prev_length. */
-            s->prev_length = MAX(prev_length, match_floor);
+            /* longest_match only looks for matches longer than s->prev_length.
+               The floor pairs with the discard below so a phantom seeded length
+               can never be accepted as a real match. */
+            uint32_t floor = MIN(MAX(match_floor, s->match_floor), s->good_match - 1);
+            uint32_t discard = MAX(match_discard, s->match_floor);
+            s->prev_length = MAX(prev_length, floor);
             match_len = longest_match(s, hash_head);
             /* Restore the real previous length, the lazy evaluation below relies on it. */
             s->prev_length = prev_length;
             /* longest_match() sets match_start */
 
-            if (match_len <= match_discard ||
+            if (match_len <= discard ||
                 (match_len == STD_MIN_MATCH && s->strstart - s->match_start > TOO_FAR)) {
-                /* Match not long enough, or a minimum-length match whose distance costs
-                 * more bits than the literals it replaces. Treat it as no match found,
-                 * which makes a garbage match_start that is harmless. */
+                /* Match not long enough, treat it as no match found, which makes a garbage
+                 * match_start that is harmless. */
                 match_len = STD_MIN_MATCH - 1;
             }
         }
