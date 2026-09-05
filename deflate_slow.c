@@ -171,6 +171,34 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
                     /* Match not long enough, treat it as no match found, which makes a garbage
                      * match_start that is harmless. */
                     match_len = STD_MIN_MATCH - 1;
+                } else if (UNLIKELY(match_len > STD_MIN_MATCH) &&
+                           UNLIKELY(strstart - s->match_start > 1) &&
+                           zng_memread_8(window + strstart) ==
+                               (uint64_t)window[strstart] * UINT64_C(0x0101010101010101)) {
+                    /* The match starts where a long run of one byte begins. A
+                       literal followed by the run's distance-one match often
+                       costs fewer bits than the far match, which the length
+                       based lazy comparison cannot see. Price both with the
+                       previous block's code lengths and defer when cheaper. */
+                    uint32_t rl = FUNCTABLE_CALL(compare256)(window + strstart + 3, window + strstart + 2) + 2;
+                    rl = MIN(rl, lookahead - 1);
+                    if (rl >= match_len - 1) {
+                        uint32_t lcf = zng_length_code[match_len - STD_MIN_MATCH];
+                        uint32_t dcf = d_code(strstart - s->match_start);
+                        uint32_t lca = zng_length_code[match_len - 1 - STD_MIN_MATCH];
+                        uint32_t lb, db, la, ll;
+                        lb = s->dyn_ltree[lcf + LITERALS + 1].Len;
+                        db = s->dyn_dtree[dcf].Len;
+                        la = s->dyn_ltree[lca + LITERALS + 1].Len;
+                        ll = s->dyn_ltree[window[strstart]].Len;
+                        uint32_t far_bits = (lb ? lb : 13) + (uint32_t)extra_lbits[lcf] +
+                                            (db ? db : 13) + (uint32_t)extra_dbits[dcf];
+                        uint32_t d1 = s->dyn_dtree[0].Len;
+                        uint32_t alt_bits = (ll ? ll : 13) + (la ? la : 13) +
+                                            (uint32_t)extra_lbits[lca] + (d1 ? d1 : 13);
+                        if (alt_bits < far_bits)
+                            match_len = STD_MIN_MATCH - 1;
+                    }
                 } else if (UNLIKELY(match_len <= 6) && s->lit_cost_q3 != 0 && level >= 7) {
                     /* Price the short match against the exact literals it
                        replaces with the previous block's code lengths, which
