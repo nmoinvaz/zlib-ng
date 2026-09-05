@@ -10,6 +10,7 @@
 #include "deflate_p.h"
 #include "functable.h"
 #include "insert_string_p.h"
+#include "trees.h"
 
 /* ===========================================================================
  * Same as deflate_medium, but achieves better compression. We use a lazy
@@ -152,6 +153,24 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
                     /* Match not long enough, treat it as no match found, which makes a garbage
                      * match_start that is harmless. */
                     match_len = STD_MIN_MATCH - 1;
+                } else if (UNLIKELY(match_len <= 6) && s->lit_cost_q3 != 0 && level >= 7) {
+                    /* Price the short match against the exact literals it
+                       replaces with the previous block's code lengths, which
+                       persist across the block flush. Only lengths up to six
+                       can cost more than their literals. */
+                    uint32_t lc = zng_length_code[match_len - STD_MIN_MATCH];
+                    uint32_t dc = d_code(s->strstart - s->match_start);
+                    uint32_t lbits = s->dyn_ltree[lc + LITERALS + 1].Len;
+                    uint32_t dbits = s->dyn_dtree[dc].Len;
+                    uint32_t match_bits = (lbits ? lbits : 13) + (uint32_t)extra_lbits[lc] +
+                                          (dbits ? dbits : 13) + (uint32_t)extra_dbits[dc];
+                    uint32_t lit_bits = 0;
+                    for (uint32_t i = 0; i < match_len; i++) {
+                        uint32_t l = s->dyn_ltree[window[s->strstart + i]].Len;
+                        lit_bits += l ? l : 13;
+                    }
+                    if (match_bits > lit_bits)
+                        match_len = STD_MIN_MATCH - 1;
                 }
             }
         }
