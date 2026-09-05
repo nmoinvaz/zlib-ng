@@ -258,6 +258,8 @@ struct ALIGNED_(64) internal_state {
     int level;                  /* compression level (1..9) */
     int strategy;               /* favor or force Huffman coding*/
     unsigned int good_match;    /* Use a faster search when the previous match is longer than this */
+    unsigned int match_floor;   /* Matches this long or shorter are rejected in the next block,
+                                   raised at block flush when matches were scarce */
     int nice_match;             /* Stop searching when current match exceeds this */
     unsigned int insert;        /* bytes at end of window left to insert */
 

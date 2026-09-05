@@ -81,6 +81,8 @@ static int  detect_data_type (deflate_state *s);
  * Initialize the tree data structures for a new zlib stream.
  */
 void Z_INTERNAL zng_tr_init(deflate_state *s) {
+    s->match_floor = STD_MIN_MATCH - 1;
+
     s->l_desc.dyn_tree = s->dyn_ltree;
     s->l_desc.stat_desc = &static_l_desc;
 
@@ -629,6 +631,10 @@ void Z_INTERNAL zng_tr_align(deflate_state *s) {
     zng_tr_flush_bits(s);
 }
 
+/* Blocks whose matches fall below this fraction of symbols raise the next
+   block's minimum-match floor. */
+#define MATCH_FLOOR_SHIFT 4
+
 /* ===========================================================================
  * Determine the best encoding for the current block: dynamic trees, static
  * trees or store, and write out the encoded block.
@@ -705,6 +711,26 @@ void Z_INTERNAL zng_tr_flush_block(deflate_state *s, unsigned char *buf, uint32_
     /* The above check is made mod 2^32, for files larger than 512 MB
      * and unsigned long implemented on 32 bits.
      */
+
+    /* Literal-starved blocks rarely contain worthwhile minimum-length matches,
+       their distance bits cost more than the literals they replace. Count this
+       block's matches from the distance tree frequencies and have the next
+       block's match search reject minimum-length candidates cheaply. */
+    if (s->level > 0) {
+        unsigned int block_matches = 0;
+        unsigned int block_syms;
+        int n;
+
+        for (n = 0; n < D_CODES; n++)
+            block_matches += s->dyn_dtree[n].Freq;
+#ifdef LIT_MEM
+        block_syms = s->sym_next;
+#else
+        block_syms = s->sym_next / 3;
+#endif
+        s->match_floor = (block_matches < (block_syms >> MATCH_FLOOR_SHIFT)) ? STD_MIN_MATCH : STD_MIN_MATCH - 1;
+    }
+
     init_block(s);
 
     if (last) {
