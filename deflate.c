@@ -124,8 +124,8 @@ static const config configuration_table[10] = {
 /* 5 */ {8,   16, 32,   32, deflate_slow},
 /* 6 */ {8,   16, 128, 128, deflate_slow},
 #else
-/* 3 */ {4,    6, 16,    6, deflate_medium},
-/* 4 */ {4,   12, 32,   24, deflate_medium},  /* lazy matches */
+/* 3 */ {4,    6, 16,    6, deflate_medium_fizzle},
+/* 4 */ {4,   12, 32,   16, deflate_medium_fizzle},  /* lazy matches */
 /* 5 */ {8,   16, 32,   32, deflate_medium_fizzle},
 /* 6 */ {8,   16, 128, 128, deflate_medium_fizzle},
 #endif
