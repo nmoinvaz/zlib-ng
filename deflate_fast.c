@@ -20,6 +20,11 @@
  */
 Z_INTERNAL block_state deflate_fast(deflate_state *s, int flush) {
     unsigned char *window = s->window;
+    /* Carrying the scan state in locals keeps it in callee-saved registers
+       across the longest_match and flush calls, synced back only where a
+       callee reads it. */
+    uint32_t strstart = s->strstart;
+    uint32_t lookahead = s->lookahead;
     int bflush = 0;       /* set if current block must be flushed */
     uint32_t match_len = 0;
 
@@ -31,22 +36,26 @@ Z_INTERNAL block_state deflate_fast(deflate_state *s, int flush) {
          * for the next match, plus WANT_MIN_MATCH bytes to insert the
          * string following the next match.
          */
-        if (UNLIKELY(s->lookahead < MIN_LOOKAHEAD)) {
+        if (UNLIKELY(lookahead < MIN_LOOKAHEAD)) {
+            s->strstart = strstart;
+            s->lookahead = lookahead;
             PREFIX(fill_window)(s);
-            if (UNLIKELY(s->lookahead < MIN_LOOKAHEAD && flush == Z_NO_FLUSH)) {
+            strstart = s->strstart;
+            lookahead = s->lookahead;
+            if (UNLIKELY(lookahead < MIN_LOOKAHEAD && flush == Z_NO_FLUSH)) {
                 return need_more;
             }
-            if (UNLIKELY(s->lookahead == 0))
+            if (UNLIKELY(lookahead == 0))
                 break; /* flush the current block */
         }
 
         /* Insert the string window[strstart .. strstart+2] in the
          * dictionary, and set hash_head to the head of the hash chain:
          */
-        if (LIKELY(s->lookahead >= WANT_MIN_MATCH)) {
-            uint32_t str_val = Z_U32_FROM_LE(zng_memread_4(window + s->strstart));
-            uint32_t hash_head = insert_knuth_val(s, s->strstart, str_val);
-            int64_t dist = (int64_t)s->strstart - hash_head;
+        if (LIKELY(lookahead >= WANT_MIN_MATCH)) {
+            uint32_t str_val = Z_U32_FROM_LE(zng_memread_4(window + strstart));
+            uint32_t hash_head = insert_knuth_val(s, strstart, str_val);
+            int64_t dist = (int64_t)strstart - hash_head;
             lc = (uint8_t)str_val;
 
             /* Find the longest match.
@@ -57,34 +66,36 @@ Z_INTERNAL block_state deflate_fast(deflate_state *s, int flush) {
                  * of window index 0 (in particular we have to avoid a match
                  * of the string with itself at the start of the input file).
                  */
+                s->strstart = strstart;
+                s->lookahead = lookahead;
                 match_len = FUNCTABLE_CALL(longest_match)(s, (uint32_t)hash_head);
                 /* longest_match() sets match_start */
             }
         } else {
-            lc = window[s->strstart];
+            lc = window[strstart];
         }
 
         if (match_len >= WANT_MIN_MATCH) {
-            Assert(s->strstart <= UINT16_MAX, "strstart should fit in uint16_t");
+            Assert(strstart <= UINT16_MAX, "strstart should fit in uint16_t");
             Assert(s->match_start <= UINT16_MAX, "match_start should fit in uint16_t");
-            check_match(s, s->strstart, s->match_start, match_len);
+            check_match(s, strstart, s->match_start, match_len);
 
-            bflush = zng_tr_tally_dist(s, s->strstart - s->match_start, match_len - STD_MIN_MATCH);
+            bflush = zng_tr_tally_dist(s, strstart - s->match_start, match_len - STD_MIN_MATCH);
 
-            s->lookahead -= match_len;
+            lookahead -= match_len;
 
             /* Insert new strings in the hash table only if the match length
              * is not too large. This saves time but degrades compression.
              */
-            if (match_len <= s->max_insert_length && s->lookahead >= WANT_MIN_MATCH) {
+            if (match_len <= s->max_insert_length && lookahead >= WANT_MIN_MATCH) {
                 match_len--; /* string at strstart already in table */
-                s->strstart++;
+                strstart++;
 
-                insert_knuth_batch_static(s, window, s->strstart, match_len);
-                s->strstart += match_len;
+                insert_knuth_batch_static(s, window, strstart, match_len);
+                strstart += match_len;
             } else {
-                s->strstart += match_len;
-                insert_knuth(s, window, s->strstart + 2 - STD_MIN_MATCH);
+                strstart += match_len;
+                insert_knuth(s, window, strstart + 2 - STD_MIN_MATCH);
 
                 /* If lookahead < STD_MIN_MATCH, ins_h is garbage, but it does not
                  * matter since it will be recomputed at next deflate call.
@@ -94,13 +105,18 @@ Z_INTERNAL block_state deflate_fast(deflate_state *s, int flush) {
         } else {
             /* No match, output a literal byte */
             bflush = zng_tr_tally_lit(s, lc);
-            s->lookahead--;
-            s->strstart++;
+            lookahead--;
+            strstart++;
         }
-        if (UNLIKELY(bflush))
+        if (UNLIKELY(bflush)) {
+            s->strstart = strstart;
+            s->lookahead = lookahead;
             FLUSH_BLOCK(s, window, 0);
+        }
     }
-    s->insert = s->strstart < (STD_MIN_MATCH - 1) ? s->strstart : (STD_MIN_MATCH - 1);
+    s->strstart = strstart;
+    s->lookahead = lookahead;
+    s->insert = strstart < (STD_MIN_MATCH - 1) ? strstart : (STD_MIN_MATCH - 1);
 
     if (UNLIKELY(flush == Z_FINISH)) {
         FLUSH_BLOCK(s, window, 1);
