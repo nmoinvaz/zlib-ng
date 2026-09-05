@@ -78,12 +78,28 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
     unsigned char *window = s->window;
     int bflush;              /* set if current block must be flushed */
     int level = s->level;
+    /* Carrying the scan state in locals keeps it in callee-saved registers
+       across the longest_match, insert and flush calls, synced back only
+       where a callee reads it. */
+    uint32_t strstart = s->strstart;
+    uint32_t lookahead = s->lookahead;
+    uint32_t prev_length = s->prev_length;
+    unsigned int match_available = s->match_available;
+    const int64_t max_dist = (int64_t)MAX_DIST(s);
+    const uint32_t max_lazy = s->max_lazy_match;
 
     /* Matches this long or shorter are discarded. Z_FILTERED ignores lengths up to 5, other
      * strategies only ignore lengths below STD_MIN_MATCH. */
     const uint32_t match_discard = (s->strategy == Z_FILTERED) ? 5 : STD_MIN_MATCH - 1;
     /* Same floor for longest_match, kept below good_match. */
     const uint32_t match_floor = MIN(match_discard, s->good_match - 1);
+
+#define SLOW_SYNC_STATE() do { \
+        s->strstart = strstart; \
+        s->lookahead = lookahead; \
+        s->prev_length = prev_length; \
+        s->match_available = match_available; \
+    } while (0)
 
     /* Process the input block. */
     for (;;) {
@@ -92,12 +108,15 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
          * for the next match, plus WANT_MIN_MATCH bytes to insert the
          * string following the next match.
          */
-        if (UNLIKELY(s->lookahead < MIN_LOOKAHEAD)) {
+        if (UNLIKELY(lookahead < MIN_LOOKAHEAD)) {
+            SLOW_SYNC_STATE();
             PREFIX(fill_window)(s);
-            if (UNLIKELY(s->lookahead < MIN_LOOKAHEAD && flush == Z_NO_FLUSH)) {
+            strstart = s->strstart;
+            lookahead = s->lookahead;
+            if (UNLIKELY(lookahead < MIN_LOOKAHEAD && flush == Z_NO_FLUSH)) {
                 return need_more;
             }
-            if (UNLIKELY(s->lookahead == 0))
+            if (UNLIKELY(lookahead == 0))
                 break; /* flush the current block */
         }
 
@@ -105,35 +124,34 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
          * dictionary, and set hash_head to the head of the hash chain:
          */
         uint32_t hash_head = 0;
-        if (LIKELY(s->lookahead >= WANT_MIN_MATCH)) {
+        if (LIKELY(lookahead >= WANT_MIN_MATCH)) {
             if (level >= 9)
-                hash_head = insert_roll(s, window, s->strstart);
+                hash_head = insert_roll(s, window, strstart);
             else
-                hash_head = insert_knuth(s, window, s->strstart);
+                hash_head = insert_knuth(s, window, strstart);
         }
 
         /* Find the longest match, discarding those <= prev_length.
          */
         s->prev_match = s->match_start;
-        uint32_t prev_length = s->prev_length;
         uint32_t match_len = STD_MIN_MATCH - 1;
-        int64_t dist = (int64_t)s->strstart - hash_head;
+        int64_t dist = (int64_t)strstart - hash_head;
 
-        if (dist <= MAX_DIST(s) && dist > 0 && prev_length < s->max_lazy_match && hash_head != 0) {
+        if (dist <= max_dist && dist > 0 && prev_length < max_lazy && hash_head != 0) {
             /* To simplify the code, we prevent matches with the string
              * of window index 0 (in particular we have to avoid a match
              * of the string with itself at the start of the input file).
              */
 
             if (UNLIKELY(dist == 1 &&
-                zng_memread_4(window + s->strstart) == zng_memread_4(window + s->strstart - 1))) {
+                zng_memread_4(window + strstart) == zng_memread_4(window + strstart - 1))) {
                 /* A run of one repeated byte is its own best match at distance
                    one. The hash chain holds every earlier position of the run,
                    so the chain walk would inspect them all only to converge on
                    the same overlapping match. */
-                match_len = FUNCTABLE_CALL(compare256)(window + s->strstart + 2, window + s->strstart + 1) + 2;
-                match_len = MIN(match_len, s->lookahead);
-                s->match_start = s->strstart - 1;
+                match_len = FUNCTABLE_CALL(compare256)(window + strstart + 2, window + strstart + 1) + 2;
+                match_len = MIN(match_len, lookahead);
+                s->match_start = strstart - 1;
             } else {
                 /* longest_match only looks for matches longer than s->prev_length.
                    The floor pairs with the discard below so a phantom seeded length
@@ -142,14 +160,14 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
                 uint32_t adaptive = level < 9 ? s->match_floor : STD_MIN_MATCH - 1;
                 uint32_t floor = MIN(MAX(match_floor, adaptive), s->good_match - 1);
                 uint32_t discard = MAX(match_discard, adaptive);
+                s->strstart = strstart;
+                s->lookahead = lookahead;
                 s->prev_length = MAX(prev_length, floor);
                 match_len = longest_match(s, hash_head);
-                /* Restore the real previous length, the lazy evaluation below relies on it. */
-                s->prev_length = prev_length;
-                /* longest_match() sets match_start */
+                /* longest_match() sets match_start; the locals stay authoritative */
 
                 if (match_len <= discard ||
-                    (match_len == STD_MIN_MATCH && s->strstart - s->match_start > TOO_FAR)) {
+                    (match_len == STD_MIN_MATCH && strstart - s->match_start > TOO_FAR)) {
                     /* Match not long enough, treat it as no match found, which makes a garbage
                      * match_start that is harmless. */
                     match_len = STD_MIN_MATCH - 1;
@@ -159,14 +177,14 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
                        persist across the block flush. Only lengths up to six
                        can cost more than their literals. */
                     uint32_t lc = zng_length_code[match_len - STD_MIN_MATCH];
-                    uint32_t dc = d_code(s->strstart - s->match_start);
+                    uint32_t dc = d_code(strstart - s->match_start);
                     uint32_t lbits = s->dyn_ltree[lc + LITERALS + 1].Len;
                     uint32_t dbits = s->dyn_dtree[dc].Len;
                     uint32_t match_bits = (lbits ? lbits : 13) + (uint32_t)extra_lbits[lc] +
                                           (dbits ? dbits : 13) + (uint32_t)extra_dbits[dc];
                     uint32_t lit_bits = 0;
                     for (uint32_t i = 0; i < match_len; i++) {
-                        uint32_t l = s->dyn_ltree[window[s->strstart + i]].Len;
+                        uint32_t l = s->dyn_ltree[window[strstart + i]].Len;
                         lit_bits += l ? l : 13;
                     }
                     if (match_bits > lit_bits)
@@ -177,72 +195,82 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
         /* If there was a match at the previous step and the current
          * match is not better, output the previous match:
          */
-        if (s->prev_length >= STD_MIN_MATCH && match_len <= s->prev_length) {
-            unsigned int max_insert = s->strstart + s->lookahead - STD_MIN_MATCH;
+        if (prev_length >= STD_MIN_MATCH && match_len <= prev_length) {
+            unsigned int max_insert = strstart + lookahead - STD_MIN_MATCH;
             /* Do not insert strings in hash table beyond this. */
 
-            Assert((s->strstart-1) <= UINT16_MAX, "strstart-1 should fit in uint16_t");
-            check_match(s, s->strstart - 1, s->prev_match, s->prev_length);
+            Assert((strstart-1) <= UINT16_MAX, "strstart-1 should fit in uint16_t");
+            check_match(s, strstart - 1, s->prev_match, prev_length);
 
-            bflush = zng_tr_tally_dist(s, s->strstart -1 - s->prev_match, s->prev_length - STD_MIN_MATCH);
-            split_observe_match(s, s->prev_length);
+            bflush = zng_tr_tally_dist(s, strstart -1 - s->prev_match, prev_length - STD_MIN_MATCH);
+            split_observe_match(s, prev_length);
 
             /* Insert in hash table all strings up to the end of the match.
              * strstart-1 and strstart are already inserted. If there is not
              * enough lookahead, the last two strings are not inserted in
              * the hash table.
              */
-            s->prev_length -= 1;
-            s->lookahead -= s->prev_length;
+            prev_length -= 1;
+            lookahead -= prev_length;
 
-            unsigned int mov_fwd = s->prev_length - 1;
-            if (max_insert > s->strstart) {
+            unsigned int mov_fwd = prev_length - 1;
+            if (max_insert > strstart) {
                 unsigned int insert_cnt = mov_fwd;
-                if (UNLIKELY(insert_cnt > max_insert - s->strstart))
-                    insert_cnt = max_insert - s->strstart;
-                insert_batch(s, window, s->strstart + 1, insert_cnt);
+                if (UNLIKELY(insert_cnt > max_insert - strstart))
+                    insert_cnt = max_insert - strstart;
+                insert_batch(s, window, strstart + 1, insert_cnt);
             }
-            s->prev_length = 0;
-            s->match_available = 0;
-            s->strstart += mov_fwd + 1;
+            prev_length = 0;
+            match_available = 0;
+            strstart += mov_fwd + 1;
 
             if (UNLIKELY(bflush)) {
+                SLOW_SYNC_STATE();
                 FLUSH_BLOCK(s, window, 0);
             } else if (UNLIKELY(s->split_num_new >= SPLIT_CHECK_SYMS)) {
-                uint32_t block_len = (uint32_t)((int)s->strstart - s->block_start);
-                if (block_len >= SPLIT_MIN_BLOCK && split_should_end(s, block_len))
+                uint32_t block_len = (uint32_t)((int)strstart - s->block_start);
+                if (block_len >= SPLIT_MIN_BLOCK && split_should_end(s, block_len)) {
+                    SLOW_SYNC_STATE();
                     FLUSH_BLOCK(s, window, 0);
+                }
             }
 
-        } else if (s->match_available) {
+        } else if (match_available) {
             /* If there was no match at the previous position, output a
              * single literal. If there was a match but the current match
              * is longer, truncate the previous match to a single literal.
              */
-            bflush = zng_tr_tally_lit(s, window[s->strstart-1]);
-            split_observe_lit(s, window[s->strstart-1]);
+            bflush = zng_tr_tally_lit(s, window[strstart-1]);
+            split_observe_lit(s, window[strstart-1]);
             if (UNLIKELY(bflush)) {
+                SLOW_SYNC_STATE();
                 FLUSH_BLOCK_ONLY(s, window, 0);
             } else if (UNLIKELY(s->split_num_new >= SPLIT_CHECK_SYMS)) {
-                uint32_t block_len = (uint32_t)((int)s->strstart - s->block_start);
-                if (block_len >= SPLIT_MIN_BLOCK && split_should_end(s, block_len))
+                uint32_t block_len = (uint32_t)((int)strstart - s->block_start);
+                if (block_len >= SPLIT_MIN_BLOCK && split_should_end(s, block_len)) {
+                    SLOW_SYNC_STATE();
                     FLUSH_BLOCK_ONLY(s, window, 0);
+                }
             }
-            s->prev_length = match_len;
-            s->strstart++;
-            s->lookahead--;
-            if (UNLIKELY(s->strm->avail_out == 0))
+            prev_length = match_len;
+            strstart++;
+            lookahead--;
+            if (UNLIKELY(s->strm->avail_out == 0)) {
+                SLOW_SYNC_STATE();
                 return need_more;
+            }
         } else {
             /* There is no previous match to compare with, wait for
              * the next step to decide.
              */
-            s->prev_length = match_len;
-            s->match_available = 1;
-            s->strstart++;
-            s->lookahead--;
+            prev_length = match_len;
+            match_available = 1;
+            strstart++;
+            lookahead--;
         }
     }
+    SLOW_SYNC_STATE();
+#undef SLOW_SYNC_STATE
     Assert(flush != Z_NO_FLUSH, "no flush?");
     if (UNLIKELY(s->match_available)) {
         Z_UNUSED(zng_tr_tally_lit(s, window[s->strstart-1]));
