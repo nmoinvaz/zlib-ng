@@ -136,9 +136,11 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
             } else {
                 /* longest_match only looks for matches longer than s->prev_length.
                    The floor pairs with the discard below so a phantom seeded length
-                   can never be accepted as a real match. */
-                uint32_t floor = MIN(MAX(match_floor, s->match_floor), s->good_match - 1);
-                uint32_t discard = MAX(match_discard, s->match_floor);
+                   can never be accepted as a real match. Level 9 stays pure
+                   maximum compression, so the adaptive floor applies below it. */
+                uint32_t adaptive = level < 9 ? s->match_floor : STD_MIN_MATCH - 1;
+                uint32_t floor = MIN(MAX(match_floor, adaptive), s->good_match - 1);
+                uint32_t discard = MAX(match_discard, adaptive);
                 s->prev_length = MAX(prev_length, floor);
                 match_len = longest_match(s, hash_head);
                 /* Restore the real previous length, the lazy evaluation below relies on it. */
