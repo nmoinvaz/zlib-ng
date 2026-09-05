@@ -108,8 +108,110 @@ void Z_INTERNAL zng_tr_init(deflate_state *s) {
 /* ===========================================================================
  * Initialize a new block.
  */
+
+/* ===========================================================================
+ * Number of symbols the current block has tallied.
+ */
+Z_FORCEINLINE static unsigned int block_sym_count(const deflate_state *s) {
+#ifdef LIT_MEM
+    return s->sym_next;
+#else
+    return s->sym_next / 3;
+#endif
+}
+
+/* ===========================================================================
+ * Read one tallied symbol. A zero distance marks a literal carrying its byte
+ * in lc, otherwise lc holds the match length minus STD_MIN_MATCH.
+ */
+Z_FORCEINLINE static unsigned int read_sym(const deflate_state *s, unsigned int idx, unsigned int *dist) {
+#ifdef LIT_MEM
+    *dist = s->d_buf[idx];
+    return s->l_buf[idx];
+#else
+    *dist = (unsigned int)(s->sym_buf[3 * idx] | (s->sym_buf[3 * idx + 1] << 8));
+    return s->sym_buf[3 * idx + 2];
+#endif
+}
+
+/* ===========================================================================
+ * Price the block's symbols with the static trees by replaying the symbol
+ * buffer, detecting the data type from the literals on the way. Symbol
+ * proportional, for blocks small enough that scanning the alphabet costs
+ * more than walking the symbols.
+ */
+Z_FORCEINLINE static unsigned int static_len_from_syms(deflate_state *s, int *data_type) {
+    unsigned int static_len = 0, i, dist, lc;
+    unsigned int syms = block_sym_count(s);
+    int seen_text = 0, seen_bin = 0;
+
+    for (i = 0; i < syms; i++) {
+        lc = read_sym(s, i, &dist);
+        if (dist == 0) {
+            static_len += static_ltree[lc].Len;
+            if (lc == 9 || lc == 10 || lc == 13 || (lc >= 32 && lc < LITERALS))
+                seen_text = 1;
+            else if (lc <= 6 || (lc >= 14 && lc <= 25) || (lc >= 28 && lc <= 31))
+                seen_bin = 1;
+        } else {
+            unsigned int dc = d_code(dist - 1);
+            unsigned int lcode = zng_length_code[lc];
+            static_len += (unsigned int)(static_ltree[lcode + LITERALS + 1].Len +
+                          extra_lbits[lcode] + static_dtree[dc].Len + extra_dbits[dc]);
+        }
+    }
+    *data_type = seen_bin ? Z_BINARY : (seen_text ? Z_TEXT : Z_BINARY);
+    return static_len + static_ltree[END_BLOCK].Len;
+}
+
+/* ===========================================================================
+ * Price the accumulated frequencies with the static trees, matching the
+ * static_len that gen_bitlen() accumulates during a dynamic build.
+ */
+Z_FORCEINLINE static unsigned int static_len_from_freqs(const deflate_state *s) {
+    unsigned int static_len = 0;
+    int n;
+
+    for (n = 0; n < L_CODES; n++) {
+        unsigned int f = s->dyn_ltree[n].Freq;
+        if (f)
+            static_len += f * (unsigned int)(static_ltree[n].Len +
+                              (n >= LITERALS+1 ? extra_lbits[n-(LITERALS+1)] : 0));
+    }
+    for (n = 0; n < D_CODES; n++) {
+        unsigned int f = s->dyn_dtree[n].Freq;
+        if (f)
+            static_len += f * (unsigned int)(static_dtree[n].Len + extra_dbits[n]);
+    }
+    return static_len;
+}
+
 static void init_block(deflate_state *s) {
     int n; /* iterates over tree elements */
+
+    unsigned int tiny_syms = block_sym_count(s);
+    if (tiny_syms <= 8 && s->level > 0) {
+        /* The flushed block skipped the tree build, so only the freqs its
+           symbols touched are nonzero, clear them by replaying the buffer. */
+        unsigned int i, dist, lc;
+        for (i = 0; i < tiny_syms; i++) {
+            lc = read_sym(s, i, &dist);
+            if (dist == 0) {
+                s->dyn_ltree[lc].Freq = 0;
+            } else {
+                s->dyn_ltree[zng_length_code[lc] + LITERALS + 1].Freq = 0;
+                s->dyn_dtree[d_code(dist - 1)].Freq = 0;
+            }
+        }
+        s->dyn_ltree[END_BLOCK].Freq = 1;
+        s->opt_len = s->static_len = 0;
+        s->sym_next = 0;
+        for (n = 0; n < SPLIT_TYPES; n++)
+            s->split_new[n] = s->split_obs[n] = 0;
+        s->split_num_new = s->split_num_obs = 0;
+        s->lazy2_probes = s->lazy2_hits = 0;
+        return;
+    }
 
     /* Initialize the trees. */
     for (n = 0; n < L_CODES;  n++)
@@ -671,24 +773,46 @@ void Z_INTERNAL zng_tr_flush_block(deflate_state *s, unsigned char *buf, uint32_
         opt_lenb = static_lenb = 0;
         s->static_len = 7;
     } else if (s->level > 0) {
-        /* Check if the file is binary or text */
-        if (s->strm->data_type == Z_UNKNOWN)
-            s->strm->data_type = detect_data_type(s);
 
-        /* Construct the literal and distance trees */
-        build_tree(s, (tree_desc *)(&(s->l_desc)));
-        Tracev((stderr, "\nlit data: dyn %u, stat %u", s->opt_len, s->static_len));
+        unsigned int flush_syms = block_sym_count(s);
+        /* A dynamic header alone costs more bits than dynamic codes can save
+           on a handful of symbols, so tiny blocks skip the tree build and
+           price the static trees from the symbols instead of the alphabet,
+           under Z_FIXED as well. */
+        if (flush_syms <= 8) {
+            int block_type;
+            s->static_len = static_len_from_syms(s, &block_type);
+            /* No dynamic pricing happened, so the shared choice below always
+               selects the static trees. */
+            s->opt_len = s->static_len;
+            if (s->strm->data_type == Z_UNKNOWN)
+                s->strm->data_type = block_type;
+        } else if (s->strategy == Z_FIXED) {
+            if (s->strm->data_type == Z_UNKNOWN)
+                s->strm->data_type = detect_data_type(s);
+            /* Static trees are forced, so skip building the dynamic trees they
+               would replace and price the block for the stored check directly. */
+            s->static_len = static_len_from_freqs(s);
+            s->opt_len = s->static_len;
+        } else {
+            if (s->strm->data_type == Z_UNKNOWN)
+                s->strm->data_type = detect_data_type(s);
 
-        build_tree(s, (tree_desc *)(&(s->d_desc)));
-        Tracev((stderr, "\ndist data: dyn %u, stat %u", s->opt_len, s->static_len));
-        /* At this point, opt_len and static_len are the total bit lengths of
-         * the compressed block data, excluding the tree representations.
-         */
+            /* Construct the literal and distance trees */
+            build_tree(s, (tree_desc *)(&(s->l_desc)));
+            Tracev((stderr, "\nlit data: dyn %u, stat %u", s->opt_len, s->static_len));
 
-        /* Build the bit length tree for the above two trees, and get the index
-         * in bl_order of the last bit length code to send.
-         */
-        max_blindex = build_bl_tree(s);
+            build_tree(s, (tree_desc *)(&(s->d_desc)));
+            Tracev((stderr, "\ndist data: dyn %u, stat %u", s->opt_len, s->static_len));
+            /* At this point, opt_len and static_len are the total bit lengths of
+             * the compressed block data, excluding the tree representations.
+             */
+
+            /* Build the bit length tree for the above two trees, and get the index
+             * in bl_order of the last bit length code to send.
+             */
+            max_blindex = build_bl_tree(s);
+        }
 
         /* Determine the best encoding. Compute the block lengths in bytes. */
         opt_lenb = (s->opt_len + 3 + 7) >> 3;
@@ -698,9 +822,8 @@ void Z_INTERNAL zng_tr_flush_block(deflate_state *s, unsigned char *buf, uint32_
                 opt_lenb, s->opt_len, static_lenb, s->static_len, stored_len,
                 s->sym_next / 3));
 
-        if (static_lenb <= opt_lenb || s->strategy == Z_FIXED)
+        if (static_lenb <= opt_lenb)
             opt_lenb = static_lenb;
-
     } else {
         Assert(buf != NULL, "lost buf");
         opt_lenb = static_lenb = stored_len + 5; /* force a stored block */

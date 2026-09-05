@@ -315,6 +315,9 @@ int32_t ZNG_CONDEXPORT PREFIX(deflateInit2)(PREFIX3(stream) *strm, int32_t level
         return Z_MEM_ERROR;
 
     s = alloc_bufs->state;
+    /* The state is not zeroed, force init_block's full tree clear on the
+       first reset before sym_next has ever been written. */
+    s->sym_next = UINT32_MAX;
     s->alloc_bufs = alloc_bufs;
     s->window = alloc_bufs->window;
     s->prev = alloc_bufs->prev;
