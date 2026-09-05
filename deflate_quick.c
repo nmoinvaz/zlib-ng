@@ -45,32 +45,49 @@ Z_FORCEINLINE static int quick_end_block(deflate_state *s, uint32_t strstart, in
     return 0;
 }
 
-Z_FORCEINLINE static block_state deflate_quick_impl(deflate_state *s, int flush,
-                                                   uint32_t strstart, uint32_t lookahead) {
+/* ===========================================================================
+ * One match loop for both emission modes. static_emit is a compile-time
+ * constant, so each instantiation keeps only its own emission code and the
+ * shared single-probe search is written once.
+ *
+ * static_emit: Z_FIXED, the trees are known up front so every symbol goes
+ * straight through the static tables, single pass with no symbol buffer.
+ * Otherwise symbols are tallied and the block flush builds per-block trees.
+ */
+Z_FORCEINLINE static block_state deflate_quick_impl(deflate_state *s, int flush, const int static_emit) {
     unsigned char *window;
+    /* Carrying the scan state in locals keeps it in callee-saved registers
+       across the compare256 and flush calls, instead of a load and store
+       pair through the state on every symbol. */
+    uint32_t strstart = s->strstart;
+    uint32_t lookahead = s->lookahead;
     unsigned last = (flush == Z_FINISH) ? 1 : 0;
 
-    if (UNLIKELY(last && s->block_open != 2)) {
-        /* Emit end of previous block */
-        if (quick_end_block(s, strstart, 0))
-            return need_more;
-        /* Emit start of last block */
-        quick_start_block(s, strstart, last);
-    } else if (UNLIKELY(s->block_open == 0 && lookahead > 0)) {
-        /* Start new block only when we have lookahead data, so that if no
-           input data is given an empty block will not be written */
-        quick_start_block(s, strstart, last);
+    if (static_emit) {
+        if (UNLIKELY(last && s->block_open != 2)) {
+            /* Emit end of previous block */
+            if (quick_end_block(s, strstart, 0))
+                return need_more;
+            /* Emit start of last block */
+            quick_start_block(s, strstart, last);
+        } else if (UNLIKELY(s->block_open == 0 && lookahead > 0)) {
+            /* Start new block only when we have lookahead data, so that if no
+               input data is given an empty block will not be written */
+            quick_start_block(s, strstart, last);
+        }
     }
 
     window = s->window;
 
     for (;;) {
-        if (UNLIKELY(s->pending + ((BIT_BUF_SIZE + 7) >> 3) >= s->pending_buf_size)) {
-            PREFIX(flush_pending)(s->strm);
-            if (s->strm->avail_out == 0) {
-                s->lookahead = lookahead;
-                s->strstart = strstart;
-                return (last && s->strm->avail_in == 0 && s->bi_valid == 0 && s->block_open == 0) ? finish_started : need_more;
+        if (static_emit) {
+            if (UNLIKELY(s->pending + ((BIT_BUF_SIZE + 7) >> 3) >= s->pending_buf_size)) {
+                PREFIX(flush_pending)(s->strm);
+                if (s->strm->avail_out == 0) {
+                    s->lookahead = lookahead;
+                    s->strstart = strstart;
+                    return (last && s->strm->avail_in == 0 && s->bi_valid == 0 && s->block_open == 0) ? finish_started : need_more;
+                }
             }
         }
 
@@ -85,7 +102,7 @@ Z_FORCEINLINE static block_state deflate_quick_impl(deflate_state *s, int flush,
             if (UNLIKELY(lookahead == 0))
                 break;
 
-            if (UNLIKELY(s->block_open == 0)) {
+            if (static_emit && UNLIKELY(s->block_open == 0)) {
                 /* Start new block when we have lookahead data, so that if no
                    input data is given an empty block will not be written */
                 quick_start_block(s, strstart, last);
@@ -111,37 +128,81 @@ Z_FORCEINLINE static block_state deflate_quick_impl(deflate_state *s, int flush,
                             match_len = lookahead;
 
                         Assert(match_len <= STD_MAX_MATCH, "match too long");
-                        Assert(strstart <= UINT16_MAX, "strstart should fit in uint16_t");
                         check_match(s, strstart, hash_head, match_len);
 
-                        zng_tr_emit_dist(s, static_ltree, static_dtree, match_len - STD_MIN_MATCH, (uint32_t)dist);
-                        lookahead -= match_len;
-                        strstart += match_len;
+                        if (static_emit) {
+                            Assert(strstart <= UINT16_MAX, "strstart should fit in uint16_t");
+                            zng_tr_emit_dist(s, static_ltree, static_dtree, match_len - STD_MIN_MATCH, (uint32_t)dist);
+                            lookahead -= match_len;
+                            strstart += match_len;
+                        } else {
+                            int bflush = zng_tr_tally_dist(s, (uint32_t)dist, match_len - STD_MIN_MATCH);
+                            lookahead -= match_len;
+                            strstart += match_len;
+                            if (UNLIKELY(bflush)) {
+                                s->strstart = strstart;
+                                s->lookahead = lookahead;
+                                FLUSH_BLOCK(s, window, 0);
+                            }
+                        }
                         continue;
                     }
                 }
             }
         }
 
-        zng_tr_emit_lit(s, static_ltree, (uint8_t)str_val);
-        strstart++;
-        lookahead--;
+        if (static_emit) {
+            zng_tr_emit_lit(s, static_ltree, (uint8_t)str_val);
+            strstart++;
+            lookahead--;
+        } else {
+            int bflush = zng_tr_tally_lit(s, (uint8_t)str_val);
+            strstart++;
+            lookahead--;
+            if (UNLIKELY(bflush)) {
+                s->strstart = strstart;
+                s->lookahead = lookahead;
+                FLUSH_BLOCK(s, window, 0);
+            }
+        }
     }
 
     s->lookahead = lookahead;
     s->strstart = strstart;
     s->insert = strstart < (STD_MIN_MATCH - 1) ? strstart : (STD_MIN_MATCH - 1);
-    if (UNLIKELY(last)) {
-        if (quick_end_block(s, strstart, 1))
-            return finish_started;
-        return finish_done;
+
+    if (static_emit) {
+        if (UNLIKELY(last)) {
+            if (quick_end_block(s, strstart, 1))
+                return finish_started;
+            return finish_done;
+        }
+        if (quick_end_block(s, strstart, 0))
+            return need_more;
+        return block_done;
     }
 
-    if (quick_end_block(s, strstart, 0))
-        return need_more;
+    if (UNLIKELY(flush == Z_FINISH)) {
+        FLUSH_BLOCK(s, window, 1);
+        return finish_done;
+    }
+    if (UNLIKELY(s->sym_next))
+        FLUSH_BLOCK(s, window, 0);
     return block_done;
 }
 
+/* Z_FIXED path: every symbol goes straight through the static tables. */
+static block_state deflate_quick_static(deflate_state *s, int flush) {
+    return deflate_quick_impl(s, flush, 1);
+}
+
+/* Default path: symbols are tallied so the flush builds per-block trees. */
+static block_state deflate_quick_dynamic(deflate_state *s, int flush) {
+    return deflate_quick_impl(s, flush, 0);
+}
+
 Z_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
-    return deflate_quick_impl(s, flush, s->strstart, s->lookahead);
+    if (UNLIKELY(s->strategy == Z_FIXED))
+        return deflate_quick_static(s, flush);
+    return deflate_quick_dynamic(s, flush);
 }
