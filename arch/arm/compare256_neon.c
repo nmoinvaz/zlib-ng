@@ -16,7 +16,21 @@
 #endif
 
 Z_FORCEINLINE static uint32_t compare256_neon_static(const uint8_t *src0, const uint8_t *src1) {
-    uint32_t len = 0;
+    uint64_t diff;
+
+    /* Most calls diverge within the first 16 bytes. Probe them with scalar
+       64-bit loads so the mismatch position is computed in general registers,
+       avoiding the vector to scalar transfer latency of the NEON lane reads. */
+    diff = zng_memread_8(src0) ^ zng_memread_8(src1);
+    if (diff)
+        return zng_first_diff_byte64(diff);
+    diff = zng_memread_8(src0 + 8) ^ zng_memread_8(src1 + 8);
+    if (diff)
+        return 8 + zng_first_diff_byte64(diff);
+
+    uint32_t len = 16;
+    src0 += 16;
+    src1 += 16;
 #ifdef COMPARE256_NEON_POSTINDEX
     intptr_t offset = (intptr_t)src0 - (intptr_t)src1;
 #endif
