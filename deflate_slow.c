@@ -5,8 +5,10 @@
  */
 
 #include "zbuild.h"
+#include "zmemory.h"
 #include "deflate.h"
 #include "deflate_p.h"
+#include "functable.h"
 #include "insert_string_p.h"
 
 /* ===========================================================================
@@ -122,22 +124,33 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
              * of the string with itself at the start of the input file).
              */
 
-            /* longest_match only looks for matches longer than s->prev_length.
-               The floor pairs with the discard below so a phantom seeded length
-               can never be accepted as a real match. */
-            uint32_t floor = MIN(MAX(match_floor, s->match_floor), s->good_match - 1);
-            uint32_t discard = MAX(match_discard, s->match_floor);
-            s->prev_length = MAX(prev_length, floor);
-            match_len = longest_match(s, hash_head);
-            /* Restore the real previous length, the lazy evaluation below relies on it. */
-            s->prev_length = prev_length;
-            /* longest_match() sets match_start */
+            if (UNLIKELY(dist == 1 &&
+                zng_memread_4(window + s->strstart) == zng_memread_4(window + s->strstart - 1))) {
+                /* A run of one repeated byte is its own best match at distance
+                   one. The hash chain holds every earlier position of the run,
+                   so the chain walk would inspect them all only to converge on
+                   the same overlapping match. */
+                match_len = FUNCTABLE_CALL(compare256)(window + s->strstart + 2, window + s->strstart + 1) + 2;
+                match_len = MIN(match_len, s->lookahead);
+                s->match_start = s->strstart - 1;
+            } else {
+                /* longest_match only looks for matches longer than s->prev_length.
+                   The floor pairs with the discard below so a phantom seeded length
+                   can never be accepted as a real match. */
+                uint32_t floor = MIN(MAX(match_floor, s->match_floor), s->good_match - 1);
+                uint32_t discard = MAX(match_discard, s->match_floor);
+                s->prev_length = MAX(prev_length, floor);
+                match_len = longest_match(s, hash_head);
+                /* Restore the real previous length, the lazy evaluation below relies on it. */
+                s->prev_length = prev_length;
+                /* longest_match() sets match_start */
 
-            if (match_len <= discard ||
-                (match_len == STD_MIN_MATCH && s->strstart - s->match_start > TOO_FAR)) {
-                /* Match not long enough, treat it as no match found, which makes a garbage
-                 * match_start that is harmless. */
-                match_len = STD_MIN_MATCH - 1;
+                if (match_len <= discard ||
+                    (match_len == STD_MIN_MATCH && s->strstart - s->match_start > TOO_FAR)) {
+                    /* Match not long enough, treat it as no match found, which makes a garbage
+                     * match_start that is harmless. */
+                    match_len = STD_MIN_MATCH - 1;
+                }
             }
         }
         /* If there was a match at the previous step and the current
