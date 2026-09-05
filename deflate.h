@@ -314,6 +314,8 @@ struct ALIGNED_(64) internal_state {
     uint32_t split_obs[SPLIT_TYPES];
     uint32_t split_num_new;
     uint32_t split_num_obs;
+    uint8_t lit_cost_q3;          /* previous block's average literal price in
+                                     eighth-bits, 0 disables match pricing */
 
     unsigned int opt_len;         /* bit length of current block with optimal trees */
     unsigned int static_len;      /* bit length of current block with static trees */

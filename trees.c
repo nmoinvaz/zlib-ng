@@ -82,6 +82,7 @@ static int  detect_data_type (deflate_state *s);
  */
 void Z_INTERNAL zng_tr_init(deflate_state *s) {
     s->match_floor = STD_MIN_MATCH - 1;
+    s->lit_cost_q3 = 0;
 
     s->l_desc.dyn_tree = s->dyn_ltree;
     s->l_desc.stat_desc = &static_l_desc;
@@ -724,6 +725,20 @@ void Z_INTERNAL zng_tr_flush_block(deflate_state *s, unsigned char *buf, uint32_
         unsigned int block_matches = 0;
         unsigned int block_syms;
         int n;
+
+        /* Average literal price of the block just built, in eighth-bits. The
+           code lengths persist across init_block, so the next block's match
+           search can price short matches against real literal costs. */
+        if (s->strategy != Z_FIXED && s->sym_next != 0) {
+            uint32_t lit_bits = 0, lit_count = 0;
+            for (n = 0; n < LITERALS; n++) {
+                lit_bits += (uint32_t)s->dyn_ltree[n].Freq * s->dyn_ltree[n].Len;
+                lit_count += s->dyn_ltree[n].Freq;
+            }
+            s->lit_cost_q3 = lit_count >= 64 ? (uint8_t)MIN(255, lit_bits * 8 / lit_count) : 0;
+        } else {
+            s->lit_cost_q3 = 0;
+        }
 
         for (n = 0; n < D_CODES; n++)
             block_matches += s->dyn_dtree[n].Freq;
