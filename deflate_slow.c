@@ -216,9 +216,22 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
             unsigned int mov_fwd = prev_length - 1;
             if (max_insert > strstart) {
                 unsigned int insert_cnt = mov_fwd;
+                unsigned int insert_from = strstart + 1;
                 if (UNLIKELY(insert_cnt > max_insert - strstart))
                     insert_cnt = max_insert - strstart;
-                insert_batch(s, window, strstart + 1, insert_cnt);
+                /* A distance-one match is a run of one repeated byte. Its
+                   interior windows all hash to the same bucket, and any
+                   cross-run match can reference the run start instead, so
+                   insert only the tail windows that cross into the bytes
+                   after the run. The rolling hash is reseeded at the resume
+                   point, its state spans exactly two prior bytes. */
+                if (UNLIKELY(strstart - 1 - s->prev_match == 1) && insert_cnt > 3) {
+                    insert_from += insert_cnt - 3;
+                    insert_cnt = 3;
+                    if (level >= 9)
+                        s->ins_h = update_hash_roll(window[insert_from], window[insert_from + 1]);
+                }
+                insert_batch(s, window, insert_from, insert_cnt);
             }
             prev_length = 0;
             match_available = 0;
