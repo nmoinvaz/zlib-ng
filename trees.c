@@ -650,6 +650,19 @@ void Z_INTERNAL zng_tr_flush_block(deflate_state *s, unsigned char *buf, uint32_
     /* last: one if this is the last block for a file */
     unsigned int opt_lenb, static_lenb; /* opt_len and static_len in bytes */
     int max_blindex = 0;  /* index of last bit length code of non zero freq */
+    uint16_t lit_freq_snap[LITERALS];
+    unsigned int block_matches = 0;
+
+    /* Snapshot the frequencies the statistics below need. The Freq fields
+       share storage with the code values, which gen_codes() writes during
+       the tree builds, so they cannot be read after the block is built. */
+    if (s->level > 0 && s->sym_next != 0) {
+        int sn;
+        for (sn = 0; sn < LITERALS; sn++)
+            lit_freq_snap[sn] = s->dyn_ltree[sn].Freq;
+        for (sn = 0; sn < D_CODES; sn++)
+            block_matches += s->dyn_dtree[sn].Freq;
+    }
 
     /* Build the Huffman trees unless a stored block is forced */
     if (UNLIKELY(s->sym_next == 0)) {
@@ -722,26 +735,23 @@ void Z_INTERNAL zng_tr_flush_block(deflate_state *s, unsigned char *buf, uint32_
        block's matches from the distance tree frequencies and have the next
        block's match search reject minimum-length candidates cheaply. */
     if (s->level > 0) {
-        unsigned int block_matches = 0;
         unsigned int block_syms;
         int n;
 
-        /* Average literal price of the block just built, in eighth-bits. The
-           code lengths persist across init_block, so the next block's match
+        /* Average literal price of the block just built, in eighth-bits, from
+           the entry snapshot of the frequencies and the built code lengths.
+           The lengths persist across init_block, so the next block's match
            search can price short matches against real literal costs. */
         if (s->strategy != Z_FIXED && s->sym_next != 0) {
             uint32_t lit_bits = 0, lit_count = 0;
             for (n = 0; n < LITERALS; n++) {
-                lit_bits += (uint32_t)s->dyn_ltree[n].Freq * s->dyn_ltree[n].Len;
-                lit_count += s->dyn_ltree[n].Freq;
+                lit_bits += (uint32_t)lit_freq_snap[n] * s->dyn_ltree[n].Len;
+                lit_count += lit_freq_snap[n];
             }
             s->lit_cost_q3 = lit_count >= 64 ? (uint8_t)MIN(255, lit_bits * 8 / lit_count) : 0;
         } else {
             s->lit_cost_q3 = 0;
         }
-
-        for (n = 0; n < D_CODES; n++)
-            block_matches += s->dyn_dtree[n].Freq;
 #ifdef LIT_MEM
         block_syms = s->sym_next;
 #else
