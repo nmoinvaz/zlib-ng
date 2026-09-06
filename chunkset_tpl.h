@@ -134,8 +134,11 @@ static inline uint8_t* HALFCHUNKCOPY(uint8_t *out, uint8_t const *from, size_t l
 #endif
 
 /* Copy DIST bytes from OUT - DIST into OUT + DIST * k, for 0 <= k < LEN/DIST.
-   Return OUT + LEN. */
-static inline uint8_t* CHUNKMEMSET(uint8_t *out, uint8_t *from, size_t len, int exact_tail) {
+   Return OUT + LEN. Forced inline, as a standalone function every short
+   overlapped match in the inflate fast loop pays a call for it. The
+   short-match narrow loop keeps the out-of-line wrapper below instead,
+   inlining there costs it more than the calls do. */
+Z_FORCEINLINE static uint8_t* CHUNKMEMSET(uint8_t *out, uint8_t *from, size_t len, int exact_tail) {
     /* Debug performance related issues when len < sizeof(uint64_t):
        Assert(len >= sizeof(uint64_t), "chunkmemset should be called on larger chunks"); */
     Assert(from != out, "chunkmemset cannot have a distance 0");
@@ -316,6 +319,10 @@ rem_bytes:
     }
 
     return out;
+}
+
+static __attribute__((noinline)) uint8_t* CHUNKMEMSET_OUTLINE(uint8_t *out, uint8_t *from, size_t len) {
+    return CHUNKMEMSET(out, from, len, 0);
 }
 
 Z_INTERNAL uint8_t* CHUNKMEMSET_SAFE(uint8_t *out, uint8_t *from, size_t len, size_t left) {
