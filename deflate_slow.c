@@ -247,16 +247,20 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
                 unsigned int insert_from = strstart + 1;
                 if (UNLIKELY(insert_cnt > max_insert - strstart))
                     insert_cnt = max_insert - strstart;
-                /* A short-distance match copies a periodic pattern, so its
-                   interior windows duplicate the period's windows in the same
-                   few buckets, and any cross-pattern match can reference an
-                   earlier occurrence or the fresh tail entries instead, so
-                   insert only the tail windows that cross into the bytes
-                   after the match. The rolling hash is reseeded at the resume
-                   point, its state spans exactly two prior bytes. */
-                if (UNLIKELY(strstart - 1 - s->prev_match <= 4) && insert_cnt > 3) {
-                    insert_from += insert_cnt - 3;
-                    insert_cnt = 3;
+                /* A match longer than its own distance copies a periodic
+                   pattern, so every interior window has an exact duplicate one
+                   period earlier and any cross-pattern match can reference
+                   that occurrence or the fresh tail entries instead. Insert
+                   one period plus the hash span at the tail, every phase of
+                   the pattern keeps a nearby entry and the windows crossing
+                   into the bytes after the match stay seeded. The rolling
+                   hash is reseeded at the resume point, its state spans
+                   exactly two prior bytes. */
+                uint32_t dist_p = strstart - 1 - s->prev_match;
+                uint32_t tail_cnt = dist_p <= 3 ? 3 : dist_p + 2;
+                if (UNLIKELY(tail_cnt < insert_cnt)) {
+                    insert_from += insert_cnt - tail_cnt;
+                    insert_cnt = tail_cnt;
                     if (level >= 9)
                         s->ins_h = update_hash_roll(window[insert_from], window[insert_from + 1]);
                 }
