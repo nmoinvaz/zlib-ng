@@ -247,13 +247,14 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
                 unsigned int insert_from = strstart + 1;
                 if (UNLIKELY(insert_cnt > max_insert - strstart))
                     insert_cnt = max_insert - strstart;
-                /* A distance-one match is a run of one repeated byte. Its
-                   interior windows all hash to the same bucket, and any
-                   cross-run match can reference the run start instead, so
+                /* A short-distance match copies a periodic pattern, so its
+                   interior windows duplicate the period's windows in the same
+                   few buckets, and any cross-pattern match can reference an
+                   earlier occurrence or the fresh tail entries instead, so
                    insert only the tail windows that cross into the bytes
-                   after the run. The rolling hash is reseeded at the resume
+                   after the match. The rolling hash is reseeded at the resume
                    point, its state spans exactly two prior bytes. */
-                if (UNLIKELY(strstart - 1 - s->prev_match == 1) && insert_cnt > 3) {
+                if (UNLIKELY(strstart - 1 - s->prev_match <= 4) && insert_cnt > 3) {
                     insert_from += insert_cnt - 3;
                     insert_cnt = 3;
                     if (level >= 9)
