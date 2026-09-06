@@ -14,6 +14,7 @@
 #include "acle_intrins.h"
 #include "neon_intrins.h"
 #include "crc32_armv8_p.h"
+#include "crc32_shift_tbl.h"
 
 /* Carryless multiply low 64 bits: a[0] * b[0] */
 static Z_TARGET_PMULL_EOR3 inline uint64x2_t clmul_lo(uint64x2_t a, uint64x2_t b) {
@@ -270,10 +271,19 @@ Z_FORCEINLINE static Z_TARGET_PMULL_EOR3 uint32_t crc32_copy_impl(uint32_t crc, 
             crc2 = __crc32d(crc2, s2b);
         }
 
-        /* Shift and combine 3 scalar CRCs */
-        vc0 = crc_shift(crc0, klen * 2 + blk * 144);
-        vc1 = crc_shift(crc1, klen + blk * 144);
-        vc2 = crc_shift(crc2, blk * 144);
+        /* Shift and combine 3 scalar CRCs, precomputed constants for the
+           common sizes, deriving x^n mod P at runtime only for huge buffers
+           where the cost amortizes */
+        if (blk <= CRC32_SHIFT_TBL_BLOCKS) {
+            const uint32_t *shift = crc_shift_blk_table[blk - 1];
+            vc0 = clmul_scalar(crc0, shift[0]);
+            vc1 = clmul_scalar(crc1, shift[1]);
+            vc2 = clmul_scalar(crc2, shift[2]);
+        } else {
+            vc0 = crc_shift(crc0, klen * 2 + blk * 144);
+            vc1 = crc_shift(crc1, klen + blk * 144);
+            vc2 = crc_shift(crc2, blk * 144);
+        }
         vc = vgetq_lane_u64(veor3q_u64(vc0, vc1, vc2), 0);
 
         /* Final reduction: 128-bit vector + scalar CRCs -> 32-bit */
@@ -326,9 +336,12 @@ Z_FORCEINLINE static Z_TARGET_PMULL_EOR3 uint32_t crc32_copy_impl(uint32_t crc, 
             len -= 24;
         } while (len >= 32);
 
-        /* Combine the 3 CRCs */
-        vc0 = crc_shift(crc0, klen * 2 + 8);
-        vc1 = crc_shift(crc1, klen + 8);
+        /* Combine the 3 CRCs, klen spans 24..56 so the constants are tabled */
+        {
+            const uint32_t *shift = crc_shift_tail_table[(klen >> 3) - 3];
+            vc0 = clmul_scalar(crc0, shift[0]);
+            vc1 = clmul_scalar(crc1, shift[1]);
+        }
         vc = vgetq_lane_u64(veorq_u64(vc0, vc1), 0);
 
         /* Process final 8 bytes with combined CRC */

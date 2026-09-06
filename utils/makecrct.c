@@ -16,6 +16,7 @@
 
 #define POLY 0xedb88320         /* p(x) reflected, with x^32 implied */
 #define BRAID_W 8 /* Need a 64-bit integer type in order to generate crc32 tables. */
+#define SHIFT_TBL_BLOCKS 128    /* Covers lane combining for buffers up to 128*192 bytes */
 typedef uint64_t z_word_t;
 
 static uint32_t crc_table[256];
@@ -26,6 +27,7 @@ static uint32_t x2n_table[32];
 
 static void make_crc_table(void);
 static void print_crc_table(void);
+static void print_shift_table(void);
 
 static void braid(uint32_t ltl[][256], z_word_t big[][256], int n, int w);
 
@@ -231,12 +233,58 @@ static void print_crc_table(void) {
     printf("#endif /* CRC32_BRAID_TBL_H_ */\n");
 }
 
+/*
+  Print the shift-by-zeros constants used by the multi-lane CRC kernels to
+  combine their per-lane CRCs, precomputed so the kernels never derive
+  x^n mod p at runtime. The 192-byte-block kernel splits its scalar data
+  into three lanes separated by blk*16 bytes ahead of blk*144 vector bytes,
+  giving lane shifts of blk*176, blk*160 and blk*144 bytes. Its tail loop
+  uses three lanes of klen bytes with a final 8-byte word, shifts of
+  klen*2+8 and klen+8 bytes for klen in 24..56 step 8. A shift by n bytes
+  multiplies by x^(n*8-33) mod p, the -33 aligning the reflected clmul
+  result for the 64-bit CRC reduction that follows.
+ */
+static void print_shift_table(void) {
+    int blk, k;
+
+    printf("#ifndef CRC32_SHIFT_TBL_H_\n");
+    printf("#define CRC32_SHIFT_TBL_H_\n\n");
+    printf("/* crc32_shift_tbl.h -- lane-combine constants for multi-lane CRC kernels\n");
+    printf(" * Generated automatically by makecrct.c -s\n */\n\n");
+
+    printf("/* {x^(blk*176*8-33), x^(blk*160*8-33), x^(blk*144*8-33)} mod p,\n");
+    printf("   indexed by blk-1, for the 192-byte-block kernel */\n");
+    printf("#define CRC32_SHIFT_TBL_BLOCKS %d\n", SHIFT_TBL_BLOCKS);
+    printf("static const uint32_t crc_shift_blk_table[CRC32_SHIFT_TBL_BLOCKS][3] = {\n");
+    for (blk = 1; blk <= SHIFT_TBL_BLOCKS; blk++) {
+        printf("    {0x%08" PRIx32 ", 0x%08" PRIx32 ", 0x%08" PRIx32 "}%s\n",
+               x2nmodp((z_off64_t)blk * 176 * 8 - 33, 0),
+               x2nmodp((z_off64_t)blk * 160 * 8 - 33, 0),
+               x2nmodp((z_off64_t)blk * 144 * 8 - 33, 0),
+               blk < SHIFT_TBL_BLOCKS ? "," : "");
+    }
+    printf("};\n\n");
+
+    printf("/* {x^((klen*2+8)*8-33), x^((klen+8)*8-33)} mod p, indexed by\n");
+    printf("   klen/8-3, for the 3-way scalar tail with klen in 24..56 step 8 */\n");
+    printf("static const uint32_t crc_shift_tail_table[5][2] = {\n");
+    for (k = 24; k <= 56; k += 8) {
+        printf("    {0x%08" PRIx32 ", 0x%08" PRIx32 "}%s\n",
+               x2nmodp((z_off64_t)(k * 2 + 8) * 8 - 33, 0),
+               x2nmodp((z_off64_t)(k + 8) * 8 - 33, 0),
+               k < 56 ? "," : "");
+    }
+    printf("};\n\n");
+
+    printf("#endif /* CRC32_SHIFT_TBL_H_ */\n");
+}
+
 // The output of this application can be piped out to recreate crc32 tables
 int main(int argc, char *argv[]) {
-    Z_UNUSED(argc);
-    Z_UNUSED(argv);
-
     make_crc_table();
-    print_crc_table();
+    if (argc > 1 && argv[1][0] == '-' && argv[1][1] == 's')
+        print_shift_table();
+    else
+        print_crc_table();
     return 0;
 }
