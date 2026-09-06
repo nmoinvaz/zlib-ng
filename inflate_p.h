@@ -199,7 +199,7 @@ typedef unsigned bits_t;
    7 bytes (entry guarantees bits < 8), so the first iteration stays within
    the same bound. */
 #define INFLATE_FAST_MIN_HAVE 15
-#define INFLATE_FAST_MIN_LEFT 260  /* max output per token (258) + 2 */
+#define INFLATE_FAST_MIN_LEFT 274  /* max output per token (258) + a whole overwriting chunk (16) */
 #define INFLATE_FAST_MIN_SAFE 3    /* max unchecked literal writes per iteration */
 
 /* Load 64 bits from IN and place the bytes at offset BITS in the result. */
