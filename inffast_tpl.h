@@ -305,12 +305,14 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start) {
 #ifdef USE_NARROW_COPY
                     if (LIKELY(dist >= len || dist >= CHUNKSIZE()))
                         out = CHUNKCOPY(out, out - dist, len);
+                    else
+                        out = CHUNKMEMSET_OUTLINE(out, out - dist, len);
 #else
                     if (LIKELY(dist >= len || dist >= 2 * CHUNKSIZE()))
                         out = DOUBLECHUNKCOPY(out, out - dist, len);
-#endif
                     else
                         out = CHUNKMEMSET(out, out - dist, len, 0);
+#endif
 #elif defined(HAVE_MASKED_READWRITE)
                     out = CHUNKCOPY_SAFE(out, out - dist, len, safe);
 #else
