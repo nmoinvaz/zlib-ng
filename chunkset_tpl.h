@@ -135,7 +135,7 @@ static inline uint8_t* HALFCHUNKCOPY(uint8_t *out, uint8_t const *from, size_t l
 
 /* Copy DIST bytes from OUT - DIST into OUT + DIST * k, for 0 <= k < LEN/DIST.
    Return OUT + LEN. */
-static inline uint8_t* CHUNKMEMSET(uint8_t *out, uint8_t *from, size_t len) {
+static inline uint8_t* CHUNKMEMSET(uint8_t *out, uint8_t *from, size_t len, int exact_tail) {
     /* Debug performance related issues when len < sizeof(uint64_t):
        Assert(len >= sizeof(uint64_t), "chunkmemset should be called on larger chunks"); */
     Assert(from != out, "chunkmemset cannot have a distance 0");
@@ -298,12 +298,20 @@ rem_bytes:
         storechunk_masked(out, &chunk_load, len);
         out += len;
 #else
-        uint8_t *chunk_p = (uint8_t *)&chunk_load;
-        if (len & 16) { memcpy(out, chunk_p, 16); out += 16; chunk_p += 16; }
-        if (len & 8) { memcpy(out, chunk_p, 8); out += 8; chunk_p += 8; }
-        if (len & 4) { memcpy(out, chunk_p, 4); out += 4; chunk_p += 4; }
-        if (len & 2) { memcpy(out, chunk_p, 2); out += 2; chunk_p += 2; }
-        if (len & 1) { *out++ = *chunk_p; }
+        if (!exact_tail && sizeof(chunk_t) <= 16) {
+            /* The inflate fast path reserves INFLATE_FAST_MIN_LEFT bytes past
+               the match, so a whole overwriting chunk beats the exact byte
+               cascade, which spills the chunk register to the stack. */
+            storechunk(out, &chunk_load);
+            out += len;
+        } else {
+            uint8_t *chunk_p = (uint8_t *)&chunk_load;
+            if (len & 16) { memcpy(out, chunk_p, 16); out += 16; chunk_p += 16; }
+            if (len & 8) { memcpy(out, chunk_p, 8); out += 8; chunk_p += 8; }
+            if (len & 4) { memcpy(out, chunk_p, 4); out += 4; chunk_p += 4; }
+            if (len & 2) { memcpy(out, chunk_p, 2); out += 2; chunk_p += 2; }
+            if (len & 1) { *out++ = *chunk_p; }
+        }
 #endif
     }
 
@@ -339,7 +347,7 @@ Z_INTERNAL uint8_t* CHUNKMEMSET_SAFE(uint8_t *out, uint8_t *from, size_t len, si
 #endif
 
     if (len)
-        out = CHUNKMEMSET(out, from, len);
+        out = CHUNKMEMSET(out, from, len, 1);
 
     return out;
 }
@@ -363,5 +371,5 @@ static inline uint8_t *CHUNKCOPY_SAFE(uint8_t *out, uint8_t *from, size_t len, u
     }
 #endif
 
-    return CHUNKMEMSET(out, from, len);
+    return CHUNKMEMSET(out, from, len, 1);
 }

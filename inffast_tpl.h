@@ -310,7 +310,7 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start) {
                         out = DOUBLECHUNKCOPY(out, out - dist, len);
 #endif
                     else
-                        out = CHUNKMEMSET(out, out - dist, len);
+                        out = CHUNKMEMSET(out, out - dist, len, 0);
 #elif defined(HAVE_MASKED_READWRITE)
                     out = CHUNKCOPY_SAFE(out, out - dist, len, safe);
 #else
