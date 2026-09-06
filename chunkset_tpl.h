@@ -172,9 +172,40 @@ Z_FORCEINLINE static uint8_t* CHUNKMEMSET(uint8_t *out, uint8_t *from, size_t le
         return out + len;
     } else
 #endif
+    /* A distance of exactly one chunk keeps the whole-chunk broadcast below,
+       one load feeding repeated stores, where CHUNKCOPY would reload its own
+       just-written output every iteration. */
+#ifdef HAVE_CHUNKMEMSET_16
+    if (dist >= len || dist > 2 * sizeof(chunk_t) || (exact_tail && dist > sizeof(chunk_t))) {
+#else
     if (dist >= len || dist >= sizeof(chunk_t)) {
+#endif
         return CHUNKCOPY(out, from, len);
     }
+
+#ifdef HAVE_CHUNKMEMSET_16
+    if (dist > sizeof(chunk_t)) {
+        /* Period wider than one chunk, at most two. A two-chunk
+           magazine holds the period plus its wrap, so the loop runs with no
+           loads and none of the partial-overlap forwarding stalls CHUNKCOPY
+           pays here. The wrap bytes only exist in the output after the first
+           store, so the second chunk loads behind it. Stores reach up to two
+           chunks past the copy, inside the fast-loop reserve. */
+        chunk_t c0, c1;
+        loadchunk(from, &c0);
+        storechunk(out, &c0);
+        loadchunk(from + sizeof(chunk_t), &c1);
+        while (len > 2 * sizeof(chunk_t)) {
+            storechunk(out, &c0);
+            storechunk(out + sizeof(chunk_t), &c1);
+            out += dist;
+            len -= dist;
+        }
+        storechunk(out, &c0);
+        storechunk(out + sizeof(chunk_t), &c1);
+        return out + len;
+    }
+#endif
 
     /* Only AVX2+ as there's 128 bit vectors and 256 bit. We allow for shorter vector
      * lengths because they serve to allow more cases to fall into chunkcopy, as the
