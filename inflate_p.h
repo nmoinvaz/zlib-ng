@@ -236,46 +236,22 @@ static Z_CHUNKCOPY_SAFE_INLINE uint8_t* chunkcopy_safe(uint8_t *out, uint8_t *fr
         return out + len;
     }
 
-    /* We are emulating a self-modifying copy loop here. To do this in a way that doesn't produce undefined behavior,
-     * we have to get a bit clever. First if the overlap is such that src falls between dst and dst+len, we can do the
-     * initial bulk memcpy of the nonoverlapping region. Then, we can leverage the size of this to determine the safest
-     * atomic memcpy size we can pick such that we have non-overlapping regions. This effectively becomes a safe look
-     * behind or lookahead distance. */
-    size_t non_olap_size = (size_t)ABS(from - out);
+    /* Reading ahead of out slides memory down, memmove matches exactly. */
+    if (out < from) {
+        memmove(out, from, len);
+        return out + len;
+    }
 
-    /* So this doesn't give use a worst case scenario of function calls in a loop,
-     * we want to instead break this down into copy blocks of fixed lengths
-     *
-     * TODO: The memcpy calls aren't inlined on architectures with strict memory alignment
-     */
+    /* We are emulating a self-modifying copy loop here. The bytes in
+     * [from, out) already hold the pattern and every full block copied from
+     * the fixed source doubles the gap to the write cursor, so the copy
+     * stride doubles: dist, 2*dist, 4*dist, ... with non-overlapping
+     * memcpy regions throughout. */
     while (len) {
-        tocopy = MIN(non_olap_size, len);
+        tocopy = MIN((size_t)(out - from), len);
+        memcpy(out, from, tocopy);
+        out += tocopy;
         len -= tocopy;
-
-        while (tocopy >= 16) {
-            memcpy(out, from, 16);
-            out += 16;
-            from += 16;
-            tocopy -= 16;
-        }
-
-        if (tocopy >= 8) {
-            memcpy(out, from, 8);
-            out += 8;
-            from += 8;
-            tocopy -= 8;
-        }
-
-        if (tocopy >= 4) {
-            memcpy(out, from, 4);
-            out += 4;
-            from += 4;
-            tocopy -= 4;
-        }
-
-        while (tocopy--) {
-            *out++ = *from++;
-        }
     }
 
     return out;
