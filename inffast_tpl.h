@@ -308,7 +308,7 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start) {
                     else
                         out = CHUNKMEMSET_OUTLINE(out, out - dist, len);
 #else
-                    if (LIKELY(dist >= len || dist >= 2 * CHUNKSIZE()))
+                    if (LIKELY(dist >= len || dist > 2 * CHUNKSIZE()))
                         out = DOUBLECHUNKCOPY(out, out - dist, len);
                     else
                         out = CHUNKMEMSET(out, out - dist, len, 0);
