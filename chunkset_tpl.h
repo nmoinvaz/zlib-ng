@@ -226,8 +226,44 @@ static inline uint8_t* CHUNKMEMSET(uint8_t *out, uint8_t *from, size_t len) {
         chunkmemset_16(from, &chunk_load);
     } else
 #endif
-    chunk_load = GET_CHUNK_MAG(from, &chunk_mod, dist);
+    {
+        chunk_load = GET_CHUNK_MAG(from, &chunk_mod, dist);
+        goto partial_stride;
+    }
 
+#if defined(HAVE_CHUNKMEMSET_1) || defined(HAVE_CHUNKMEMSET_2) || defined(HAVE_CHUNKMEMSET_4) || \
+    defined(HAVE_CHUNKMEMSET_8) || defined(HAVE_CHUNKMEMSET_16)
+    /* Broadcast distances divide the chunk evenly, so every store advances a
+       whole chunk. The constant stride lets the compiler pair adjacent stores
+       into wider ops, and keeps this loop out of the partial-stride path. */
+    if (len <= sizeof(chunk_t)) {
+#ifdef HAVE_MASKED_READWRITE
+        storechunk_masked(out, &chunk_load, len);
+#else
+        storechunk(out, &chunk_load);
+#endif
+        return out + len;
+    }
+
+    while (len >= 4 * sizeof(chunk_t)) {
+        storechunk(out, &chunk_load);
+        storechunk(out + sizeof(chunk_t), &chunk_load);
+        storechunk(out + 2 * sizeof(chunk_t), &chunk_load);
+        storechunk(out + 3 * sizeof(chunk_t), &chunk_load);
+        out += 4 * sizeof(chunk_t);
+        len -= 4 * sizeof(chunk_t);
+    }
+
+    while (len >= sizeof(chunk_t)) {
+        storechunk(out, &chunk_load);
+        out += sizeof(chunk_t);
+        len -= sizeof(chunk_t);
+    }
+
+    goto rem_bytes;
+#endif
+
+partial_stride:
     if (len <= sizeof(chunk_t)) {
 #ifdef HAVE_MASKED_READWRITE
         storechunk_masked(out, &chunk_load, len);
@@ -256,9 +292,7 @@ static inline uint8_t* CHUNKMEMSET(uint8_t *out, uint8_t *from, size_t len) {
         out += adv_amount;
     }
 
-#ifdef HAVE_HALF_CHUNK
 rem_bytes:
-#endif
     if (len) {
 #ifdef HAVE_MASKED_READWRITE
         storechunk_masked(out, &chunk_load, len);
