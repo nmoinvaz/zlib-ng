@@ -1271,6 +1271,29 @@ void Z_INTERNAL PREFIX(fill_window)(deflate_state *s) {
             /* Slide as far as possible while keeping MAX_DIST bytes of history.
              * The slide is a multiple of w_size so prev slots keep their positions. */
             unsigned int slide = (s->strstart - MAX_DIST(s)) & ~W_MASK(s);
+            /* A literal-dominated block about to span the slide would lose its
+               window bytes and with them the stored encoding, the only cheap
+               one incompressible data has. Flush it while the bytes are still
+               here. Match-bearing blocks span the window routinely and never
+               benefit from stored. */
+            if (s->level > 0 && s->sym_next != 0 &&
+                s->block_start >= 0 && s->block_start < (int)slide) {
+                uint32_t span = s->strstart - (unsigned int)s->block_start;
+#ifdef LIT_MEM
+                uint32_t syms = s->sym_next;
+#else
+                uint32_t syms = s->sym_next / 3;
+#endif
+                if (syms + (syms >> 3) >= span) {
+                    /* deflate_slow may hold one not yet tallied literal at
+                       strstart-1. Keep it out of the flushed block, a stored
+                       block would carry the byte a later tally emits again. */
+                    unsigned int held = s->match_available ? 1 : 0;
+                    s->strstart -= held;
+                    FLUSH_BLOCK_ONLY(s, window, 0);
+                    s->strstart += held;
+                }
+            }
             memcpy(window, window + slide, s->strstart + s->lookahead - slide);
             if (s->match_start >= slide) {
                 s->match_start -= slide;
