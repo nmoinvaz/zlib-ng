@@ -48,7 +48,7 @@ Z_FORCEINLINE static uint32_t lazy2_probe(deflate_state *s, unsigned char *windo
 
     uint32_t next_pos = strstart + 1;
     uint32_t hash_head2;
-    if (level >= 9) {
+    if (level >= MIN_ROLL_LEVEL) {
         hash_head2 = s->head[update_hash_roll(s->ins_h, window[next_pos + STD_MIN_MATCH - 1])];
     } else {
         uint32_t h2;

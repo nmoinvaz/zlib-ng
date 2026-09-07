@@ -128,7 +128,7 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
          */
         uint32_t hash_head = 0;
         if (LIKELY(lookahead >= WANT_MIN_MATCH)) {
-            if (level >= 9)
+            if (level >= MIN_ROLL_LEVEL)
                 hash_head = insert_roll(s, window, strstart);
             else
                 hash_head = insert_knuth(s, window, strstart);
@@ -278,7 +278,7 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
 
                         s->lazy2_hits++;
                         /* Keep the hash contiguous over the skipped position. */
-                        if (level >= 9)
+                        if (level >= MIN_ROLL_LEVEL)
                             insert_roll(s, window, next_pos);
                         else
                             insert_knuth(s, window, next_pos);
@@ -326,7 +326,7 @@ Z_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
                 if (UNLIKELY(tail_cnt < insert_cnt)) {
                     insert_from += insert_cnt - tail_cnt;
                     insert_cnt = tail_cnt;
-                    if (level >= 9)
+                    if (level >= MIN_ROLL_LEVEL)
                         s->ins_h = update_hash_roll(window[insert_from], window[insert_from + 1]);
                 }
                 insert_batch(s, window, insert_from, insert_cnt);
