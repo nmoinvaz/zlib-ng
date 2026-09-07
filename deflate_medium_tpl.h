@@ -23,8 +23,9 @@ static void SUFFIX(insert_match)(deflate_state *s, unsigned char *Z_RESTRICT win
      * is not too large. This saves time but degrades compression.
      */
     if (UNLIKELY(match_len > max_len)) {
-        // For too long matches, insert only the tail position.
-        start = end - 1;
+        // For too long matches, insert only a bounded tail window, so short-period
+        // data keeps a recent occurrence of every phase in the hash table.
+        start = end - MIN(match_len, 32);
     } else {
         start = strstart;
     }
