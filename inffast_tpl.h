@@ -278,9 +278,12 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start) {
                     if (UNLIKELY(op < len)) {           /* still need some from output */
                         len -= op;
 #ifndef USE_SAFE_MODE
-                        out = CHUNKCOPY_SAFE(out, from, op, safe);
+                        /* Window reads stay inside the window plus its chunk
+                           padding and the writes have the fast-loop reserve,
+                           so no bounds checks are needed here. */
+                        out = CHUNKCOPY(out, from, op);
                         out = CHUNKUNROLL(out, &dist, &len);
-                        out = CHUNKCOPY_SAFE(out, out - dist, len, safe);
+                        out = CHUNKCOPY(out, out - dist, len);
 #elif defined(HAVE_MASKED_READWRITE)
                         out = CHUNKCOPY_SAFE(out, from, op, safe);
                         out = CHUNKCOPY_SAFE(out, out - dist, len, safe);
@@ -289,7 +292,11 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start) {
                         out = chunkcopy_safe(out, out - dist, len, safe);
 #endif
                     } else {
-#if !defined(USE_SAFE_MODE) || defined(HAVE_MASKED_READWRITE)
+#ifndef USE_SAFE_MODE
+                        /* Whole match from the window, same padding and
+                           reserve argument as above. */
+                        out = CHUNKCOPY(out, from, len);
+#elif defined(HAVE_MASKED_READWRITE)
                         out = CHUNKCOPY_SAFE(out, from, len, safe);
 #else
                         out = chunkcopy_safe(out, from, len, safe);
