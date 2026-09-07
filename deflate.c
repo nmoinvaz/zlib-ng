@@ -156,6 +156,7 @@ static const config configuration_table[10] = {
  */
 #define CLEAR_HASH(s) do { \
     memset((unsigned char *)s->head, 0, HASH_SIZE * sizeof(*s->head)); \
+    s->hash_dirty = 0; \
   } while (0)
 
 /* Configurations that never read the hash table. When deflateParams() switches
@@ -1222,7 +1223,9 @@ static void lm_init(deflate_state *s) {
     s->slide_len = 0;
 
     if (!HASHLESS(s->level, s->strategy)) {
-        CLEAR_HASH(s);
+        /* Defer the 128 KiB table clear to fill_window's first insert, so a
+         * stream too short to ever probe the hash never pays for it. */
+        s->hash_dirty = 1;
     }
 
     /* Set the default configuration parameters:
@@ -1336,6 +1339,8 @@ void Z_INTERNAL PREFIX(fill_window)(deflate_state *s) {
 
         /* Initialize the hash value now that we have some input: */
         if (!HASHLESS(level, s->strategy) && s->lookahead + s->insert >= STD_MIN_MATCH) {
+            if (UNLIKELY(s->hash_dirty))
+                CLEAR_HASH(s);
             unsigned int str = s->strstart - s->insert;
             if (UNLIKELY(level >= MIN_ROLL_LEVEL)) {
                 s->ins_h = update_hash_roll(window[str], window[str+1]);
