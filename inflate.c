@@ -102,6 +102,7 @@ int32_t Z_EXPORT PREFIX(inflateReset)(PREFIX3(stream) *strm) {
     state->wsize = 0;
     state->whave = 0;
     state->wnext = 0;
+    state->bounce = 0;
     return PREFIX(inflateResetKeep)(strm);
 }
 
@@ -336,6 +337,20 @@ static void updatewindow(PREFIX3(stream) *strm, const uint8_t *end, uint32_t len
     if (state->wsize == 0)
         state->wsize = 1U << state->wbits;
 
+    /* When the call decodes into the window itself, the bytes are already in
+       place, only the checksum and the ring bookkeeping remain. The bounce
+       precondition keeps the region from crossing the wrap point. */
+    if (state->bounce) {
+        if (INFLATE_NEED_CHECKSUM(strm) && cksum)
+            inf_chksum(strm, end - len, len);
+        state->wnext += len;
+        if (state->wnext == state->wsize)
+            state->wnext = 0;
+        if (state->whave < state->wsize)
+            state->whave = MIN(state->wsize, state->whave + len);
+        return;
+    }
+
     /* len state->wsize or less output bytes into the circular window */
     if (len >= state->wsize) {
         /* Only do this if the caller specifies to checksum bytes AND the platform requires
@@ -477,7 +492,7 @@ static void updatewindow(PREFIX3(stream) *strm, const uint8_t *end, uint32_t len
    will return Z_BUF_ERROR if it has not reached the end of the stream.
  */
 
-int32_t Z_EXPORT PREFIX(inflate)(PREFIX3(stream) *strm, int32_t flush) {
+static int32_t inflate_core(PREFIX3(stream) *strm, int32_t flush) {
     struct inflate_state *state;
     const unsigned char *next;  /* next input */
     unsigned char *put;         /* next output */
@@ -1213,6 +1228,40 @@ int32_t Z_EXPORT PREFIX(inflate)(PREFIX3(stream) *strm, int32_t flush) {
         }
         ret = Z_BUF_ERROR;
     }
+    return ret;
+}
+
+int32_t Z_EXPORT PREFIX(inflate)(PREFIX3(stream) *strm, int32_t flush) {
+    struct inflate_state *state;
+
+    /* Small output buffers make the window path the common case and pay an
+       updatewindow copy every call. When the caller's buffer is smaller than
+       the window and the ring has room before its wrap point, decode into
+       the window itself, history stays contiguous with the output, the
+       window update becomes bookkeeping, and one copy hands the caller its
+       bytes. */
+    if (inflateStateCheck(strm))
+        return Z_STREAM_ERROR;
+    state = (struct inflate_state *)strm->state;
+    if (!INFLATE_NEED_UPDATEWINDOW(strm) || state->bounce ||
+        state->wsize == 0 || state->window == NULL ||
+        strm->next_out == NULL || strm->avail_out == 0 ||
+        strm->avail_out >= state->wsize ||
+        state->wnext + strm->avail_out > state->wsize)
+        return inflate_core(strm, flush);
+
+    unsigned char *user_out = strm->next_out;
+    uint32_t user_avail = strm->avail_out;
+    uint32_t wnext0 = state->wnext;
+
+    state->bounce = 1;
+    strm->next_out = state->window + wnext0;
+    int32_t ret = inflate_core(strm, flush);
+    state->bounce = 0;
+
+    uint32_t produced = user_avail - strm->avail_out;
+    memcpy(user_out, state->window + wnext0, produced);
+    strm->next_out = user_out + produced;
     return ret;
 }
 

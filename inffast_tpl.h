@@ -133,6 +133,12 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start) {
     out = strm->next_out;
     beg = out - (start - strm->avail_out);
     safe = out + strm->avail_out;
+    /* When inflate decodes into the window itself, the bytes written by
+       earlier calls sit contiguously before this call's output, so extend
+       the in-output span back across them. Matches into that history then
+       take the wide copy paths instead of the window branch. */
+    if (state->bounce)
+        beg -= MIN(state->wnext, state->whave);
 #ifdef USE_SAFE_MODE
     end = safe - INFLATE_FAST_MIN_SAFE + 1;
 #else
@@ -258,18 +264,23 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start) {
 #endif
                     }
                     from = window;
-                    if (LIKELY(wnext == 0)) {           /* very common case */
+                    /* Bounce mode folds the bytes below wnext into the output
+                       span, so only the previous lap at the buffer's tail
+                       remains window history, the wnext accounting would
+                       double-count. */
+                    unsigned wnext_b = state->bounce ? 0 : wnext;
+                    if (LIKELY(wnext_b == 0)) {                  /* very common case */
                         from += wsize - op;
-                    } else if (LIKELY(wnext >= op)) {   /* contiguous in window */
-                        from += wnext - op;
+                    } else if (LIKELY(wnext_b >= op)) {          /* contiguous in window */
+                        from += wnext_b - op;
                     } else {                            /* wrap around window */
-                        op -= wnext;
+                        op -= wnext_b;
                         from += wsize - op;
                         if (UNLIKELY(op < len)) {       /* some from end of window */
                             len -= op;
                             out = CHUNKCOPY_SAFE(out, from, op, safe);
                             from = window;              /* more from start of window */
-                            op = wnext;
+                            op = wnext_b;
                             /* This (rare) case can create a situation where
                                the first chunkcopy below must be checked.
                              */
