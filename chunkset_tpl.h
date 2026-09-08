@@ -285,6 +285,11 @@ Z_FORCEINLINE static uint8_t* CHUNKMEMSET(uint8_t *out, uint8_t *from, size_t le
 #ifdef HAVE_CHUNKMEMSET_16
     if (dist == 16) {
         chunkmemset_16(from, &chunk_load);
+    } else if (dist == sizeof(chunk_t)) {
+        /* A period of exactly one chunk needs no replication, so a plain load fills the
+           magazine. Dead on the 16 byte chunksets, where the broadcast above claims this
+           distance. */
+        loadchunk(from, &chunk_load);
     } else if (dist > sizeof(chunk_t)) {
         /* Wide periods sit behind the broadcast distances so the common
            short-distance dispatch pays nothing for them. Periods over two
