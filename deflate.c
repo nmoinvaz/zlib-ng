@@ -1183,6 +1183,8 @@ static void lm_set_level(deflate_state *s, int level) {
     s->nice_match       = configuration_table[level].nice_length;
     s->max_chain_length = configuration_table[level].max_chain;
     if (level >= MIN_ROLL_LEVEL) {
+        Assert(configuration_table[level].func == deflate_slow,
+               "rolling hash level must map to deflate_slow");
         s->longest_match = FUNCTABLE_FPTR(longest_match_slow_roll);
         s->insert_batch  = insert_roll_batch;
     } else {
