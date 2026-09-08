@@ -238,6 +238,8 @@ Z_FORCEINLINE static uint8_t* CHUNKMEMSET(uint8_t *out, uint8_t *from, size_t le
             return HALFCHUNKCOPY(out, from, len);
 
         if ((dist % 2) != 0 || dist == 6) {
+            /* The permute tables only cover distances below the half chunk width */
+            Assert(dist < sizeof(halfchunk_t), "half chunk magazine distance out of range");
             halfchunk_t halfchunk_load = GET_HALFCHUNK_MAG(from, &chunk_mod, dist);
 
             if (len == sizeof(halfchunk_t)) {
@@ -305,6 +307,8 @@ Z_FORCEINLINE static uint8_t* CHUNKMEMSET(uint8_t *out, uint8_t *from, size_t le
         storechunk(out + sizeof(chunk_t), &c1);
         return out + len;
     } else {
+        /* The permute tables only cover distances below the chunk width */
+        Assert(dist < sizeof(chunk_t), "chunk magazine distance out of range");
         chunk_load = GET_CHUNK_MAG(from, &chunk_mod, dist);
         goto partial_stride;
     }
