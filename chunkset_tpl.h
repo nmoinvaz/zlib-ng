@@ -133,7 +133,6 @@ static inline uint8_t* HALFCHUNKCOPY(uint8_t *out, uint8_t const *from, size_t l
 }
 #endif
 
-#ifdef HAVE_CHUNKMEMSET_16
 /* Kept out of line, the wide-period bands are rare next to the broadcast
    distances and inlining them bloats the inflate fast loop past what the
    instruction cache forgives. */
@@ -178,7 +177,6 @@ static __attribute__((noinline)) uint8_t* CHUNKMEMSET_WIDE(uint8_t *out, uint8_t
     }
     return out + len;
 }
-#endif
 
 /* Copy DIST bytes from OUT - DIST into OUT + DIST * k, for 0 <= k < LEN/DIST.
    Return OUT + LEN. Forced inline, as a standalone function every short
@@ -222,16 +220,9 @@ Z_FORCEINLINE static uint8_t* CHUNKMEMSET(uint8_t *out, uint8_t *from, size_t le
     /* A distance of exactly one chunk keeps the whole-chunk broadcast below,
        one load feeding repeated stores, where CHUNKCOPY would reload its own
        just-written output every iteration. */
-#ifdef HAVE_CHUNKMEMSET_16
     if (dist >= len || dist > 4 * sizeof(chunk_t) || (exact_tail && dist > sizeof(chunk_t))) {
-#else
-    if (dist >= len || dist >= sizeof(chunk_t)) {
-#endif
         return CHUNKCOPY(out, from, len);
     }
-
-#ifdef HAVE_CHUNKMEMSET_16
-#endif
 
 
     /* Only AVX2+ as there's 128 bit vectors and 256 bit. We allow for shorter vector
@@ -285,10 +276,11 @@ Z_FORCEINLINE static uint8_t* CHUNKMEMSET(uint8_t *out, uint8_t *from, size_t le
 #ifdef HAVE_CHUNKMEMSET_16
     if (dist == 16) {
         chunkmemset_16(from, &chunk_load);
-    } else if (dist == sizeof(chunk_t)) {
+    } else
+#endif
+    if (dist == sizeof(chunk_t)) {
         /* A period of exactly one chunk needs no replication, so a plain load fills the
-           magazine. Dead on the 16 byte chunksets, where the broadcast above claims this
-           distance. */
+           magazine. */
         loadchunk(from, &chunk_load);
     } else if (dist > sizeof(chunk_t)) {
         /* Wide periods sit behind the broadcast distances so the common
@@ -312,15 +304,11 @@ Z_FORCEINLINE static uint8_t* CHUNKMEMSET(uint8_t *out, uint8_t *from, size_t le
         storechunk(out, &c0);
         storechunk(out + sizeof(chunk_t), &c1);
         return out + len;
-    } else
-#endif
-    {
+    } else {
         chunk_load = GET_CHUNK_MAG(from, &chunk_mod, dist);
         goto partial_stride;
     }
 
-#if defined(HAVE_CHUNKMEMSET_1) || defined(HAVE_CHUNKMEMSET_2) || defined(HAVE_CHUNKMEMSET_4) || \
-    defined(HAVE_CHUNKMEMSET_8) || defined(HAVE_CHUNKMEMSET_16)
     /* Broadcast distances divide the chunk evenly, so every store advances a
        whole chunk. The constant stride lets the compiler pair adjacent stores
        into wider ops, and keeps this loop out of the partial-stride path. */
@@ -349,7 +337,6 @@ Z_FORCEINLINE static uint8_t* CHUNKMEMSET(uint8_t *out, uint8_t *from, size_t le
     }
 
     goto rem_bytes;
-#endif
 
 partial_stride:
     if (len <= sizeof(chunk_t)) {
