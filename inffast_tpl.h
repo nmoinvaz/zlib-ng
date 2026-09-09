@@ -321,7 +321,7 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start) {
                        as they stay within 258 bytes of `out`.
                     */
 #ifdef USE_NARROW_COPY
-                    if (LIKELY(dist >= len || dist >= CHUNKSIZE()))
+                    if (LIKELY(dist >= len || dist > CHUNKSIZE()))
                         out = CHUNKCOPY(out, out - dist, len);
                     else
                         out = CHUNKMEMSET_OUTLINE(out, out - dist, len);
