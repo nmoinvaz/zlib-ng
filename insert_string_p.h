@@ -14,6 +14,9 @@
 #else
 #  define ROLL_HASH_SIZE HASH_SIZE
 #endif
+#if defined(__aarch64__) && defined(__ARM_NEON)
+#  include <arm_neon.h>
+#endif
 #define ROLL_MASK ((HASH_SIZE / 2) - 1u))
 #define UPDATE_HASH_ROLL(h,val) h = (((h << 5) ^ ((uint8_t)(val))) & ROLL_MASK
 
@@ -165,27 +168,57 @@ Z_FORCEINLINE static void insert_knuth_batch_head_static(deflate_state *const s,
 }
 
 Z_FORCEINLINE static void insert_roll_batch_static(deflate_state *const s, unsigned char *window, uint32_t str, uint32_t count) {
-    uint8_t *strstart = window + str + (STD_MIN_MATCH-1);
-    uint8_t *strend = strstart + count;
-
     /* Local pointers to avoid indirection */
     Pos *headp = s->head;
     Pos *prevp = s->prev;
-    uint32_t h = s->ins_h;
     const unsigned int w_mask = W_MASK(s);
+    uint32_t idx = str;
 
-    for (uint32_t idx = str; strstart < strend; idx++, strstart++) {
-        uint32_t head;
-
-        UPDATE_HASH_ROLL(h, strstart[0]);
-
-        head = headp[h];
+    /* The rolling hash forgets everything past its mask after three shifts,
+     * so position idx hashes exactly the bytes idx..idx+2 and every hash in
+     * the batch computes independently of the running state. Recomputing
+     * breaks the serial dependency the rolling form imposes, and on NEON
+     * sixteen hashes fall out of three shifted byte vectors. */
+#if defined(__aarch64__) && defined(__ARM_NEON)
+    for (; count >= 16; count -= 16, idx += 16) {
+        const uint8_t *p = window + idx;
+        uint8x16_t b0 = vld1q_u8(p);
+        uint8x16_t b1 = vld1q_u8(p + 1);
+        uint8x16_t b2 = vld1q_u8(p + 2);
+        uint16x8_t mask = vdupq_n_u16((uint16_t)((HASH_SIZE / 2) - 1u));
+        uint16x8_t lo = vandq_u16(veorq_u16(veorq_u16(
+            vshlq_n_u16(vmovl_u8(vget_low_u8(b0)), 10),
+            vshlq_n_u16(vmovl_u8(vget_low_u8(b1)), 5)),
+            vmovl_u8(vget_low_u8(b2))), mask);
+        uint16x8_t hi = vandq_u16(veorq_u16(veorq_u16(
+            vshlq_n_u16(vmovl_u8(vget_high_u8(b0)), 10),
+            vshlq_n_u16(vmovl_u8(vget_high_u8(b1)), 5)),
+            vmovl_u8(vget_high_u8(b2))), mask);
+        uint16_t hs[16];
+        vst1q_u16(hs, lo);
+        vst1q_u16(hs + 8, hi);
+        for (int j = 0; j < 16; j++) {
+            uint32_t h = hs[j], head = headp[h];
+            uint32_t pos = idx + (uint32_t)j;
+            if (LIKELY(head != pos)) {
+                prevp[pos & w_mask] = (Pos)head;
+                headp[h] = (Pos)pos;
+            }
+        }
+    }
+#endif
+    for (; count > 0; count--, idx++) {
+        uint32_t h = update_hash_roll(update_hash_roll(update_hash_roll(0,
+                         window[idx]), window[idx + 1]), window[idx + 2]);
+        uint32_t head = headp[h];
         if (LIKELY(head != idx)) {
             prevp[idx & w_mask] = (Pos)head;
             headp[h] = (Pos)idx;
         }
     }
-    s->ins_h = h;
+    if (idx > str)
+        s->ins_h = update_hash_roll(update_hash_roll(update_hash_roll(0,
+                       window[idx - 1]), window[idx]), window[idx + 1]);
 }
 
 #endif
