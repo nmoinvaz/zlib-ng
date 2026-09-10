@@ -79,6 +79,27 @@ Z_INTERNAL uint32_t LONGEST_MATCH(deflate_state *const s, uint32_t cur_match) {
 
     scan = window + strstart;
     scan_start = zng_memread_8(scan);
+
+    /* A repeated byte run is a candidate at distance one, found without
+     * touching the chains, and it can only add a candidate so the result
+     * stays the longest match. Long runs return before any chain or offset
+     * work, shorter ones raise the floor the chain candidates must clear.
+     * The head based shortcut in deflate_slow misses runs whose chain head
+     * sits elsewhere, this test reads the window itself. */
+    if (UNLIKELY((uint32_t)scan_start == (uint32_t)scan[-1] * 0x01010101u) && strstart > 0) {
+        uint32_t rlen = COMPARE256(scan + 2, scan + 1) + 2;
+        rlen = MIN(rlen, lookahead);
+        if (rlen > best_len) {
+            s->match_start = strstart - 1;
+            if (rlen >= lookahead)
+                return lookahead;
+            if (rlen >= nice_match)
+                return rlen;
+            best_len = rlen;
+            offset = best_len >= sizeof(uint64_t) ? best_len - 7 : 0;
+        }
+    }
+
     scan_end = zng_memread_8(scan+offset);
     mbase_end = (mbase_start+offset);
 
