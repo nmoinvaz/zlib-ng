@@ -301,12 +301,18 @@ int32_t ZNG_CONDEXPORT PREFIX(deflateInit2)(PREFIX3(stream) *strm, int32_t level
 #endif
     }
     if (memLevel < 1 || memLevel > MAX_MEM_LEVEL || method != Z_DEFLATED || windowBits < MIN_WBITS ||
-        windowBits > MAX_WBITS || level < 0 || level > 9 || strategy < 0 || strategy > Z_FIXED ||
-        (windowBits == 8 && wrap != 1)) {
+        windowBits > MAX_WBITS || level < 0 || level > 9 || strategy < 0 || strategy > Z_FIXED) {
         return Z_STREAM_ERROR;
     }
-    if (windowBits == 8)
-        windowBits = 9;  /* until 256-byte window bug fixed */
+    int user_wbits = windowBits;
+    if (windowBits == 8) {
+        /* A 256 byte window cannot hold the lookahead margin a maximum
+         * length match needs, so the engine runs with a 512 byte window
+         * and caps emitted distances at 256 instead. The streams stay
+         * decodable by a strict 256 byte window inflater and the header
+         * declares the requested size. */
+        windowBits = 9;
+    }
 
     /* Allocate buffers */
     int lit_bufsize = 1 << (memLevel + 6);
@@ -330,6 +336,8 @@ int32_t ZNG_CONDEXPORT PREFIX(deflateInit2)(PREFIX3(stream) *strm, int32_t level
 
     s->wrap = wrap;
     s->w_size = 1 << windowBits;
+    s->user_wbits = (unsigned int)user_wbits;
+    s->max_dist = user_wbits == 8 ? 256 : s->w_size - MIN_LOOKAHEAD;
 
     s->high_water = 0;      /* nothing written to s->window yet */
 
@@ -815,7 +823,7 @@ Z_INTERNAL void PREFIX(flush_pending)(PREFIX3(stream) *strm) {
 static int deflateHeaders(deflate_state *s, PREFIX3(stream) *strm) {
     if (s->status == INIT_STATE) {
         /* zlib header */
-        unsigned int header = (Z_DEFLATED + ((W_BITS(s)-8)<<4)) << 8;
+        unsigned int header = (Z_DEFLATED + ((s->user_wbits-8)<<4)) << 8;
         unsigned int level_flags;
 
         if (s->strategy >= Z_HUFFMAN_ONLY || s->level < 2)

@@ -211,6 +211,13 @@ struct ALIGNED_(64) internal_state {
      * multiple of w_size so prev slots keep their positions. Read by slide_hash.
      */
 
+    uint32_t max_dist;
+    /* Longest emitted match distance; w_size minus the lookahead margin, or 256
+     * for the windowBits 8 request the engine services with a 512 byte window.
+     * Placed in this alignment hole so the match loop finds it on the same
+     * cache line as the scan state and table pointers it is read with.
+     */
+
     unsigned char *window;
     /* Sliding window. Input bytes are read into the free space at the end of
      * the buffer, and move down later to keep a dictionary of at least wSize
@@ -356,8 +363,10 @@ struct ALIGNED_(64) internal_state {
     longest_match_func longest_match;
     insert_batch_func insert_batch;
 
+    uint32_t user_wbits;        /* windowBits the caller asked for, only read for the header */
+
     /* Reserved for future use and alignment purposes */
-    int32_t reserved[19];
+    int32_t reserved[18];
 };
 
 typedef enum {
@@ -434,7 +443,7 @@ static inline void put_uint64(deflate_state *s, uint64_t lld) {
  * See deflate.c for comments about the STD_MIN_MATCH+1.
  */
 
-#define MAX_DIST(s)  ((s)->w_size - MIN_LOOKAHEAD)
+#define MAX_DIST(s)  ((s)->max_dist)
 /* In order to simplify the code, particularly on 16 bit machines, match
  * distances are limited to MAX_DIST instead of WSIZE.
  */
