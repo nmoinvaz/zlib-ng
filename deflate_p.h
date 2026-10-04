@@ -163,6 +163,82 @@ static inline int zng_tr_tally_dist(deflate_state* s, uint32_t dist, uint32_t le
     return (s->sym_next == s->sym_end);
 }
 
+/* ===========================================================================
+ * Tally variants for loops that keep the symbol buffer state in locals. The
+ * symbol store may alias the state, so the plain tally functions read the
+ * index, the buffer and the limit back from it for every symbol, which puts a
+ * store to load forward between consecutive symbols. The new index is written
+ * through, so the state stays current for the block flush.
+ */
+#ifdef LIT_MEM
+#  define SYM_BUF(s) ((s)->l_buf)
+#else
+#  define SYM_BUF(s) ((s)->sym_buf)
+#endif
+
+/* Load the sym_buf, sym_next and sym_end locals. Load them again after every
+ * call, so that the values never have to survive a call in a register. */
+#define TALLY_LOAD(s) \
+    do { \
+        sym_buf = SYM_BUF(s); \
+        sym_next = (s)->sym_next; \
+        sym_end = (s)->sym_end; \
+    } while (0)
+
+static inline int zng_tr_tally_lit_local(deflate_state *s, unsigned char *sym_buf, unsigned int *sym_next_p,
+                                         unsigned int sym_end, unsigned char c) {
+    unsigned int sym_next = *sym_next_p;
+#ifdef LIT_MEM
+    s->d_buf[sym_next] = 0;
+    sym_buf[sym_next] = c;
+    sym_next += 1;
+#else
+#  if OPTIMAL_CMP >= 32
+    zng_memwrite_4(&sym_buf[sym_next], Z_U32_TO_LE((uint32_t)c << 16));
+#  else
+    sym_buf[sym_next] = 0;
+    sym_buf[sym_next+1] = 0;
+    sym_buf[sym_next+2] = c;
+#  endif
+    sym_next += 3;
+#endif
+    *sym_next_p = sym_next;
+    s->sym_next = sym_next;
+    s->dyn_ltree[c].Freq++;
+    Tracevv((stderr, "%c", c));
+    return (sym_next == sym_end);
+}
+
+static inline int zng_tr_tally_dist_local(deflate_state *s, unsigned char *sym_buf, unsigned int *sym_next_p,
+                                          unsigned int sym_end, uint32_t dist, uint32_t len) {
+    unsigned int sym_next = *sym_next_p;
+#ifdef LIT_MEM
+    Assert(dist <= UINT16_MAX, "dist should fit in uint16_t");
+    Assert(len <= UINT8_MAX, "len should fit in uint8_t");
+    s->d_buf[sym_next] = (uint16_t)dist;
+    sym_buf[sym_next] = (uint8_t)len;
+    sym_next += 1;
+#else
+#  if OPTIMAL_CMP >= 32
+    zng_memwrite_4(&sym_buf[sym_next], Z_U32_TO_LE(dist | ((uint32_t)len << 16)));
+#  else
+    sym_buf[sym_next] = (uint8_t)(dist);
+    sym_buf[sym_next+1] = (uint8_t)(dist >> 8);
+    sym_buf[sym_next+2] = (uint8_t)len;
+#  endif
+    sym_next += 3;
+#endif
+    *sym_next_p = sym_next;
+    s->sym_next = sym_next;
+    dist--;
+    Assert(dist < MAX_DIST(s) && (uint16_t)d_code(dist) < (uint16_t)D_CODES,
+        "zng_tr_tally: bad match");
+
+    s->dyn_ltree[zng_length_code[len] + LITERALS + 1].Freq++;
+    s->dyn_dtree[d_code(dist)].Freq++;
+    return (sym_next == sym_end);
+}
+
 /* =========================================================================
  * Flush as much pending output as possible. All deflate() output, except for some
  * deflate_stored() output, goes through this function so some applications may wish to

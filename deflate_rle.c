@@ -28,6 +28,11 @@ Z_INTERNAL block_state deflate_rle(deflate_state *s, int flush) {
     uint32_t match_len = 0;
     unsigned int lookahead = s->lookahead;
     unsigned int strstart = s->strstart;
+    unsigned char *sym_buf;
+    unsigned int sym_next;
+    unsigned int sym_end;
+
+    TALLY_LOAD(s);
 
     for (;;) {
         /* Make sure that we always have enough lookahead, except
@@ -40,6 +45,7 @@ Z_INTERNAL block_state deflate_rle(deflate_state *s, int flush) {
             PREFIX(fill_window)(s);
             lookahead = s->lookahead;
             strstart = s->strstart;
+            TALLY_LOAD(s);
             if (UNLIKELY(lookahead <= STD_MAX_MATCH && flush == Z_NO_FLUSH))
                 return need_more;
             if (UNLIKELY(lookahead == 0))
@@ -61,14 +67,14 @@ Z_INTERNAL block_state deflate_rle(deflate_state *s, int flush) {
             Assert(strstart <= UINT16_MAX, "strstart should fit in uint16_t");
             check_match(s, strstart, strstart - 1, match_len);
 
-            bflush = zng_tr_tally_dist(s, 1, match_len - STD_MIN_MATCH);
+            bflush = zng_tr_tally_dist_local(s, sym_buf, &sym_next, sym_end, 1, match_len - STD_MIN_MATCH);
 
             lookahead -= match_len;
             strstart += match_len;
             match_len = 0;
         } else {
             /* No match, output a literal byte */
-            bflush = zng_tr_tally_lit(s, window[strstart]);
+            bflush = zng_tr_tally_lit_local(s, sym_buf, &sym_next, sym_end, window[strstart]);
             lookahead--;
             strstart++;
         }
@@ -76,6 +82,7 @@ Z_INTERNAL block_state deflate_rle(deflate_state *s, int flush) {
             s->lookahead = lookahead;
             s->strstart = strstart;
             FLUSH_BLOCK(s, window, 0);
+            TALLY_LOAD(s);
         }
     }
     s->lookahead = lookahead;
