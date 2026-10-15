@@ -427,6 +427,152 @@ Z_INTERNAL uint32_t crc32_chorba_32768_nondestructive(uint32_t crc, const uint8_
     return ~crc;
 }
 
+/* The zero polynomial of the 32768 variant has degree 300, so only the next 300 words are ever
+ * owed contributions. A small buffer covers any length by sliding those words back to its start. */
+#define SLIDING_WORDS 1024
+#define SLIDING_PENDING 300
+/* Pending words plus the block and tail reads past them */
+#define SLIDING_SLACK 400
+
+/* XORs the eight words of the current round into the bitbuffer at word offset off */
+#define CHORBA_FOLD(off) \
+    do { \
+        bitbuffer[in_offset + (off) + 0] ^= in1; \
+        bitbuffer[in_offset + (off) + 1] ^= in2; \
+        bitbuffer[in_offset + (off) + 2] ^= in3; \
+        bitbuffer[in_offset + (off) + 3] ^= in4; \
+        bitbuffer[in_offset + (off) + 4] ^= in5; \
+        bitbuffer[in_offset + (off) + 5] ^= in6; \
+        bitbuffer[in_offset + (off) + 6] ^= in7; \
+        bitbuffer[in_offset + (off) + 7] ^= in8; \
+    } while (0)
+
+/* Stores the eight words of the current round at word offset off, the first write to those words */
+#define CHORBA_STORE(off) \
+    do { \
+        bitbuffer[in_offset + (off) + 0] = in1; \
+        bitbuffer[in_offset + (off) + 1] = in2; \
+        bitbuffer[in_offset + (off) + 2] = in3; \
+        bitbuffer[in_offset + (off) + 3] = in4; \
+        bitbuffer[in_offset + (off) + 4] = in5; \
+        bitbuffer[in_offset + (off) + 5] = in6; \
+        bitbuffer[in_offset + (off) + 6] = in7; \
+        bitbuffer[in_offset + (off) + 7] = in8; \
+    } while (0)
+
+Z_INTERNAL uint32_t crc32_chorba_sliding_nondestructive(uint32_t crc, const uint8_t *buf, size_t len) {
+    /* The calling function ensured that this is aligned correctly */
+    const uint64_t* input = (const uint64_t*)buf;
+    uint64_t bitbuffer[SLIDING_WORDS];
+    const uint8_t *bitbuffer_bytes = (const uint8_t*)bitbuffer;
+    /* Words from SLIDING_PENDING on are written by the store at +300 before they are read */
+    memset(bitbuffer, 0, SLIDING_SLACK * sizeof(uint64_t));
+    bitbuffer[0] = Z_U64_TO_LE(~crc);
+
+    crc = 0;
+
+    size_t i = 0;
+    /* Input word held in bitbuffer[0] */
+    size_t base = 0;
+
+    while (i + SLIDING_PENDING*8+64 < len) {
+        size_t offset = i/8 - base;
+        if (offset + SLIDING_SLACK > SLIDING_WORDS) {
+            memmove(bitbuffer, bitbuffer + offset, SLIDING_PENDING * sizeof(uint64_t));
+            base += offset;
+            offset = 0;
+        }
+        /* Blocks left before the next slide or the end of the loop */
+        size_t blocks = MIN((SLIDING_WORDS - SLIDING_SLACK - offset) / 8 + 1, (len - (SLIDING_PENDING*8+64) - i + 63) / 64);
+        size_t end = i + blocks * 64;
+
+        for (; i < end; i += 64) {
+            uint64_t in1, in2, in3, in4;
+            uint64_t in5, in6, in7, in8;
+            size_t in_offset = i/8 - base;
+
+            in1 = CHORBA_IN(0) CHORBA_XOR(BUF, 0);
+            in2 = CHORBA_IN(1) CHORBA_XOR(BUF, 1);
+            in3 = CHORBA_IN(2) CHORBA_XOR(BUF, 2);
+            in4 = CHORBA_IN(3) CHORBA_XOR(BUF, 3);
+            in5 = CHORBA_IN(4) CHORBA_XOR(BUF, 4);
+            in6 = CHORBA_IN(5) CHORBA_XOR(BUF, 5);
+            in7 = CHORBA_IN(6) CHORBA_XOR(BUF, 6);
+            in8 = CHORBA_IN(7) CHORBA_XOR(BUF, 7);
+
+            // [0, 145, 183, 211]
+
+            CHORBA_FOLD(145);
+            CHORBA_FOLD(183);
+            CHORBA_FOLD(211);
+            CHORBA_STORE(300);
+        }
+    }
+
+    size_t offset = i/8 - base;
+    if (offset + SLIDING_SLACK > SLIDING_WORDS) {
+        memmove(bitbuffer, bitbuffer + offset, SLIDING_PENDING * sizeof(uint64_t));
+        base += offset;
+        offset = 0;
+    }
+    /* Words past the last store at +300 can be stale after a slide */
+    memset(bitbuffer + offset + SLIDING_PENDING, 0, (SLIDING_SLACK - SLIDING_PENDING) * sizeof(uint64_t));
+
+    uint64_t next1_64 = 0;
+    uint64_t next2_64 = 0;
+    uint64_t next3_64 = 0;
+    uint64_t next4_64 = 0;
+    uint64_t next5_64 = 0;
+    uint64_t final[9] = {0};
+
+    for (; (i + 72 < len); i += 32) {
+        uint64_t in1;
+        uint64_t in2;
+        uint64_t in3;
+        uint64_t in4;
+        uint64_t a1, a2, a3, a4;
+        uint64_t b1, b2, b3, b4;
+        uint64_t c1, c2, c3, c4;
+        uint64_t d1, d2, d3, d4;
+        size_t in_offset = i/8 - base;
+
+        in1 = input[i / sizeof(uint64_t)] ^ bitbuffer[in_offset];
+        in2 = input[(i + 8) / sizeof(uint64_t)] ^ bitbuffer[in_offset + 1];
+        in1 = Z_U64_FROM_LE(in1) ^ next1_64;
+        in2 = Z_U64_FROM_LE(in2) ^ next2_64;
+
+        NEXT_ROUND(in1, a1, a2, a3, a4);
+
+        NEXT_ROUND(in2, b1, b2, b3, b4);
+
+        in3 = input[(i + 16) / sizeof(uint64_t)] ^ bitbuffer[in_offset + 2];
+        in4 = input[(i + 24) / sizeof(uint64_t)] ^ bitbuffer[in_offset + 3];
+        in3 = Z_U64_FROM_LE(in3) ^ next3_64 ^ a1;
+        in4 = Z_U64_FROM_LE(in4) ^ next4_64 ^ a2 ^ b1;
+
+        NEXT_ROUND(in3, c1, c2, c3, c4);
+
+        NEXT_ROUND(in4, d1, d2, d3, d4);
+
+        ACCUM_ROUND(next1_64, next2_64, next3_64, next4_64, next5_64);
+    }
+
+    memcpy(final, input+(i / sizeof(uint64_t)), len-i);
+    final[0] ^= Z_U64_TO_LE(next1_64);
+    final[1] ^= Z_U64_TO_LE(next2_64);
+    final[2] ^= Z_U64_TO_LE(next3_64);
+    final[3] ^= Z_U64_TO_LE(next4_64);
+    final[4] ^= Z_U64_TO_LE(next5_64);
+
+    uint8_t *final_bytes = (uint8_t*)final;
+
+    for (size_t j = 0; j < (len-i); j++) {
+        crc = crc_table[(crc ^ final_bytes[j] ^ bitbuffer_bytes[(j+i) - base*8]) & 0xff] ^ (crc >> 8);
+    }
+
+    return ~crc;
+}
+
 /* Implement Chorba algorithm from https://arxiv.org/abs/2412.16398 */
 Z_INTERNAL uint32_t crc32_chorba_small_nondestructive(uint32_t crc, const uint8_t *buf, size_t len) {
     /* The calling function ensured that this is aligned correctly */
@@ -846,6 +992,10 @@ Z_INTERNAL uint32_t crc32_chorba(uint32_t crc, const uint8_t *buf, size_t len) {
     if (len > CHORBA_LARGE_THRESHOLD)
         return crc32_chorba_118960_nondestructive(crc, buf, len);
 #if CHORBA_W == 8
+    if (len > CHORBA_SLIDING_UPPER_THRESHOLD)
+        return crc32_chorba_118960_nondestructive(crc, buf, len);
+    if (len > CHORBA_MEDIUM_UPPER_THRESHOLD)
+        return crc32_chorba_sliding_nondestructive(crc, buf, len);
     if (len > CHORBA_MEDIUM_LOWER_THRESHOLD && len <= CHORBA_MEDIUM_UPPER_THRESHOLD)
         return crc32_chorba_32768_nondestructive(crc, buf, len);
     return crc32_chorba_small_nondestructive(crc, buf, len);

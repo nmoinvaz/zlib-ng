@@ -59,7 +59,49 @@ public:
 
 uint8_t *crc32_large_buf::buffer = nullptr;
 
+/* Lengths on both sides of each Chorba variant threshold, checked against a bitwise CRC32 */
+class crc32_lengths : public ::testing::TestWithParam<size_t> {
+protected:
+    static uint8_t *buffer;
+    static const size_t buffer_size = 400 * 1024;
+
+    static void SetUpTestSuite() {
+        uint32_t seed = 1;
+        buffer = (uint8_t*)zng_alloc(buffer_size);
+        for (size_t i = 0; i < buffer_size; i++) {
+            seed = seed * 1103515245 + 12345;
+            buffer[i] = (uint8_t)(seed >> 16);
+        }
+    }
+
+    static void TearDownTestSuite() {
+        zng_free(buffer);
+    }
+
+    static uint32_t crc32_bitwise(uint32_t crc, const uint8_t *buf, size_t len) {
+        crc = ~crc;
+        while (len--) {
+            crc ^= *buf++;
+            for (int k = 0; k < 8; k++)
+                crc = (crc >> 1) ^ (0xedb88320 & (0 - (crc & 1)));
+        }
+        return ~crc;
+    }
+
+public:
+    void hash(size_t len, crc32_func crc32) {
+        EXPECT_EQ(crc32(0x12345678, buffer, len), crc32_bitwise(0x12345678, buffer, len));
+    }
+};
+
+uint8_t *crc32_lengths::buffer = nullptr;
+
+static const size_t crc32_lengths_tested[] = {
+    8191, 8193, 32767, 32769, 98311, 245763, 327679, 327681, 393221
+};
+
 INSTANTIATE_TEST_SUITE_P(crc32, crc32_variant, testing::ValuesIn(hash_tests));
+INSTANTIATE_TEST_SUITE_P(crc32, crc32_lengths, testing::ValuesIn(crc32_lengths_tested));
 
 #define TEST_CRC32(name, func, support_flag) \
     TEST_P(crc32_variant, name) { \
@@ -77,6 +119,14 @@ INSTANTIATE_TEST_SUITE_P(crc32, crc32_variant, testing::ValuesIn(hash_tests));
             return; \
         } \
         hash(func); \
+    } \
+    TEST_P(crc32_lengths, name) { \
+        if (!(support_flag)) { \
+            GTEST_SKIP(); \
+            Z_UNREACHABLE(); \
+            return; \
+        } \
+        hash(GetParam(), func); \
     }
 
 #ifdef CRC32_BRAID_FALLBACK
