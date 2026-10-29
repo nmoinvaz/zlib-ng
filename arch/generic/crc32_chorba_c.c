@@ -149,32 +149,19 @@
     } while (0)
 
 /**
- * Implements the Chorba algorithm for CRC32 computation (https://arxiv.org/abs/2412.16398).
+ * Runs the 118960 kernel from https://arxiv.org/abs/2412.16398 over all but the last 14870 + 64
+ * words. Its zero polynomial keeps every term but one in registers; the far term is a plain store
+ * 14870 words ahead, so the ring is a delay line that is written once and read once per slot.
  *
- * This implementation processes data in three phases:
- * 1. Initial pass: Zeros out bitbuffer
- * 2. Intermediate pass: Processes half the values
- * 3. Main pass: Processes remaining data
+ * On return the ring holds, at word & (bitbuffer_size_zwords - 1), the contribution owed to every
+ * input word from the returned byte offset to the end, and the next stage consumes them.
  *
- * @param crc Initial CRC value
- * @param input Input data buffer
- * @param len Length of input data
- * @return Computed CRC32 value
- *
- * @note Requires minimum input size of 118960 + 512 bytes
- * @note Uses 128KB temporary buffer
+ * @note Requires at least 2 * 14880 words of input, which the callers' thresholds ensure
+ * @note The ring is bitbuffer_size_bytes, 128 KB on 64-bit builds
  */
-Z_INTERNAL uint32_t crc32_chorba_118960_nondestructive(uint32_t crc, const uint8_t *buf, size_t len) {
-#if defined(__EMSCRIPTEN__)
-    chorba_worda_t *bitbuffer = (chorba_worda_t*)zng_alloc(bitbuffer_size_bytes);
-#else
-    ALIGNED_(16) chorba_worda_t bitbuffer[bitbuffer_size_zwords];
-#endif
-    const uint8_t *bitbuffer_bytes = (const uint8_t*)bitbuffer;
-    uint64a_t *bitbuffer_qwords = (uint64a_t*)bitbuffer;
+static size_t chorba_delay_stage(chorba_worda_t *bitbuffer, uint32_t crc, const uint8_t *buf, size_t len) {
     /* The calling function ensured that this is aligned correctly */
     const chorba_worda_t* input = (const chorba_worda_t*)buf;
-    const uint64a_t* input_qwords = (const uint64a_t*)buf;
 
     size_t i = 0;
 
@@ -201,7 +188,6 @@ Z_INTERNAL uint32_t crc32_chorba_118960_nondestructive(uint32_t crc, const uint8
     chorba_word_t next20 = 0;
     chorba_word_t next21 = 0;
     chorba_word_t next22 = 0;
-    crc = 0;
 
     // do a first pass to zero out bitbuffer
     for (; i < (14848 * sizeof(chorba_word_t)); i += (32 * sizeof(chorba_word_t))) {
@@ -246,131 +232,19 @@ Z_INTERNAL uint32_t crc32_chorba_118960_nondestructive(uint32_t crc, const uint8
         bitbuffer[(j + (i / sizeof(chorba_word_t))) % bitbuffer_size_zwords] = 0;
     }
 
-    uint64_t next1_64 = 0;
-    uint64_t next2_64 = 0;
-    uint64_t next3_64 = 0;
-    uint64_t next4_64 = 0;
-    uint64_t next5_64 = 0;
-    uint64_t final[9] = {0};
-
-    for (; (i + 72 < len); i += 32) {
-        uint64_t in1;
-        uint64_t in2;
-        uint64_t in3;
-        uint64_t in4;
-        uint64_t a1, a2, a3, a4;
-        uint64_t b1, b2, b3, b4;
-        uint64_t c1, c2, c3, c4;
-        uint64_t d1, d2, d3, d4;
-
-
-        in1 = input_qwords[i / sizeof(uint64_t)] ^ bitbuffer_qwords[(i / sizeof(uint64_t)) % bitbuffer_size_qwords];
-        in2 = input_qwords[i / sizeof(uint64_t) + 1] ^ bitbuffer_qwords[(i / sizeof(uint64_t) + 1) % bitbuffer_size_qwords];
-        in1 = Z_U64_FROM_LE(in1) ^ next1_64;
-        in2 = Z_U64_FROM_LE(in2) ^ next2_64;
-
-        NEXT_ROUND(in1, a1, a2, a3, a4);
-
-        NEXT_ROUND(in2, b1, b2, b3, b4);
-
-        in3 = input_qwords[i / sizeof(uint64_t) + 2] ^ bitbuffer_qwords[(i / sizeof(uint64_t) + 2) % bitbuffer_size_qwords];
-        in4 = input_qwords[i / sizeof(uint64_t) + 3] ^ bitbuffer_qwords[(i / sizeof(uint64_t) + 3) % bitbuffer_size_qwords];
-        in3 = Z_U64_FROM_LE(in3) ^ next3_64 ^ a1;
-        in4 = Z_U64_FROM_LE(in4) ^ next4_64 ^ a2 ^ b1;
-
-        NEXT_ROUND(in3, c1, c2, c3, c4);
-
-        NEXT_ROUND(in4, d1, d2, d3, d4);
-
-        ACCUM_ROUND(next1_64, next2_64, next3_64, next4_64, next5_64);
-    }
-
-    memcpy(final, input_qwords + (i / sizeof(uint64_t)), len-i);
-    final[0] ^= Z_U64_TO_LE(next1_64);
-    final[1] ^= Z_U64_TO_LE(next2_64);
-    final[2] ^= Z_U64_TO_LE(next3_64);
-    final[3] ^= Z_U64_TO_LE(next4_64);
-    final[4] ^= Z_U64_TO_LE(next5_64);
-
-    uint8_t *final_bytes = (uint8_t*)final;
-
-    for (size_t j = 0; j < (len-i); j++) {
-        crc = crc_table[(crc ^ final_bytes[j] ^ bitbuffer_bytes[(j+i) % bitbuffer_size_bytes]) & 0xff] ^ (crc >> 8);
-    }
-
-#if defined(__EMSCRIPTEN__)
-    zng_free(bitbuffer);
-#endif
-    return ~crc;
+    return i;
 }
 
-#  if CHORBA_W == 8
-/* Implement Chorba algorithm from https://arxiv.org/abs/2412.16398 */
-Z_INTERNAL uint32_t crc32_chorba_32768_nondestructive(uint32_t crc, const uint8_t *buf, size_t len) {
-    /* The calling function ensured that this is aligned correctly */
-    const uint64_t* input = (const uint64_t*)buf;
-    uint64_t bitbuffer[32768 / sizeof(uint64_t)];
-    const uint8_t *bitbuffer_bytes = (const uint8_t*)bitbuffer;
-    memset(bitbuffer, 0, 32768);
-    bitbuffer[0] = Z_U64_TO_LE(~crc);
-
-    crc = 0;
-
-    size_t i = 0;
-
-    for(; i + 300*8+64 < len; i += 64) {
-        uint64_t in1, in2, in3, in4;
-        uint64_t in5, in6, in7, in8;
-        size_t in_offset = (i/8);
-
-        in1 = input[i / sizeof(uint64_t) + 0] ^ bitbuffer[in_offset + 0];
-        in2 = input[i / sizeof(uint64_t) + 1] ^ bitbuffer[in_offset + 1];
-        in3 = input[i / sizeof(uint64_t) + 2] ^ bitbuffer[in_offset + 2];
-        in4 = input[i / sizeof(uint64_t) + 3] ^ bitbuffer[in_offset + 3];
-        in5 = input[i / sizeof(uint64_t) + 4] ^ bitbuffer[in_offset + 4];
-        in6 = input[i / sizeof(uint64_t) + 5] ^ bitbuffer[in_offset + 5];
-        in7 = input[i / sizeof(uint64_t) + 6] ^ bitbuffer[in_offset + 6];
-        in8 = input[i / sizeof(uint64_t) + 7] ^ bitbuffer[in_offset + 7];
-
-        // [0, 145, 183, 211]
-
-        bitbuffer[(i/8 + 0 + 145)] ^= in1;
-        bitbuffer[(i/8 + 1 + 145)] ^= in2;
-        bitbuffer[(i/8 + 2 + 145)] ^= in3;
-        bitbuffer[(i/8 + 3 + 145)] ^= in4;
-        bitbuffer[(i/8 + 4 + 145)] ^= in5;
-        bitbuffer[(i/8 + 5 + 145)] ^= in6;
-        bitbuffer[(i/8 + 6 + 145)] ^= in7;
-        bitbuffer[(i/8 + 7 + 145)] ^= in8;
-
-        bitbuffer[(i/8 + 0 + 183)] ^= in1;
-        bitbuffer[(i/8 + 1 + 183)] ^= in2;
-        bitbuffer[(i/8 + 2 + 183)] ^= in3;
-        bitbuffer[(i/8 + 3 + 183)] ^= in4;
-        bitbuffer[(i/8 + 4 + 183)] ^= in5;
-        bitbuffer[(i/8 + 5 + 183)] ^= in6;
-        bitbuffer[(i/8 + 6 + 183)] ^= in7;
-        bitbuffer[(i/8 + 7 + 183)] ^= in8;
-
-        bitbuffer[(i/8 + 0 + 211)] ^= in1;
-        bitbuffer[(i/8 + 1 + 211)] ^= in2;
-        bitbuffer[(i/8 + 2 + 211)] ^= in3;
-        bitbuffer[(i/8 + 3 + 211)] ^= in4;
-        bitbuffer[(i/8 + 4 + 211)] ^= in5;
-        bitbuffer[(i/8 + 5 + 211)] ^= in6;
-        bitbuffer[(i/8 + 6 + 211)] ^= in7;
-        bitbuffer[(i/8 + 7 + 211)] ^= in8;
-
-        bitbuffer[(i/8 + 0 + 300)] = in1;
-        bitbuffer[(i/8 + 1 + 300)] = in2;
-        bitbuffer[(i/8 + 2 + 300)] = in3;
-        bitbuffer[(i/8 + 3 + 300)] = in4;
-        bitbuffer[(i/8 + 4 + 300)] = in5;
-        bitbuffer[(i/8 + 5 + 300)] = in6;
-        bitbuffer[(i/8 + 6 + 300)] = in7;
-        bitbuffer[(i/8 + 7 + 300)] = in8;
-    }
-
+/* Finishes the input from byte i with the register kernel and the byte table. The stage before
+ * left its pending contributions in pending, read at word (i / 8 - base + k) & qmask: the medium
+ * buffer with an all-ones mask, or the delay ring with base 0 and its size mask. Inlined so the
+ * caller's buffer never escapes, which is what lets clang vectorize the caller's loop. */
+static Z_FORCEINLINE uint32_t chorba_tail(const uint8_t *buf, size_t i, size_t len, const uint64a_t *pending, size_t base, size_t qmask) {
+    const uint64a_t *input = (const uint64a_t*)buf;
+    const uint8_t *pending_bytes = (const uint8_t*)pending;
+    /* The same mask in bytes, all ones stays all ones */
+    size_t bmask = qmask * sizeof(uint64_t) + (sizeof(uint64_t) - 1);
+    uint32_t crc = 0;
     uint64_t next1_64 = 0;
     uint64_t next2_64 = 0;
     uint64_t next3_64 = 0;
@@ -387,10 +261,10 @@ Z_INTERNAL uint32_t crc32_chorba_32768_nondestructive(uint32_t crc, const uint8_
         uint64_t b1, b2, b3, b4;
         uint64_t c1, c2, c3, c4;
         uint64_t d1, d2, d3, d4;
+        size_t in_offset = i / sizeof(uint64_t) - base;
 
-
-        in1 = input[i / sizeof(uint64_t)] ^ bitbuffer[(i / sizeof(uint64_t))];
-        in2 = input[(i + 8) / sizeof(uint64_t)] ^ bitbuffer[(i / sizeof(uint64_t) + 1)];
+        in1 = input[i / sizeof(uint64_t)] ^ pending[in_offset & qmask];
+        in2 = input[i / sizeof(uint64_t) + 1] ^ pending[(in_offset + 1) & qmask];
         in1 = Z_U64_FROM_LE(in1) ^ next1_64;
         in2 = Z_U64_FROM_LE(in2) ^ next2_64;
 
@@ -398,8 +272,8 @@ Z_INTERNAL uint32_t crc32_chorba_32768_nondestructive(uint32_t crc, const uint8_
 
         NEXT_ROUND(in2, b1, b2, b3, b4);
 
-        in3 = input[(i + 16) / sizeof(uint64_t)] ^ bitbuffer[(i / sizeof(uint64_t) + 2)];
-        in4 = input[(i + 24) / sizeof(uint64_t)] ^ bitbuffer[(i / sizeof(uint64_t) + 3)];
+        in3 = input[i / sizeof(uint64_t) + 2] ^ pending[(in_offset + 2) & qmask];
+        in4 = input[i / sizeof(uint64_t) + 3] ^ pending[(in_offset + 3) & qmask];
         in3 = Z_U64_FROM_LE(in3) ^ next3_64 ^ a1;
         in4 = Z_U64_FROM_LE(in4) ^ next4_64 ^ a2 ^ b1;
 
@@ -408,10 +282,9 @@ Z_INTERNAL uint32_t crc32_chorba_32768_nondestructive(uint32_t crc, const uint8_
         NEXT_ROUND(in4, d1, d2, d3, d4);
 
         ACCUM_ROUND(next1_64, next2_64, next3_64, next4_64, next5_64);
-
     }
 
-    memcpy(final, input+(i / sizeof(uint64_t)), len-i);
+    memcpy(final, input + (i / sizeof(uint64_t)), len - i);
     final[0] ^= Z_U64_TO_LE(next1_64);
     final[1] ^= Z_U64_TO_LE(next2_64);
     final[2] ^= Z_U64_TO_LE(next3_64);
@@ -420,20 +293,26 @@ Z_INTERNAL uint32_t crc32_chorba_32768_nondestructive(uint32_t crc, const uint8_
 
     uint8_t *final_bytes = (uint8_t*)final;
 
-    for (size_t j = 0; j < (len-i); j++) {
-        crc = crc_table[(crc ^ final_bytes[j] ^ bitbuffer_bytes[(j+i)]) & 0xff] ^ (crc >> 8);
+    for (size_t j = 0; j < (len - i); j++) {
+        crc = crc_table[(crc ^ final_bytes[j] ^ pending_bytes[((j + i) - base * sizeof(uint64_t)) & bmask]) & 0xff] ^ (crc >> 8);
     }
 
     return ~crc;
 }
 
+#  if CHORBA_W == 8
 /* A six-term zero polynomial, offsets 17, 80, 118, 124 and 203 words, costs one more store per
- * word than the 32768 variant's but only ever owes the next 203 words, which shortens the slow
- * tail and every slide. A small buffer covers any length by sliding those words back to its start. */
-#define SLIDING_WORDS 1024
-#define SLIDING_PENDING 203
+ * word than a five-term one but only ever owes the next 203 words, which shortens the slow tail
+ * and every slide. Any buffer covers any length by sliding those words back to its start. */
+#define MEDIUM_WORDS 4096
+#define MEDIUM_PENDING 203
 /* Pending words plus the block and tail reads past them */
-#define SLIDING_SLACK 304
+#define MEDIUM_SLACK 304
+
+/* The delay ring never wraps inside a round, so a round reads it through one base pointer */
+#define CHORBA_RING_ROUND_NONE
+#define CHORBA_RING_ROUND_RING const uint64a_t *ring_round = ring + ((i / sizeof(uint64_t)) & ring_mask);
+#define CHORBA_XOR_RING(k) ^ ring_round[(k)]
 
 /* XORs the eight words of the current round into the bitbuffer at word offset off */
 #define CHORBA_FOLD(off) \
@@ -461,118 +340,103 @@ Z_INTERNAL uint32_t crc32_chorba_32768_nondestructive(uint32_t crc, const uint8_
         bitbuffer[in_offset + (off) + 7] = in8; \
     } while (0)
 
-Z_INTERNAL uint32_t crc32_chorba_sliding_nondestructive(uint32_t crc, const uint8_t *buf, size_t len) {
-    /* The calling function ensured that this is aligned correctly */
-    const uint64_t* input = (const uint64_t*)buf;
-    uint64_t bitbuffer[SLIDING_WORDS];
-    const uint8_t *bitbuffer_bytes = (const uint8_t*)bitbuffer;
-    /* Words from SLIDING_PENDING on are written by the store at +300 before they are read */
-    memset(bitbuffer, 0, SLIDING_SLACK * sizeof(uint64_t));
-    bitbuffer[0] = Z_U64_TO_LE(~crc);
+/* One eight-word round: folds the input, the buffer and src into the buffer at the kernel offsets */
+#define CHORBA_MEDIUM_ROUND(src) \
+    do { \
+        uint64_t in1, in2, in3, in4; \
+        uint64_t in5, in6, in7, in8; \
+        size_t in_offset = i/8 - base; \
+        CHORBA_RING_ROUND_##src \
+        \
+        in1 = CHORBA_IN(0) CHORBA_XOR(BUF, 0) CHORBA_XOR(src, 0); \
+        in2 = CHORBA_IN(1) CHORBA_XOR(BUF, 1) CHORBA_XOR(src, 1); \
+        in3 = CHORBA_IN(2) CHORBA_XOR(BUF, 2) CHORBA_XOR(src, 2); \
+        in4 = CHORBA_IN(3) CHORBA_XOR(BUF, 3) CHORBA_XOR(src, 3); \
+        in5 = CHORBA_IN(4) CHORBA_XOR(BUF, 4) CHORBA_XOR(src, 4); \
+        in6 = CHORBA_IN(5) CHORBA_XOR(BUF, 5) CHORBA_XOR(src, 5); \
+        in7 = CHORBA_IN(6) CHORBA_XOR(BUF, 6) CHORBA_XOR(src, 6); \
+        in8 = CHORBA_IN(7) CHORBA_XOR(BUF, 7) CHORBA_XOR(src, 7); \
+        \
+        /* [0, 17, 80, 118, 124] */ \
+        CHORBA_FOLD(17); \
+        CHORBA_FOLD(80); \
+        CHORBA_FOLD(118); \
+        CHORBA_FOLD(124); \
+        CHORBA_STORE(203); \
+    } while (0)
 
-    crc = 0;
-
-    size_t i = 0;
-    /* Input word held in bitbuffer[0] */
-    size_t base = 0;
-
-    while (i + SLIDING_PENDING*8+64 < len) {
-        size_t offset = i/8 - base;
-        if (offset + SLIDING_SLACK > SLIDING_WORDS) {
-            memmove(bitbuffer, bitbuffer + offset, SLIDING_PENDING * sizeof(uint64_t));
-            base += offset;
-            offset = 0;
-        }
-        /* Blocks left before the next slide or the end of the loop */
-        size_t blocks = MIN((SLIDING_WORDS - SLIDING_SLACK - offset) / 8 + 1, (len - (SLIDING_PENDING*8+64) - i + 63) / 64);
-        size_t end = i + blocks * 64;
-
-        for (; i < end; i += 64) {
-            uint64_t in1, in2, in3, in4;
-            uint64_t in5, in6, in7, in8;
-            size_t in_offset = i/8 - base;
-
-            in1 = CHORBA_IN(0) CHORBA_XOR(BUF, 0);
-            in2 = CHORBA_IN(1) CHORBA_XOR(BUF, 1);
-            in3 = CHORBA_IN(2) CHORBA_XOR(BUF, 2);
-            in4 = CHORBA_IN(3) CHORBA_XOR(BUF, 3);
-            in5 = CHORBA_IN(4) CHORBA_XOR(BUF, 4);
-            in6 = CHORBA_IN(5) CHORBA_XOR(BUF, 5);
-            in7 = CHORBA_IN(6) CHORBA_XOR(BUF, 6);
-            in8 = CHORBA_IN(7) CHORBA_XOR(BUF, 7);
-
-            // [0, 17, 80, 118, 124]
-
-            CHORBA_FOLD(17);
-            CHORBA_FOLD(80);
-            CHORBA_FOLD(118);
-            CHORBA_FOLD(124);
-            CHORBA_STORE(203);
-        }
+/* The sliding loop over all but the last MEDIUM_PENDING words plus a block */
+#define CHORBA_MEDIUM_LOOP(src, words) \
+    while (i + MEDIUM_PENDING*8+64 < len) { \
+        size_t offset = i/8 - base; \
+        if (offset + MEDIUM_SLACK > (words)) { \
+            memmove(bitbuffer, bitbuffer + offset, MEDIUM_PENDING * sizeof(uint64_t)); \
+            base += offset; \
+            offset = 0; \
+        } \
+        /* Blocks left before the next slide or the end of the loop */ \
+        size_t blocks = MIN(((words) - MEDIUM_SLACK - offset) / 8 + 1, (len - (MEDIUM_PENDING*8+64) - i + 63) / 64); \
+        size_t end = i + blocks * 64; \
+        \
+        for (; i < end; i += 64) { \
+            CHORBA_MEDIUM_ROUND(src); \
+        } \
     }
 
-    size_t offset = i/8 - base;
-    if (offset + SLIDING_SLACK > SLIDING_WORDS) {
-        memmove(bitbuffer, bitbuffer + offset, SLIDING_PENDING * sizeof(uint64_t));
-        base += offset;
-        offset = 0;
-    }
-    /* Words past the last store at +203 can be stale after a slide */
-    memset(bitbuffer + offset + SLIDING_PENDING, 0, (SLIDING_SLACK - SLIDING_PENDING) * sizeof(uint64_t));
+/* The CRC seed goes into the first buffer word unless a stage before already folded it in */
+#define CHORBA_SEED_NONE Z_U64_TO_LE(~crc)
+#define CHORBA_SEED_RING 0
 
-    uint64_t next1_64 = 0;
-    uint64_t next2_64 = 0;
-    uint64_t next3_64 = 0;
-    uint64_t next4_64 = 0;
-    uint64_t next5_64 = 0;
-    uint64_t final[9] = {0};
+/* What the ring still owes past the loop is absorbed into the buffer, so the tail reads one source */
+#define CHORBA_ABSORB_NONE(offset)
+#define CHORBA_ABSORB_RING(offset) \
+    do { \
+        size_t left = (len - i + sizeof(uint64_t) - 1) / sizeof(uint64_t); \
+        for (size_t k = 0; k < left; k++) \
+            bitbuffer[(offset) + k] ^= ring[(i / sizeof(uint64_t) + k) & ring_mask]; \
+    } while (0)
 
-    for (; (i + 72 < len); i += 32) {
-        uint64_t in1;
-        uint64_t in2;
-        uint64_t in3;
-        uint64_t in4;
-        uint64_t a1, a2, a3, a4;
-        uint64_t b1, b2, b3, b4;
-        uint64_t c1, c2, c3, c4;
-        uint64_t d1, d2, d3, d4;
-        size_t in_offset = i/8 - base;
+/* Defines a function that runs the six-term kernel from byte i over a local buffer of words
+ * words, then the tail. The RING variant also folds in the delay ring as it reads the input. The
+ * buffer stays local and never escapes, and the two variants are separate functions, because
+ * either a pointer parameter or the ring's extra loop next to the plain loop stops clang from
+ * vectorizing the rounds. */
+#define CHORBA_MEDIUM_FN(name, src, words) \
+static Z_NOINLINE uint32_t name(uint32_t crc, const uint8_t *buf, size_t i, size_t len, \
+                                const uint64a_t *ring, size_t ring_mask) { \
+    /* The calling function ensured that this is aligned correctly */ \
+    const uint64_t* input = (const uint64_t*)buf; \
+    uint64_t bitbuffer[words]; \
+    size_t base = i/8; \
+    (void)crc; \
+    (void)ring; \
+    (void)ring_mask; \
+    /* Words from MEDIUM_PENDING on are written by the store at +203 before they are read */ \
+    memset(bitbuffer, 0, MEDIUM_SLACK * sizeof(uint64_t)); \
+    bitbuffer[0] = CHORBA_SEED_##src; \
+    \
+    CHORBA_MEDIUM_LOOP(src, words) \
+    \
+    size_t offset = i/8 - base; \
+    if (offset + MEDIUM_SLACK > (words)) { \
+        memmove(bitbuffer, bitbuffer + offset, MEDIUM_PENDING * sizeof(uint64_t)); \
+        base += offset; \
+        offset = 0; \
+    } \
+    /* Words past the last store at +203 can be stale after a slide */ \
+    memset(bitbuffer + offset + MEDIUM_PENDING, 0, (MEDIUM_SLACK - MEDIUM_PENDING) * sizeof(uint64_t)); \
+    CHORBA_ABSORB_##src(offset); \
+    \
+    return chorba_tail(buf, i, len, (const uint64a_t*)bitbuffer, base, SIZE_MAX); \
+}
 
-        in1 = input[i / sizeof(uint64_t)] ^ bitbuffer[in_offset];
-        in2 = input[(i + 8) / sizeof(uint64_t)] ^ bitbuffer[in_offset + 1];
-        in1 = Z_U64_FROM_LE(in1) ^ next1_64;
-        in2 = Z_U64_FROM_LE(in2) ^ next2_64;
+/* 8 KB to 320 KB over a buffer that never slides below about 30 KB */
+CHORBA_MEDIUM_FN(chorba_medium_plain, NONE, MEDIUM_WORDS)
+/* The last 14870 words after the delay stage, so a small window that slides a few times */
+CHORBA_MEDIUM_FN(chorba_medium_ring, RING, 1024)
 
-        NEXT_ROUND(in1, a1, a2, a3, a4);
-
-        NEXT_ROUND(in2, b1, b2, b3, b4);
-
-        in3 = input[(i + 16) / sizeof(uint64_t)] ^ bitbuffer[in_offset + 2];
-        in4 = input[(i + 24) / sizeof(uint64_t)] ^ bitbuffer[in_offset + 3];
-        in3 = Z_U64_FROM_LE(in3) ^ next3_64 ^ a1;
-        in4 = Z_U64_FROM_LE(in4) ^ next4_64 ^ a2 ^ b1;
-
-        NEXT_ROUND(in3, c1, c2, c3, c4);
-
-        NEXT_ROUND(in4, d1, d2, d3, d4);
-
-        ACCUM_ROUND(next1_64, next2_64, next3_64, next4_64, next5_64);
-    }
-
-    memcpy(final, input+(i / sizeof(uint64_t)), len-i);
-    final[0] ^= Z_U64_TO_LE(next1_64);
-    final[1] ^= Z_U64_TO_LE(next2_64);
-    final[2] ^= Z_U64_TO_LE(next3_64);
-    final[3] ^= Z_U64_TO_LE(next4_64);
-    final[4] ^= Z_U64_TO_LE(next5_64);
-
-    uint8_t *final_bytes = (uint8_t*)final;
-
-    for (size_t j = 0; j < (len-i); j++) {
-        crc = crc_table[(crc ^ final_bytes[j] ^ bitbuffer_bytes[(j+i) - base*8]) & 0xff] ^ (crc >> 8);
-    }
-
-    return ~crc;
+Z_INTERNAL uint32_t crc32_chorba_medium(uint32_t crc, const uint8_t *buf, size_t len) {
+    return chorba_medium_plain(crc, buf, 0, len, NULL, 0);
 }
 
 /* Implement Chorba algorithm from https://arxiv.org/abs/2412.16398 */
@@ -981,6 +845,26 @@ Z_INTERNAL uint32_t crc32_chorba_small_nondestructive_32bit(uint32_t crc, const 
 }
 #endif // CHORBA_W == 8
 
+/* Above the large threshold: the 118960 kernel, then the six-term kernel over the 14870 words it
+ * leaves on 64-bit builds, then the register tail. 32-bit builds hand the ring to the tail. */
+Z_INTERNAL Z_NOINLINE uint32_t crc32_chorba_large(uint32_t crc, const uint8_t *buf, size_t len) {
+#if defined(__EMSCRIPTEN__)
+    chorba_worda_t *ring = (chorba_worda_t*)zng_alloc(bitbuffer_size_bytes);
+#else
+    ALIGNED_(16) chorba_worda_t ring[bitbuffer_size_zwords];
+#endif
+    size_t i = chorba_delay_stage(ring, crc, buf, len);
+#if CHORBA_W == 8
+    crc = chorba_medium_ring(0, buf, i, len, (const uint64a_t*)ring, bitbuffer_size_qwords - 1);
+#else
+    crc = chorba_tail(buf, i, len, (const uint64a_t*)ring, 0, bitbuffer_size_qwords - 1);
+#endif
+#if defined(__EMSCRIPTEN__)
+    zng_free(ring);
+#endif
+    return crc;
+}
+
 Z_INTERNAL uint32_t crc32_chorba(uint32_t crc, const uint8_t *buf, size_t len) {
     uintptr_t align_diff = ALIGN_DIFF(buf, 8);
     if (len <= align_diff + CHORBA_SMALL_THRESHOLD)
@@ -992,14 +876,12 @@ Z_INTERNAL uint32_t crc32_chorba(uint32_t crc, const uint8_t *buf, size_t len) {
         buf += align_diff;
     }
     if (len > CHORBA_LARGE_THRESHOLD)
-        return crc32_chorba_118960_nondestructive(crc, buf, len);
+        return crc32_chorba_large(crc, buf, len);
 #if CHORBA_W == 8
     if (len > CHORBA_SLIDING_UPPER_THRESHOLD)
-        return crc32_chorba_118960_nondestructive(crc, buf, len);
-    if (len > CHORBA_MEDIUM_UPPER_THRESHOLD)
-        return crc32_chorba_sliding_nondestructive(crc, buf, len);
-    if (len > CHORBA_MEDIUM_LOWER_THRESHOLD && len <= CHORBA_MEDIUM_UPPER_THRESHOLD)
-        return crc32_chorba_32768_nondestructive(crc, buf, len);
+        return crc32_chorba_large(crc, buf, len);
+    if (len > CHORBA_MEDIUM_LOWER_THRESHOLD)
+        return crc32_chorba_medium(crc, buf, len);
     return crc32_chorba_small_nondestructive(crc, buf, len);
 #else
     return crc32_chorba_small_nondestructive_32bit(crc, buf, len);

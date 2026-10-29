@@ -105,6 +105,15 @@
 #  define Z_FORCEINLINE inline
 #endif
 
+/* A no-inline decorator, for functions whose stack frames must not land in their callers */
+#if defined(_MSC_VER)
+#  define Z_NOINLINE __declspec(noinline)
+#elif defined(__GNUC__)
+#  define Z_NOINLINE __attribute__((noinline))
+#else
+#  define Z_NOINLINE
+#endif
+
 /* MS Visual Studio does not allow inline in C, only C++.
    But it provides __inline instead, so use that. */
 #if defined(_MSC_VER) && !defined(inline) && !defined(__cplusplus)

@@ -335,7 +335,7 @@ Z_INTERNAL uint32_t crc32_chorba_sse41(uint32_t crc, const uint8_t *buf, size_t 
     }
 #ifdef CRC32_CHORBA_FALLBACK
     if (len > CHORBA_LARGE_THRESHOLD)
-        return crc32_chorba_118960_nondestructive(crc, buf, len);
+        return crc32_chorba_large(crc, buf, len);
 #endif
     if (len > CHORBA_MEDIUM_LOWER_THRESHOLD)
         return crc32_chorba_32768_nondestructive_sse41(crc, buf, len);

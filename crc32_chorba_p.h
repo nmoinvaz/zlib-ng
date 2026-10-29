@@ -13,7 +13,7 @@
 #define CHORBA_LARGE_THRESHOLD (sizeof(chorba_word_t) * 64 * 1024)
 #define CHORBA_MEDIUM_UPPER_THRESHOLD 32768
 #define CHORBA_MEDIUM_LOWER_THRESHOLD 8192
-/* Above this the 118960 variant is faster, it needs at least twice its 118960 byte degree */
+/* Above this the large path is faster, its 118960 kernel needs at least twice its degree */
 #define CHORBA_SLIDING_UPPER_THRESHOLD (320 * 1024)
 #define CHORBA_SMALL_THRESHOLD_64BIT 72
 #ifdef ARCH_64BIT
@@ -28,9 +28,8 @@
     typedef uint32_t chorba_word_t;
 #endif
 
-Z_INTERNAL uint32_t crc32_chorba_118960_nondestructive(uint32_t crc, const uint8_t *buf, size_t len);
-Z_INTERNAL uint32_t crc32_chorba_32768_nondestructive(uint32_t crc, const uint8_t *buf, size_t len);
-Z_INTERNAL uint32_t crc32_chorba_sliding_nondestructive(uint32_t crc, const uint8_t *buf, size_t len);
+Z_INTERNAL uint32_t crc32_chorba_large(uint32_t crc, const uint8_t *buf, size_t len);
+Z_INTERNAL uint32_t crc32_chorba_medium(uint32_t crc, const uint8_t *buf, size_t len);
 Z_INTERNAL uint32_t crc32_chorba_small_nondestructive(uint32_t crc, const uint8_t *buf, size_t len);
 Z_INTERNAL uint32_t crc32_chorba_small_nondestructive_32bit(uint32_t crc, const uint8_t *buf, size_t len);
 
