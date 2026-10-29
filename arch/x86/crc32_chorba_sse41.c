@@ -11,8 +11,8 @@
 
 #define READ_NEXT(in, off, a, b) \
     do { \
-        a = _mm_load_si128((__m128i*)(in + off / sizeof(uint64_t))); \
-        b = _mm_load_si128((__m128i*)(in + off / sizeof(uint64_t) + 2)); \
+        a = _mm_load_si128((__m128i*)((in) + (off) / sizeof(uint64_t))); \
+        b = _mm_load_si128((__m128i*)((in) + (off) / sizeof(uint64_t) + 2)); \
     } while (0)
 
 #define NEXT_ROUND(invec, a, b, c, d) \
@@ -74,10 +74,18 @@
         STORE4(first, x1, x2, x3, out); \
     } while (0)
 
+/* The zero polynomial has degree 300 words, so a block only ever owes contributions to the next
+ * 300 words. Sliding those words back to the start of the buffer when the cursor nears its end
+ * handles any length. Inputs up to 32 KB never slide. */
+#define SLIDING_WORDS (32768 / sizeof(uint64_t))
+#define SLIDING_PENDING 300
+/* Pending words plus the last block's store at +300 */
+#define SLIDING_SLACK 308
+
 Z_FORCEINLINE static uint32_t crc32_chorba_32768_nondestructive_sse41(uint32_t crc, const uint8_t *buf, size_t len) {
     /* The calling function ensured that this is aligned correctly */
     const uint64_t* input = (const uint64_t*)buf;
-    ALIGNED_(16) uint64_t bitbuffer[32768 / sizeof(uint64_t)];
+    ALIGNED_(16) uint64_t bitbuffer[SLIDING_WORDS];
     __m128i *bitbuffer_v = (__m128i*)bitbuffer;
     const uint8_t *bitbuffer_bytes = (const uint8_t*)bitbuffer;
     __m128i z = _mm_setzero_si128();
@@ -116,6 +124,8 @@ Z_FORCEINLINE static uint32_t crc32_chorba_32768_nondestructive_sse41(uint32_t c
     crc = 0;
 
     size_t i = 0;
+    /* Input word held in bitbuffer[0] */
+    size_t base = 0;
 
     /* Previous iteration runs carried over */
     __m128i buf144 = z;
@@ -169,45 +179,62 @@ Z_FORCEINLINE static uint32_t crc32_chorba_32768_nondestructive_sse41(uint32_t c
         STORE4(in12, in34, in56, in78, bitbuf300);
     }
 
-    for (; i + 300*8+64 < len; i += 64) {
-        __m128i in12, in34, in56, in78,
-                in_1, in23, in45, in67, in8_;
-
-        if (i < 128 * 8) {
-            READ4(in12, in34, in56, in78, inptr);
-        } else {
-            in12 = _mm_xor_si128(_mm_load_si128(inptr++), _mm_load_si128(bitbuf0++));
-            in34 = _mm_xor_si128(_mm_load_si128(inptr++), _mm_load_si128(bitbuf0++));
-            in56 = _mm_xor_si128(_mm_load_si128(inptr++), _mm_load_si128(bitbuf0++));
-            in78 = _mm_xor_si128(_mm_load_si128(inptr++), _mm_load_si128(bitbuf0++));
+    while (i + 300*8+64 < len) {
+        size_t offset = i/8 - base;
+        if (offset + SLIDING_SLACK > SLIDING_WORDS) {
+            memmove(bitbuffer, bitbuffer + offset, SLIDING_PENDING * sizeof(uint64_t));
+            bitbuf0 -= offset / 2;
+            bitbuf144 -= offset / 2;
+            bitbuf182 -= offset / 2;
+            bitbuf210 -= offset / 2;
+            bitbuf300 -= offset / 2;
+            base += offset;
+            offset = 0;
         }
+        /* Blocks left before the next slide or the end of the loop */
+        size_t blocks = MIN((SLIDING_WORDS - SLIDING_SLACK - offset) / 8 + 1, (len - (300*8+64) - i + 63) / 64);
+        size_t end = i + blocks * 64;
 
-        // [0, 145, 183, 211]
+        for (; i < end; i += 64) {
+            __m128i in12, in34, in56, in78,
+                    in_1, in23, in45, in67, in8_;
 
-        /* Pre Penryn CPUs the unpack should be faster */
-        REALIGN_CHORBA(in12, in34, in56, in78,
-                       in_1, in23, in45, in67, in8_, 8);
+            if (i < 128 * 8) {
+                READ4(in12, in34, in56, in78, inptr);
+            } else {
+                in12 = _mm_xor_si128(_mm_load_si128(inptr++), _mm_load_si128(bitbuf0++));
+                in34 = _mm_xor_si128(_mm_load_si128(inptr++), _mm_load_si128(bitbuf0++));
+                in56 = _mm_xor_si128(_mm_load_si128(inptr++), _mm_load_si128(bitbuf0++));
+                in78 = _mm_xor_si128(_mm_load_si128(inptr++), _mm_load_si128(bitbuf0++));
+            }
 
-        STORE_LANE_XOR(buf144, bitbuf144);
-        STORE_LANE_XOR(buf182, bitbuf182);
+            // [0, 145, 183, 211]
 
-        __m128i n, o, p;
-        __m128i m = _mm_xor_si128(buf210, in_1);
+            /* Pre Penryn CPUs the unpack should be faster */
+            REALIGN_CHORBA(in12, in34, in56, in78,
+                           in_1, in23, in45, in67, in8_, 8);
 
-        /* Couldn't tell you why but despite knowing that this is always false,
-         * removing this branch with GCC makes things significantly slower. Some
-         * loop bodies must be being joined or something */
-        if (i < 84 * 8) {
-            n = in23;
-            o = in45;
-            p = in67;
-            buf210 = in8_;
-        } else {
-            READ4_WITHXOR(n, o, p, buf210, in23, in45, in67, in8_, bitbuf210);
+            STORE_LANE_XOR(buf144, bitbuf144);
+            STORE_LANE_XOR(buf182, bitbuf182);
+
+            __m128i n, o, p;
+            __m128i m = _mm_xor_si128(buf210, in_1);
+
+            /* Couldn't tell you why but despite knowing that this is always false,
+             * removing this branch with GCC makes things significantly slower. Some
+             * loop bodies must be being joined or something */
+            if (i < 84 * 8) {
+                n = in23;
+                o = in45;
+                p = in67;
+                buf210 = in8_;
+            } else {
+                READ4_WITHXOR(n, o, p, buf210, in23, in45, in67, in8_, bitbuf210);
+            }
+
+            STORE4(m, n, o, p, bitbuf210);
+            STORE4(in12, in34, in56, in78, bitbuf300);
         }
-
-        STORE4(m, n, o, p, bitbuf210);
-        STORE4(in12, in34, in56, in78, bitbuf300);
     }
 
     /* Second half of stores bubbled out */
@@ -215,9 +242,17 @@ Z_FORCEINLINE static uint32_t crc32_chorba_32768_nondestructive_sse41(uint32_t c
     _mm_store_si128(bitbuf182, buf182);
     _mm_store_si128(bitbuf210, buf210);
 
+    /* The tail reads up to the end of the input, slide once more if that runs past the buffer */
+    size_t offset = i/8 - base;
+    if ((SLIDING_WORDS - offset) * sizeof(uint64_t) < len - i) {
+        memmove(bitbuffer, bitbuffer + offset, SLIDING_PENDING * sizeof(uint64_t));
+        base += offset;
+        offset = 0;
+    }
+
     /* We also have to zero out the tail */
     size_t left_to_z = len - (300*8 + i);
-    __m128i *bitbuf_tail = (__m128i*)(bitbuffer + 300 + i/8);
+    __m128i *bitbuf_tail = (__m128i*)(bitbuffer + 300 + offset);
     while (left_to_z >= 64) {
        STORE4(z, z, z, z, bitbuf_tail);
        left_to_z -= 64;
@@ -246,7 +281,7 @@ Z_FORCEINLINE static uint32_t crc32_chorba_32768_nondestructive_sse41(uint32_t c
         __m128i cd1, cd2, cd3, cd4;
 
         READ_NEXT(input, i, in1in2, in3in4);
-        READ_NEXT(bitbuffer, i, in1in2_, in3in4_);
+        READ_NEXT(bitbuffer, i - base * 8, in1in2_, in3in4_);
 
         in1in2 = _mm_xor_si128(_mm_xor_si128(in1in2, in1in2_), next12);
         in3in4 = _mm_xor_si128(in3in4, in3in4_);
@@ -283,7 +318,7 @@ Z_FORCEINLINE static uint32_t crc32_chorba_32768_nondestructive_sse41(uint32_t c
     uint8_t *final_bytes = (uint8_t*)final;
 
     for (size_t j = 0; j < (len-i); j++) {
-        crc = crc_table[(crc ^ final_bytes[j] ^ bitbuffer_bytes[(j+i)]) & 0xff] ^ (crc >> 8);
+        crc = crc_table[(crc ^ final_bytes[j] ^ bitbuffer_bytes[(j+i) - base*8]) & 0xff] ^ (crc >> 8);
     }
     return ~crc;
 }
@@ -302,7 +337,7 @@ Z_INTERNAL uint32_t crc32_chorba_sse41(uint32_t crc, const uint8_t *buf, size_t 
     if (len > CHORBA_LARGE_THRESHOLD)
         return crc32_chorba_118960_nondestructive(crc, buf, len);
 #endif
-    if (len > CHORBA_MEDIUM_LOWER_THRESHOLD && len <= CHORBA_MEDIUM_UPPER_THRESHOLD)
+    if (len > CHORBA_MEDIUM_LOWER_THRESHOLD)
         return crc32_chorba_32768_nondestructive_sse41(crc, buf, len);
     return chorba_small_nondestructive_sse2(crc, buf, len);
 }
