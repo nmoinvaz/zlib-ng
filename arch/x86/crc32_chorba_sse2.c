@@ -330,6 +330,12 @@ Z_INTERNAL uint32_t crc32_chorba_sse2(uint32_t crc, const uint8_t *buf, size_t l
 #ifdef CRC32_CHORBA_FALLBACK
     if (len > CHORBA_LARGE_THRESHOLD)
         return crc32_chorba_118960_nondestructive(crc, buf, len);
+#  if CHORBA_W == 8
+    if (len > CHORBA_SLIDING_UPPER_THRESHOLD)
+        return crc32_chorba_118960_nondestructive(crc, buf, len);
+    if (len > CHORBA_MEDIUM_UPPER_THRESHOLD)
+        return crc32_chorba_sliding_nondestructive(crc, buf, len);
+#  endif
 #endif
     return chorba_small_nondestructive_sse2(crc, buf, len);
 }
