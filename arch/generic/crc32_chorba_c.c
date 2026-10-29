@@ -427,12 +427,13 @@ Z_INTERNAL uint32_t crc32_chorba_32768_nondestructive(uint32_t crc, const uint8_
     return ~crc;
 }
 
-/* The zero polynomial of the 32768 variant has degree 300, so only the next 300 words are ever
- * owed contributions. A small buffer covers any length by sliding those words back to its start. */
+/* A six-term zero polynomial, offsets 17, 80, 118, 124 and 203 words, costs one more store per
+ * word than the 32768 variant's but only ever owes the next 203 words, which shortens the slow
+ * tail and every slide. A small buffer covers any length by sliding those words back to its start. */
 #define SLIDING_WORDS 1024
-#define SLIDING_PENDING 300
+#define SLIDING_PENDING 203
 /* Pending words plus the block and tail reads past them */
-#define SLIDING_SLACK 400
+#define SLIDING_SLACK 304
 
 /* XORs the eight words of the current round into the bitbuffer at word offset off */
 #define CHORBA_FOLD(off) \
@@ -500,12 +501,13 @@ Z_INTERNAL uint32_t crc32_chorba_sliding_nondestructive(uint32_t crc, const uint
             in7 = CHORBA_IN(6) CHORBA_XOR(BUF, 6);
             in8 = CHORBA_IN(7) CHORBA_XOR(BUF, 7);
 
-            // [0, 145, 183, 211]
+            // [0, 17, 80, 118, 124]
 
-            CHORBA_FOLD(145);
-            CHORBA_FOLD(183);
-            CHORBA_FOLD(211);
-            CHORBA_STORE(300);
+            CHORBA_FOLD(17);
+            CHORBA_FOLD(80);
+            CHORBA_FOLD(118);
+            CHORBA_FOLD(124);
+            CHORBA_STORE(203);
         }
     }
 
@@ -515,7 +517,7 @@ Z_INTERNAL uint32_t crc32_chorba_sliding_nondestructive(uint32_t crc, const uint
         base += offset;
         offset = 0;
     }
-    /* Words past the last store at +300 can be stale after a slide */
+    /* Words past the last store at +203 can be stale after a slide */
     memset(bitbuffer + offset + SLIDING_PENDING, 0, (SLIDING_SLACK - SLIDING_PENDING) * sizeof(uint64_t));
 
     uint64_t next1_64 = 0;
