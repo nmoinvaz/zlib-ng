@@ -39,13 +39,7 @@ static inline void storechunk(uint8_t *out, chunk_t *chunk) {
 
 #include "chunkset_tpl.h"
 
-#define INFLATE_FAST     inflate_fast_narrow_c
-#define USE_NARROW_COPY
-
-#include "inffast_tpl.h"
-
 #define INFLATE_FAST     inflate_fast_c
-#define DISPATCH_NARROW  inflate_fast_narrow_c
 
 #include "inffast_tpl.h"
 

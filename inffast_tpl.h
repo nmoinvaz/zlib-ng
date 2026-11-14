@@ -302,7 +302,9 @@ void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start) {
                        so unroll and roundoff operations can write beyond `out+len` so long
                        as they stay within 258 bytes of `out`.
                     */
-#ifdef USE_NARROW_COPY
+                    /* The double copy runs only where a narrow instantiation takes the
+                       short-match blocks. */
+#ifndef DISPATCH_NARROW
                     if (LIKELY(dist >= len || dist > CHUNKSIZE()))
                         out = CHUNKCOPY(out, out - dist, len);
 #else
